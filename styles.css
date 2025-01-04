@@ -1,0 +1,188 @@
+*, *::after, *::before {
+    box-sizing: border-box;
+    background-color: bisque;
+}
+
+
+@import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
+
+.title {
+  font-family: 'Bangers', cursive;
+  font-size: 10rem;
+  text-align: center;
+  color: #ff4d4d;
+  text-shadow: 3px 3px 0 #000;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+/*foundation of cell size and marker size*/
+:root {
+    --cell-size: 100px;
+    --mark-size: calc(var(--cell-size) * .9);
+}
+
+body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    flex-direction: column;
+}
+
+/*playing board*/
+.board {
+    width: 100vw;
+    height: 100vh;
+    display: grid;
+    justify-content: center;
+    align-content: center;
+    justify-items: center;
+    align-items: center;
+    grid-template-columns: repeat(3, auto);
+}
+/*individual cells within the playing board*/
+.cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    border: 1px solid black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+}
+
+/*Remove border from top 3 cells*/
+.cell:first-child,
+.cell:nth-child(2),
+.cell:nth-child(3) {
+    border-top: none;
+}
+
+/*remove border from left colum cells*/
+.cell:nth-child(3n +1) {
+    border-left: none;
+}
+
+/*remove border from right colum cells*/
+.cell:nth-child(3n +3) {
+    border-right: none;
+}
+
+/*Remove border from bottom 3 cells*/
+.cell:last-child,
+.cell:nth-child(7),
+.cell:nth-child(8) {
+    border-bottom: none;
+}
+
+/*Update cursor icon for UI/UX*/
+.cell.x,
+.cell.circle {
+    cursor: not-allowed;
+}
+
+/*Define cell colour here for X to allow the hover colour to be lighter in colour*/
+.cell.x::before,
+.cell.x::after,
+.cell.circle::before,
+.cell.circle::after  {
+    background-color: black;
+}
+
+
+/*Empty cell effect to help with UI/UX*/
+.board.x .cell:not(.x):not(.circle):hover::before,
+.board.x .cell:not(.x):not(.circle):hover::after,
+.board.circle .cell:not(.x):not(.circle):hover::before,
+.board.circle .cell:not(.x):not(.circle):hover::after {
+    background-color: lightgray;
+}
+
+/*creating the player marker X*/
+.cell.x::before,
+.cell.x::after,
+.board.x .cell:not(.x):not(.circle):hover::before,
+.board.x .cell:not(.x):not(.circle):hover::after {
+    content: "";
+    position: absolute;
+    width: calc(var(--mark-size) * .15);
+    height: var(--mark-size);
+}
+
+.cell.x::before,
+.board.x .cell:not(.x):not(.circle):hover::before {
+    transform: rotate(45deg);
+}
+
+.cell.x::after,
+.board.x .cell:not(.x):not(.circle):hover::after {
+    transform: rotate(-45deg);
+}
+
+/*creating the player marker O*/
+
+.cell.circle::before,
+.cell.circle::after,
+.board.circle .cell:not(.x):not(.circle):hover::before,
+.board.circle .cell:not(.x):not(.circle):hover::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+}
+
+.cell.circle::before,
+.board.circle .cell:not(.x):not(.circle):hover::before {
+    width: var(--mark-size);
+    height: var(--mark-size);
+}
+
+.cell.circle::after,
+.board.circle .cell:not(.x):not(.circle):hover::after {
+    width: calc(var(--mark-size) * .7);
+    height: calc(var(--mark-size) * .7);
+    background-color: bisque;
+}
+
+/*Style the end of game screen and hide*/
+.win-screen {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+    justify-content: center;
+    align-items: center;
+    color: black;
+    font-size: 5rem;
+    flex-direction: column;
+}
+
+/*Style the restart button*/
+.win-screen button {
+    font-size: 3rem;
+    background-color: white;
+    border: 1px solid black;
+    padding: .25em .5em;
+    cursor: pointer;
+}
+
+/*Style the hover effect for the button*/
+.win-screen button:hover {
+    background-color: black;
+    color: white;
+    border-color: white;
+}
+
+/*Show the end of game screen*/
+.win-screen.show {
+    display: flex;
+}
