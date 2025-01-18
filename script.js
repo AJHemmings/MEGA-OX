@@ -44,8 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // so users cannot overwrite previous plays
         cellElements.forEach(cell => {
             // removes previous game board
-            cell.classList.remove(X_MARKER)
-            cell.classList.remove(CIRCLE_MARKER)
+            // cell.classList.remove(X_MARKER)  these have been removed to allow for images to be used in place of css markers
+            // cell.classList.remove(CIRCLE_MARKER)
+
+            // this is the removal of the images on new game restart
+            while (cell.firstChild) {
+                cell.removeChild(cell.firstChild);  
+            }
             cell.removeEventListener(`click`, handleClick)
             // starts a fresh game from here on
             cell.addEventListener(`click`, handleClick, { once: true });
@@ -86,9 +91,21 @@ document.addEventListener('DOMContentLoaded', () => {
         winningMessageElement.classList.add(`show`)
     }
 
+    function createMarker(markerType) {
+        const marker = document.createElement(`img`)
+        if (markerType === X_MARKER) {
+            marker.src = "x.svg"
+        } else {
+            marker.src = "o.svg"
+        } return marker
+    }
+
     // Function to add a marker
     function placeMarker(cell, currentTurn) {
         cell.classList.add(currentTurn)
+        cell.classList.add(`occupied`)
+        const marker = createMarker(currentTurn)
+        cell.appendChild(marker)
     }
 
     // Function to swap turns
@@ -123,3 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
     }
 });
+
+// class person{
+//     this.age
+// }

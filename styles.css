@@ -106,7 +106,7 @@ body {
 }
 
 /*creating the player marker X*/
-.cell.x::before,
+/* .cell.x::before,
 .cell.x::after,
 .board.x .cell:not(.x):not(.circle):hover::before,
 .board.x .cell:not(.x):not(.circle):hover::after {
@@ -124,11 +124,11 @@ body {
 .cell.x::after,
 .board.x .cell:not(.x):not(.circle):hover::after {
     transform: rotate(-45deg);
-}
+} */
 
 /*creating the player marker O*/
 
-.cell.circle::before,
+/* .cell.circle::before,
 .cell.circle::after,
 .board.circle .cell:not(.x):not(.circle):hover::before,
 .board.circle .cell:not(.x):not(.circle):hover::after {
@@ -148,7 +148,7 @@ body {
     width: calc(var(--mark-size) * .7);
     height: calc(var(--mark-size) * .7);
     background-color: bisque;
-}
+} */
 
 /*Style the end of game screen and hide*/
 .win-screen {
