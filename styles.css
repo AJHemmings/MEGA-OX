@@ -83,8 +83,12 @@ body {
 }
 
 /*Update cursor icon for UI/UX*/
-.cell.x,
-.cell.circle {
+/*.cell.x,*/
+/*.cell.circle {*/
+/*    cursor: not-allowed;*/
+/*}*/
+
+.cell.occupied {
     cursor: not-allowed;
 }
 

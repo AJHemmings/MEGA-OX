@@ -1,4 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', loadGame);
+
+function loadGame() {
     // Define the player markers X O
     const X_MARKER = `x`
     const CIRCLE_MARKER = `circle`
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // this is the removal of the images on new game restart
             while (cell.firstChild) {
-                cell.removeChild(cell.firstChild);  
+                cell.removeChild(cell.firstChild);
             }
             cell.removeEventListener(`click`, handleClick)
             // starts a fresh game from here on
@@ -139,8 +141,4 @@ document.addEventListener('DOMContentLoaded', () => {
             return cell.classList.contains(X_MARKER) || cell.classList.contains(CIRCLE_MARKER)
         })
     }
-});
-
-// class person{
-//     this.age
-// }
+}
