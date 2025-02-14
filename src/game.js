@@ -14,7 +14,6 @@ class Game {
     startGame() {
         for(let i = 0; i < this.numberOfBoards; i++) {
             const board = new Board(i, this.onBoardCellClick)
-            board.initialize()
             this.boards.push(board)
         }
     }
@@ -24,10 +23,12 @@ class Game {
         if (board) {
             board.placeMarker(cell, this.currentPlayer)
             // swap the turns
-            console.log(this.currentPlayer, this.playerOne)
+            console.log('current player', this.currentPlayer)
             this.currentPlayer = this.currentPlayer.id !== this.playerOne.id ? this.playerOne : this.playerTwo
 
-            //check if game should end
+            console.log('next player', this.currentPlayer)
+
+            // check if game should end
         }
     }
 
