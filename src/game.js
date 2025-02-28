@@ -46,6 +46,10 @@ class Game {
       console.log("next player", this.currentPlayer);
 
       // Check if game should end (this part is not implemented yet)
+
+      if (this.isGameOver()) {
+        this.endGame;
+      }
     }
   }
 
@@ -65,5 +69,13 @@ class Game {
   // Ends the game by logging a message (additional logic can be added here)
   endGame() {
     console.log("Game ended");
+    this.restartGame;
+  }
+
+  restartGame() {
+    console.log("Restarting game");
+    this.boards = [];
+    this.currentPlayer = this.playerOne;
+    this.startGame;
   }
 }
