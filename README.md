@@ -1,4 +1,4 @@
-# Naughts and Crosses - Macro/Micro Board Game
+# Mega OX - A Macro/Micro Board Game
 
 ## Overview
 
@@ -16,6 +16,17 @@ The project is built using React and TypeScript, designed with scalability in mi
 - When a player wins a micro board by lining up three markers in a row, that micro board is considered won and the corresponding macro board cell is marked for that player.
 - The overall winner is the first player to win three cells in a row on the macro board.
 - If all micro boards are filled without a macro board winner, the game ends in a draw.
+
+---
+
+## How to Play
+
+1. Players take turns selecting a cell on the macro board (highlighted micro board area).
+2. Within the micro board, players select a cell to place their marker (X or O).
+3. The position of the last move determines the next micro board the other player must play in.
+4. Win 3 micro boards in a row on the macro board to win.
+5. The UI shows the active player, score counters (wins/losses/draws), and an option to restart.
+6. Future versions will include profile customization, chat, emoji communication, and network play.
 
 ---
 
@@ -58,33 +69,25 @@ The project uses a hybrid approach:
 
 ## Folder Structure
 
+```
 naughts-and-crosses/
-├── public/ # Static assets and HTML template
-├── src/ # Application source code
-│ ├── components/ # React components (MacroBoard, MicroBoard, UI elements)
-│ ├── hooks/ # Custom React hooks (e.g., useGameLogic)
-│ ├── models/ # TypeScript classes for game logic (Board, Cell, Game)
-│ ├── styles/ # CSS files or styled components
-│ ├── App.tsx # Main application component
-│ ├── index.tsx # React app entry point
-│ └── types.ts # TypeScript types and interfaces
-├── package.json # Project metadata and dependencies
-├── tsconfig.json # TypeScript config
-└── README.md # Project documentation
+├── public/                # Static assets and HTML template
+├── src/                   # Application source code
+│   ├── components/        # React components (MacroBoard, MicroBoard, UI elements)
+│   ├── hooks/             # Custom React hooks (e.g., useGameLogic)
+│   ├── models/            # TypeScript classes for game logic (Board, Cell, Game)
+│   ├── styles/            # CSS files or styled components
+│   ├── App.tsx            # Main application component
+│   ├── index.tsx          # React app entry point
+│   └── types.ts           # TypeScript types and interfaces
+├── package.json           # Project metadata and dependencies
+├── tsconfig.json          # TypeScript config
+└── README.md              # Project documentation
+
+```
 
 ---
 
-## How to Play
-
-1. Launch the game in a browser.
-2. Players take turns selecting a cell on the macro board (highlighted micro board area).
-3. Within the micro board, players select a cell to place their marker (X or O).
-4. The position of the last move determines the next micro board the other player must play in.
-5. Win 3 micro boards in a row on the macro board to win.
-6. The UI shows the active player, score counters (wins/losses/draws), and an option to restart.
-7. Future versions will include profile customization, chat, emoji communication, and network play.
-
----
 
 ## Versioning
 
@@ -104,4 +107,4 @@ naughts-and-crosses/
 ---
 
 Thank you for exploring this strategic twist on a classic game!  
-Enjoy playing the Macro/Micro Naughts and Crosses.
+Enjoy playing Mega OX.
