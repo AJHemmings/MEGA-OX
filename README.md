@@ -108,4 +108,4 @@ naughts-and-crosses/
 ---
 
 Thank you for exploring this strategic twist on a classic game!  
-Enjoy playing the Macro/Micro Naughts and Crosses.
+Enjoy playing Mega OX.
