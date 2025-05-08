@@ -1,4 +1,4 @@
-# Naughts and Crosses - Macro/Micro Board Game
+# Mega OX - A Macro/Micro Board Game
 
 ## Overview
 
