@@ -21,13 +21,12 @@ The project is built using React and TypeScript, designed with scalability in mi
 
 ## How to Play
 
-1. Launch the game in a browser.
-2. Players take turns selecting a cell on the macro board (highlighted micro board area).
-3. Within the micro board, players select a cell to place their marker (X or O).
-4. The position of the last move determines the next micro board the other player must play in.
-5. Win 3 micro boards in a row on the macro board to win.
-6. The UI shows the active player, score counters (wins/losses/draws), and an option to restart.
-7. Future versions will include profile customization, chat, emoji communication, and network play.
+1. Players take turns selecting a cell on the macro board (highlighted micro board area).
+2. Within the micro board, players select a cell to place their marker (X or O).
+3. The position of the last move determines the next micro board the other player must play in.
+4. Win 3 micro boards in a row on the macro board to win.
+5. The UI shows the active player, score counters (wins/losses/draws), and an option to restart.
+6. Future versions will include profile customization, chat, emoji communication, and network play.
 
 ---
 
