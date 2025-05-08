@@ -58,19 +58,22 @@ The project uses a hybrid approach:
 
 ## Folder Structure
 
+```
 naughts-and-crosses/
-├── public/ # Static assets and HTML template
-├── src/ # Application source code
-│ ├── components/ # React components (MacroBoard, MicroBoard, UI elements)
-│ ├── hooks/ # Custom React hooks (e.g., useGameLogic)
-│ ├── models/ # TypeScript classes for game logic (Board, Cell, Game)
-│ ├── styles/ # CSS files or styled components
-│ ├── App.tsx # Main application component
-│ ├── index.tsx # React app entry point
-│ └── types.ts # TypeScript types and interfaces
-├── package.json # Project metadata and dependencies
-├── tsconfig.json # TypeScript config
-└── README.md # Project documentation
+├── public/                # Static assets and HTML template
+├── src/                   # Application source code
+│   ├── components/        # React components (MacroBoard, MicroBoard, UI elements)
+│   ├── hooks/             # Custom React hooks (e.g., useGameLogic)
+│   ├── models/            # TypeScript classes for game logic (Board, Cell, Game)
+│   ├── styles/            # CSS files or styled components
+│   ├── App.tsx            # Main application component
+│   ├── index.tsx          # React app entry point
+│   └── types.ts           # TypeScript types and interfaces
+├── package.json           # Project metadata and dependencies
+├── tsconfig.json          # TypeScript config
+└── README.md              # Project documentation
+
+```
 
 ---
 
