@@ -1,22 +1,22 @@
-# --- Base Stage: Build the React App ---
-FROM node:24.0-alpine AS build
-
-# Upgrade packages inside container
-RUN apk add --no-cache --upgrade && apk upgrade --available
+# --- Builder Stage ---
+FROM node:20-alpine as build
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY . .
 RUN npm run build
 
-# --- Final Stage: Serve with NGINX ---
-FROM nginx:stable-alpine
+# --- Production Stage (NGINX) ---
+FROM nginx:stable-alpine as production
 
+# Copy React build to nginx html folder
 COPY --from=build /app/build /usr/share/nginx/html
 
+# Expose port 80
 EXPOSE 80
 
+# Start NGINX
 CMD ["nginx", "-g", "daemon off;"]
