@@ -1,24 +1,22 @@
-# Base image
-FROM node:18-alpine AS build
+# --- Base Stage: Build the React App ---
+FROM node:24.0-alpine AS build
 
-# Set working directory
+# Upgrade packages inside container
+RUN apk add --no-cache --upgrade && apk upgrade --available
+
 WORKDIR /app
 
-# Install dependencies
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci --omit=dev
 
-# Copy app source
 COPY . .
-
-# Build the app
 RUN npm run build
 
-# Serve with nginx
-FROM nginx:alpine
+# --- Final Stage: Serve with NGINX ---
+FROM nginx:stable-alpine
+
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Expose port
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

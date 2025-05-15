@@ -1,18 +1,14 @@
-# Base image
-FROM node:18-alpine
+FROM node:24.0-alpine
 
-# Set working directory
+RUN apk add --no-cache --upgrade && apk upgrade --available
+
 WORKDIR /app
 
-# Install dependencies
 COPY package.json package-lock.json ./
 RUN npm install
 
-# Copy app source
 COPY . .
 
-# Expose port for dev server
 EXPOSE 3000
 
-# Start dev server with hot reload
 CMD ["npm", "start"]
