@@ -173,9 +173,7 @@ export class Game {
     this.currentPlayerIndex = 1 - this.currentPlayerIndex;
   }
 
-  // Player tries to place marker in microboard[cellIndex], returning true if successful
   placeMarker(microBoardIndex: number, cellIndex: number): boolean {
-    // If nextMicroBoardIndex is not null, player must play in that board
     if (
       this.nextMicroBoardIndex !== null &&
       microBoardIndex !== this.nextMicroBoardIndex
@@ -193,12 +191,8 @@ export class Game {
       return false;
     }
 
-    // If microboard was won, mark macroboard winner (already handled in microboard)
     this.macroBoard.checkWinner();
 
-    // Determine the next microboard index for the opponent
-    // If the microboard corresponding to the cell index is already won or full,
-    // the next player may choose any microboard
     const nextBoard = this.macroBoard.microBoards[cellIndex];
     if (!nextBoard || nextBoard.winner !== Marker.None || nextBoard.isFull) {
       this.nextMicroBoardIndex = null; // any allowed
