@@ -12,3 +12,7 @@ build/
 # IDE files
 .vscode/
 .idea/
+
+# Documentation (implementation guides)
+SUPABASE_SETUP.md
+IMPLEMENTATION.md
