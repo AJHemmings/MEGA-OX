@@ -1,53 +1,91 @@
-# Mega OX - A Macro/Micro Board Game
+# Mega OX - Ultimate Tic-Tac-Toe Experience
 
 ## Overview
 
-This project is a modern twist on the classic Naughts and Crosses (Tic-Tac-Toe) game. The game features a macro board with 9 micro boards in each cell, creating a layered and strategic gameplay experience. Two players take turns selecting cells on the macro and micro boards, with the goal to win 3 micro boards in a row on the macro board.
+Mega OX is a modern twist on the classic Tic-Tac-Toe game, featuring a sophisticated macro/micro board system that creates deep strategic gameplay. The game now includes a beautiful main menu system, multiple game modes, and AI opponents, with plans for online multiplayer.
 
-The project is built using React and TypeScript, designed with scalability in mind to support future features like user profiles, network play, and customizable avatar/themes.
+## 🎮 Game Features
 
----
+### Current Features
+- **🏠 Main Menu Splash Screen** - Beautiful gradient interface with game mode selection
+- **🤖 Single Player Mode** - Challenge an AI opponent with intelligent moves
+- **👥 Local Multiplayer** - Play with friends on the same device
+- **📖 Interactive Rules** - Learn how to play with detailed explanations
+- **👤 Profile System** - Ready for user authentication integration
+- **🎯 Smart Game Logic** - Advanced macro/micro board mechanics
+- **📊 Score Tracking** - Win/loss/draw statistics
+- **🎨 Modern UI** - Responsive design with smooth animations
 
-## Game Rules
+### Planned Features (Online Mode)
+- **🌐 Network Multiplayer** - Real-time online games
+- **🔗 Friend Invites** - Share game codes with friends
+- **🔍 Matchmaking** - Find random opponents
+- **💬 Chat System** - Communicate during games
+- **🏆 Rankings & Stats** - Player profiles with match history
+- **🎨 Themes & Avatars** - Customizable appearance
 
-- The macro board is a 3x3 grid; each cell contains a micro board (3x3).
-- Players alternate turns by selecting a macro board cell, then placing their marker (naught or cross) inside the corresponding micro board.
-- The position of the placed marker in the micro board dictates which micro board the next player must play on.
-- When a player wins a micro board by lining up three markers in a row, that micro board is considered won and the corresponding macro board cell is marked for that player.
-- The overall winner is the first player to win three cells in a row on the macro board.
-- If all micro boards are filled without a macro board winner, the game ends in a draw.
+## 🎯 Game Rules
 
----
+The game uses a **macro board** (3x3 grid) where each cell contains a **micro board** (also 3x3):
 
-## How to Play
+1. **Starting:** First player can choose any cell on any micro board
+2. **Movement Constraint:** Your move determines which micro board your opponent must play in next
+3. **Winning Micro Boards:** Get 3 in a row within a micro board to win it
+4. **Winning the Game:** Win 3 micro boards in a row on the macro board
+5. **Special Rule:** If the required micro board is full, you can choose any available board
+6. **Draw Condition:** All micro boards filled without a macro winner = draw
 
-1. Players take turns selecting a cell on the macro board (highlighted micro board area).
-2. Within the micro board, players select a cell to place their marker (X or O).
-3. The position of the last move determines the next micro board the other player must play in.
-4. Win 3 micro boards in a row on the macro board to win.
-5. The UI shows the active player, score counters (wins/losses/draws), and an option to restart.
-6. Future versions will include profile customization, chat, emoji communication, and network play.
+## 🚀 Getting Started
 
----
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
 
-## Tech Stack and Design Choices
+### Installation
 
-### Technologies Used
+1. **Clone the repository:**
+   ```bash
+   git clone [repository-url]
+   cd mega-ox-v3
+   ```
 
-- **React** (with functional components and hooks)
-- **TypeScript** for strong typing and maintainability
-- CSS modules and inline styles for modern, responsive UI
-- Minimal dependencies to keep the app lightweight and fast
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-### Object-Oriented Programming (OOP) Approach
+3. **Start the development server:**
+   ```bash
+   npm start
+   ```
 
-To model the complex game logic and rules, the core game state and operations are encapsulated in TypeScript classes representing entities such as the macro board, micro boards, cells, and game controller. This approach provides:
+4. **Open your browser:**
+   Navigate to `http://localhost:3000`
 
-#### Pros:
+## 🛠 Tech Stack
 
-- **Encapsulation:** Game logic and state are grouped logically within objects.
-- **Scalability:** Easier to extend and maintain as new features (e.g., network play, user profiles) are added.
-- **Reusability:** Classes can be tested and reused independently from the React UI.
+### Core Technologies
+- **React 18** - Modern functional components with hooks
+- **TypeScript** - Type safety and better development experience
+- **React Router DOM** - Navigation between menu and game screens
+- **CSS-in-JS** - Styled components with modern design
+
+### Architecture Decisions
+
+#### Object-Oriented Game Logic
+The core game mechanics are built using TypeScript classes for better organization:
+
+**Pros:**
+- **Encapsulation:** Game state and logic grouped logically
+- **Scalability:** Easy to extend for network features
+- **Testability:** Independent testing of game mechanics
+- **Maintainability:** Clear separation of concerns
+
+**Classes:**
+- `Game` - Main game controller and state management
+- `MacroBoard` - Manages the 3x3 grid of micro boards
+- `MicroBoard` - Individual 3x3 game boards
+- `Cell` - Individual game cells with markers
 - **Clear abstraction:** Real-world game concepts are represented naturally in code.
 
 #### Cons:
