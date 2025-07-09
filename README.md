@@ -1,4 +1,4 @@
-# Mega OX - Ultimate Tic-Tac-Toe Experience
+# Mega OX - The Ultimate Naughts and Crosses Experience
 
 ## Overview
 
