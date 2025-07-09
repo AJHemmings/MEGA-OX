@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mega OX is a modern twist on the classic Tic-Tac-Toe game, featuring a sophisticated macro/micro board system that creates deep strategic gameplay. The game now includes a beautiful main menu system, multiple game modes, and AI opponents, with plans for online multiplayer.
+Mega OX is a modern twist on the classic Naughts and Crosses game, featuring a sophisticated macro/micro board system that creates deep strategic gameplay. The game now includes a beautiful main menu system, multiple game modes, and AI opponents, with plans for online multiplayer.
 
 ## 🎮 Game Features
 
@@ -129,7 +129,7 @@ naughts-and-crosses/
 
 ## Versioning
 
-- Version 1.0.0 - Base game with core mechanics implemented using React and TypeScript.
+- Version 1.3.0 - Base game with core mechanics implemented using React and TypeScript.
 - Future updates will add multi-player networking, user authentication, profiles, emoji chat, and theming.
 
 ---
