@@ -193,7 +193,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameModeSelect }) => {
           title="Player Profile"
         >
           <div style={{ textAlign: "center", padding: "20px" }}>
-            <p style={{ marginBottom: "20px", color: "#666" }}>
+            <p style={{ marginBottom: "20px", color: "#a0aec0" }}>
               Sign in to save your progress and play online!
             </p>
 
@@ -205,9 +205,12 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameModeSelect }) => {
                   width: "100%",
                   padding: "12px",
                   margin: "5px 0",
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
+                  border: "2px solid #4a5568",
+                  borderRadius: "12px",
                   fontSize: "16px",
+                  backgroundColor: "#1a2332",
+                  color: "#ffffff",
+                  boxSizing: "border-box",
                 }}
               />
               <input
@@ -217,9 +220,12 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameModeSelect }) => {
                   width: "100%",
                   padding: "12px",
                   margin: "5px 0",
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
+                  border: "2px solid #4a5568",
+                  borderRadius: "12px",
                   fontSize: "16px",
+                  backgroundColor: "#1a2332",
+                  color: "#ffffff",
+                  boxSizing: "border-box",
                 }}
               />
             </div>
@@ -230,12 +236,22 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameModeSelect }) => {
               <button
                 style={{
                   padding: "12px 24px",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                   border: "none",
-                  background: "#667eea",
+                  background: "#00d4aa",
                   color: "white",
                   cursor: "pointer",
                   fontSize: "16px",
+                  fontWeight: "bold",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 25px #00d4aa40';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
                 Sign In
@@ -243,19 +259,29 @@ const MainMenu: React.FC<MainMenuProps> = ({ onGameModeSelect }) => {
               <button
                 style={{
                   padding: "12px 24px",
-                  borderRadius: "8px",
-                  border: "1px solid #667eea",
+                  borderRadius: "12px",
+                  border: "2px solid #00d4aa",
                   background: "transparent",
-                  color: "#667eea",
+                  color: "#00d4aa",
                   cursor: "pointer",
                   fontSize: "16px",
+                  fontWeight: "bold",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#00d4aa15";
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
                 Sign Up
               </button>
             </div>
 
-            <p style={{ marginTop: "15px", fontSize: "12px", color: "#999" }}>
+            <p style={{ marginTop: "15px", fontSize: "12px", color: "#718096" }}>
               Profile system coming soon! Database integration will be added for
               online features.
             </p>

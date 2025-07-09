@@ -204,35 +204,43 @@ const GameWrapper: React.FC<GameWrapperProps> = ({ gameMode, onBackToMenu }) => 
       <Modal
         isOpen={showRules}
         onClose={() => setShowRules(false)}
-        title="How to Play"
+        title="How to Play Mega OX"
       >
-        <ul style={{ textAlign: "left", fontSize: "14px", lineHeight: "1.6" }}>
-          <li>
-            Players take turns selecting a cell on the macro board{" "}
-            <span style={{ fontWeight: "bold", color: "#3399ff" }}>
-              (highlighted micro board area)
-            </span>{" "}
-            the first player can chose any cell on the macro board.
-          </li>
-          <li>
-            Within the micro board, players select a cell to place their marker
-            (X or O).
-          </li>
-          <li>
-            The position of the last move determines the next micro board the
-            other player must play in.
-          </li>
-          <li>Win 3 micro boards in a row on the macro board to win.</li>
-          <li>
-            If all micro boards are filled without a macro board winner, the
-            game ends in a draw.
-          </li>
-          <li>
-            If the required micro board is already full, the player may choose
-            any other available micro board to continue the game.
-          </li>
-          <li>Use the restart button to begin a new game.</li>
-        </ul>
+        <div
+          style={{ textAlign: "left", fontSize: "14px", lineHeight: "1.6" }}
+        >
+          <h3 style={{ color: "#ffffff", marginTop: "0" }}>🎯 Objective</h3>
+          <p style={{ color: "#a0aec0" }}>
+            Win 3 micro boards in a row on the macro board to win the game.
+          </p>
+
+          <h3 style={{ color: "#ffffff" }}>🎮 How to Play</h3>
+          <ul style={{ color: "#a0aec0", paddingLeft: "20px" }}>
+            <li>Players take turns placing their marker (X or O) in cells</li>
+            <li>The first player can choose any cell on the macro board</li>
+            <li>
+              Your move determines which micro board your opponent must play
+              in next
+            </li>
+            <li>Win a micro board by getting 3 in a row within it</li>
+            <li>
+              If the required micro board is full, you can choose any
+              available board
+            </li>
+          </ul>
+
+          <h3 style={{ color: "#ffffff" }}>🏆 Winning</h3>
+          <ul style={{ color: "#a0aec0", paddingLeft: "20px" }}>
+            <li>
+              Get 3 micro board wins in a row (horizontal, vertical, or
+              diagonal)
+            </li>
+            <li>
+              If all micro boards are filled without a macro winner, it's a
+              draw
+            </li>
+          </ul>
+        </div>
       </Modal>
 
       <PlayerIndicator
