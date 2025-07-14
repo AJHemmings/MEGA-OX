@@ -14,7 +14,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   gameMode,
   onBackToMenu,
 }) => {
-  const { game, gameOver, winner, onPlaceMarker, resetGame } = useGameLogic();
+  const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } = useGameLogic();
   const [showRules, setShowRules] = useState(false);
   const [isAiTurn, setIsAiTurn] = useState(false);
 
@@ -270,6 +270,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
         onPlaceMarker={onPlaceMarker}
         nextMicroBoardIndex={game.nextMicroBoardIndex}
         macroWinner={winner === Marker.None ? "" : winner}
+        lastMove={lastMove}
       />
 
       {gameOver && (

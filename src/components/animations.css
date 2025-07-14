@@ -1,0 +1,92 @@
+/* Cell highlight animation styles */
+@keyframes pulseHighlight {
+  0% {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes glowPulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+}
+
+.cell-highlight-x,
+.cell-highlight-o {
+  position: relative;
+}
+
+/* The highlight overlay that will animate and fade out */
+.cell-highlight-x::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 6px;
+  background: transparent;
+  border: 2px solid #00d4aa;
+  box-shadow: 0 0 15px #00d4aa;
+  animation: pulseHighlight 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cell-highlight-o::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 6px;
+  background: transparent;
+  border: 2px solid #ff6b35;
+  box-shadow: 0 0 15px #ff6b35;
+  animation: pulseHighlight 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Ensure the cell content stays on top and visible */
+.cell-highlight-x > *,
+.cell-highlight-o > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Micro board highlight for active board */
+.micro-board-active {
+  animation: boardGlow 0.5s ease-in-out;
+}
+
+@keyframes boardGlow {
+  0% {
+    box-shadow: 0 0 0 rgba(51, 153, 255, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(51, 153, 255, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(51, 153, 255, 0.3);
+  }
+}

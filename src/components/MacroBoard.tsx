@@ -9,6 +9,11 @@ type MacroBoardProps = {
   onPlaceMarker: (microBoardIndex: number, cellIndex: number) => void;
   nextMicroBoardIndex: number | null;
   macroWinner: string;
+  lastMove?: {
+    microBoardIndex: number;
+    cellIndex: number;
+    playerMarker: string;
+  } | null;
 };
 
 const MacroBoard: React.FC<MacroBoardProps> = ({
@@ -16,6 +21,7 @@ const MacroBoard: React.FC<MacroBoardProps> = ({
   onPlaceMarker,
   nextMicroBoardIndex,
   macroWinner,
+  lastMove,
 }) => {
   const gridStyle: React.CSSProperties = {
     display: "grid",
@@ -69,6 +75,16 @@ const MacroBoard: React.FC<MacroBoardProps> = ({
           }
           highlight={
             nextMicroBoardIndex === null || nextMicroBoardIndex === index
+          }
+          recentlyPlacedCell={
+            lastMove && lastMove.microBoardIndex === index 
+              ? lastMove.cellIndex 
+              : -1
+          }
+          currentPlayerMarker={
+            lastMove && lastMove.microBoardIndex === index 
+              ? lastMove.playerMarker 
+              : ""
           }
         />
       ))}

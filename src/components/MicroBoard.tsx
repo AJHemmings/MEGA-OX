@@ -1,5 +1,6 @@
 import React from "react";
 import Cell from "./Cell";
+import "./animations.css";
 
 type MicroBoardProps = {
   cells: string[];
@@ -7,6 +8,8 @@ type MicroBoardProps = {
   disabled: boolean;
   highlight: boolean;
   winner: string;
+  recentlyPlacedCell?: number;
+  currentPlayerMarker?: string;
 };
 
 const MicroBoard: React.FC<MicroBoardProps> = ({
@@ -15,6 +18,8 @@ const MicroBoard: React.FC<MicroBoardProps> = ({
   disabled,
   highlight,
   winner,
+  recentlyPlacedCell = -1,
+  currentPlayerMarker = "",
 }) => {
   const gridStyle: React.CSSProperties = {
     display: "grid",
@@ -26,15 +31,17 @@ const MicroBoard: React.FC<MicroBoardProps> = ({
     backgroundColor:
       winner !== "" ? (winner === "X" ? "#a0d8f0" : "#f0a0a0") : "#fff",
     borderRadius: "4px",
-    width: "max-content", // or a fixed size like "150px"
-    height: "max-content", // or a fixed size like "150px"
+    width: "max-content",
+    height: "max-content",
     justifyContent: "center",
     alignContent: "center",
+    transition: "all 0.3s ease",
   };
 
   return (
     <div
       style={gridStyle}
+      className={highlight ? "micro-board-active" : ""}
       aria-label={winner ? `MicroBoard won by ${winner}` : "MicroBoard"}
     >
       {cells.map((cellValue, index) => (
@@ -43,6 +50,8 @@ const MicroBoard: React.FC<MicroBoardProps> = ({
           value={cellValue}
           onClick={() => onCellClick(index)}
           disabled={disabled || cellValue !== ""}
+          shouldAnimate={recentlyPlacedCell === index && cellValue !== ""}
+          playerMarker={recentlyPlacedCell === index ? currentPlayerMarker : ""}
         />
       ))}
       {winner && (
