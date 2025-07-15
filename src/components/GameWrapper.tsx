@@ -14,9 +14,17 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   gameMode,
   onBackToMenu,
 }) => {
-  const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } = useGameLogic();
+  const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } =
+    useGameLogic();
   const [showRules, setShowRules] = useState(false);
   const [isAiTurn, setIsAiTurn] = useState(false);
+
+  // UX: Adjust delay and animation timing here:
+  const MIN_DELAY_MS = 2000;
+  const MAX_DELAY_MS = 6000;
+  const AI_THINKING_DELAY_MS =
+    Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) +
+    MIN_DELAY_MS;
 
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
@@ -34,7 +42,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
       const aiMoveTimer = setTimeout(() => {
         makeAiMove();
         setIsAiTurn(false);
-      }, 1000); // Add a delay to make AI moves visible
+      }, AI_THINKING_DELAY_MS); // Use configurable delay
 
       return () => clearTimeout(aiMoveTimer);
     }
@@ -192,29 +200,67 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
           borderRadius: "12px",
           border: `2px solid ${gameMode === "single" ? "#ff6b35" : "#00d4aa"}`,
           color: "#ffffff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          minHeight: "56px", // Fixed height to prevent layout shift
+          position: "relative",
         }}
       >
+        {/* Left spacer for balance */}
+        <div style={{ flex: "1" }}></div>
+
+        {/* Center: Main game mode text (static position) */}
         <strong
           style={{
             color: gameMode === "single" ? "#ff6b35" : "#00d4aa",
             fontSize: "16px",
+            flex: "0 0 auto",
           }}
         >
           {gameMode === "single" ? "🤖 Player vs AI" : "👥 Local 2-Player"}
         </strong>
-        {isAiTurn && gameMode === "single" && (
-          <div
-            style={{
-              marginTop: "8px",
-              color: "#a0aec0",
-              fontSize: "14px",
-              fontStyle: "italic",
-            }}
-          >
-            AI is thinking...
-          </div>
-        )}
+
+        {/* Right: AI thinking indicator (or spacer) */}
+        <div style={{ flex: "1", display: "flex", justifyContent: "flex-end" }}>
+          {/* UI: AI thinking indicator (positioned to right to prevent layout shift) */}
+          {isAiTurn && gameMode === "single" && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                color: "#a0aec0",
+                fontSize: "14px",
+                fontStyle: "italic",
+              }}
+            >
+              <span>AI is thinking</span>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "2px",
+                  animation: "ellipsisPulse 1.5s infinite",
+                }}
+              >
+                <span style={{ animationDelay: "0s" }}>.</span>
+                <span style={{ animationDelay: "0.5s" }}>.</span>
+                <span style={{ animationDelay: "1s" }}>.</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      <style>
+        {`
+          @keyframes ellipsisPulse {
+            0%, 20% { opacity: 0; }
+            50% { opacity: 1; }
+            80%, 100% { opacity: 0; }
+          }
+        `}
+      </style>
 
       {/* Rules Modal */}
       <Modal
