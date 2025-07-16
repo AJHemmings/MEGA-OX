@@ -27,7 +27,7 @@ const MicroBoard: React.FC<MicroBoardProps> = ({
     gridTemplateRows: "repeat(3, 40px)",
     gap: "2px",
     padding: "2px",
-    border: highlight ? "2px solid #3399ff" : "2px solid #999",
+    border: highlight ? "5px solid #3399ff" : "2px solid #999",
     backgroundColor:
       winner !== "" ? (winner === "X" ? "#a0d8f0" : "#f0a0a0") : "#fff",
     borderRadius: "4px",
