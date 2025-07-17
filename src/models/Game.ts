@@ -172,7 +172,7 @@ export class Game {
   switchPlayer() {
     this.currentPlayerIndex = 1 - this.currentPlayerIndex;
   }
-
+  // HOLY GRAIL
   placeMarker(microBoardIndex: number, cellIndex: number): boolean {
     if (
       this.nextMicroBoardIndex !== null &&
@@ -192,7 +192,7 @@ export class Game {
     }
 
     this.macroBoard.checkWinner();
-
+    // The key to everything
     const nextBoard = this.macroBoard.microBoards[cellIndex];
     if (!nextBoard || nextBoard.winner !== Marker.None || nextBoard.isFull) {
       this.nextMicroBoardIndex = null; // any allowed
