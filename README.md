@@ -128,7 +128,7 @@ naughts-and-crosses/
 
 ## Versioning
 
-- Version 1.3.0 - Base game with core mechanics implemented using React and TypeScript.
+- Version 1.3.3 - Base game with core mechanics, single player vs AI, and local device multiplayer game modes - implemented using React and TypeScript.
 - Future updates will add multi-player networking, user authentication, profiles, emoji chat, and theming.
 
 ---
