@@ -64,7 +64,7 @@ The game uses a **macro board** (3x3 grid) where each cell contains a **micro bo
 ## 🛠 Tech Stack
 
 ### Core Technologies
-- **React 18** - Modern functional components with hooks
+- **React** - Modern functional components with hooks
 - **TypeScript** - Type safety and better development experience
 - **React Router DOM** - Navigation between menu and game screens
 - **CSS-in-JS** - Styled components with modern design
