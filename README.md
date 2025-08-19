@@ -10,7 +10,6 @@ Mega OX is a modern twist on the classic Naughts and Crosses game, featuring a s
 - **🏠 Main Menu Splash Screen** - Beautiful gradient interface with game mode selection
 - **🤖 Single Player Mode** - Challenge an AI opponent with intelligent moves
 - **👥 Local Multiplayer** - Play with friends on the same device
-- **📖 Interactive Rules** - Learn how to play with detailed explanations
 - **🎯 Smart Game Logic** - Advanced macro/micro board mechanics
 - **📊 Score Tracking** - Win/loss/draw statistics
 - **🎨 Modern UI** - Responsive design with smooth animations
