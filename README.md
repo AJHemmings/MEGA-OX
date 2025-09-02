@@ -10,7 +10,6 @@ Mega OX is a modern twist on the classic Naughts and Crosses game, featuring a s
 - **🏠 Main Menu Splash Screen** - Beautiful gradient interface with game mode selection
 - **🤖 Single Player Mode** - Challenge an AI opponent with intelligent moves
 - **👥 Local Multiplayer** - Play with friends on the same device
-- **📖 Interactive Rules** - Learn how to play with detailed explanations
 - **🎯 Smart Game Logic** - Advanced macro/micro board mechanics
 - **📊 Score Tracking** - Win/loss/draw statistics
 - **🎨 Modern UI** - Responsive design with smooth animations
@@ -64,7 +63,7 @@ The game uses a **macro board** (3x3 grid) where each cell contains a **micro bo
 ## 🛠 Tech Stack
 
 ### Core Technologies
-- **React 18** - Modern functional components with hooks
+- **React** - Modern functional components with hooks
 - **TypeScript** - Type safety and better development experience
 - **React Router DOM** - Navigation between menu and game screens
 - **CSS-in-JS** - Styled components with modern design
@@ -128,7 +127,7 @@ naughts-and-crosses/
 
 ## Versioning
 
-- Version 1.3.0 - Base game with core mechanics implemented using React and TypeScript.
+- Version 1.3.3 - Base game with core mechanics, single player vs AI, and local device multiplayer game modes - implemented using React and TypeScript.
 - Future updates will add multi-player networking, user authentication, profiles, emoji chat, and theming.
 
 ---
