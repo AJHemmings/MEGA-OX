@@ -1,4 +1,7 @@
 // Game.ts - Core game logic OOP classes for macro and micro boards
+// This file implements the in-memory game model for an Ultimate Naughts and Crosses
+// style game: Cells make up MicroBoards, MicroBoards make up a MacroBoard,
+// and Game.ts orchestrates players, turns, and rules for which microboard is next.
 
 export enum Marker {
   None = "",
@@ -6,6 +9,7 @@ export enum Marker {
   O = "O",
 }
 
+// Simple player description used by Game to track turns and markers
 export type Player = {
   id: number;
   name: string;
@@ -19,10 +23,12 @@ export class Cell {
     this.marker = Marker.None;
   }
 
+  // Returns true when no marker has been placed in this cell
   isEmpty() {
     return this.marker === Marker.None;
   }
 
+  // Sets marker if cell is empty. Returns true on success, false if already occupied.
   setMarker(marker: Marker) {
     if (this.marker === Marker.None) {
       this.marker = marker;
@@ -47,7 +53,9 @@ export class MicroBoard {
     this.isFull = false;
   }
 
-  // Check if this microboard is won and return true if so
+  // Check if this microboard is won and return the winning Marker if so
+  // Existing comment: // Check if this microboard is won and return true if so
+  // Added: returns the Marker representing the winner or Marker.None if none.
   checkWinner(): Marker {
     const lines = [
       [0, 1, 2],
@@ -75,13 +83,14 @@ export class MicroBoard {
     return this.winner;
   }
 
-  // Check if board is full
+  // Check if board is full (no empty cells) and update isFull flag.
   checkFull() {
     this.isFull = this.cells.every((cell) => cell.marker !== Marker.None);
     return this.isFull;
   }
 
-  // Attempts to place a marker in the cell index, returns true if successful
+  // Attempts to place a marker in the cell index, returns true if successful.
+  // Will not allow placement if the microboard already has a winner.
   placeMarker(index: number, marker: Marker): boolean {
     if (this.winner !== Marker.None) {
       return false; // Already won, locked
@@ -110,6 +119,8 @@ export class MacroBoard {
   }
 
   // Check if macro board is won according to micro board wins
+  // We map each microboard's winner into a 3x3 macro state and check classic
+  // Naughts and Crosses winning lines across those microboard winners.
   checkWinner(): Marker {
     const lines = [
       [0, 1, 2],
@@ -150,6 +161,7 @@ export class Game {
   drawCount: number;
 
   constructor(player1Name = "Player 1", player2Name = "Player 2") {
+    // Initialize the macro board (9 microboards), two players, and turn state.
     this.macroBoard = new MacroBoard();
     this.players = [
       { id: 1, name: player1Name, marker: Marker.X },
@@ -157,6 +169,7 @@ export class Game {
     ];
     this.currentPlayerIndex = 0;
     this.nextMicroBoardIndex = null;
+    // Track wins per marker and draws
     this.winCounts = {
       [Marker.X]: 0,
       [Marker.O]: 0,
@@ -165,14 +178,21 @@ export class Game {
     this.drawCount = 0;
   }
 
+  // Convenience getter for the player whose turn it is
   get currentPlayer() {
     return this.players[this.currentPlayerIndex];
   }
 
+  // Toggle between player indices 0 and 1
   switchPlayer() {
     this.currentPlayerIndex = 1 - this.currentPlayerIndex;
   }
   // HOLY GRAIL
+  // Place a marker on specified microBoard and cell.
+  // Enforces the "next microboard" rule: if nextMicroBoardIndex is set,
+  // the move must be made on that microboard. After placing, it determines
+  // the next microboard based on the cell index (unless that target board is
+  // won or full, in which case nextMicroBoardIndex becomes null meaning open choice).
   placeMarker(microBoardIndex: number, cellIndex: number): boolean {
     if (
       this.nextMicroBoardIndex !== null &&
@@ -191,8 +211,11 @@ export class Game {
       return false;
     }
 
+    // Update macro-level win state after the microboard change
     this.macroBoard.checkWinner();
     // The key to everything
+    // Determine which microboard the next player must play in (by cellIndex),
+    // unless that microboard is not available (won or full) — then it's open.
     const nextBoard = this.macroBoard.microBoards[cellIndex];
     if (!nextBoard || nextBoard.winner !== Marker.None || nextBoard.isFull) {
       this.nextMicroBoardIndex = null; // any allowed
@@ -206,6 +229,7 @@ export class Game {
     return true;
   }
 
+  // Reset game state to start a new match, preserving win counters outside this method.
   resetGame() {
     this.macroBoard = new MacroBoard();
     this.currentPlayerIndex = 0;
@@ -224,6 +248,7 @@ export class Game {
     return allFull;
   }
 
+  // Increment win/draw counters. Marker.None is treated as a draw in this model.
   incrementWin(marker: Marker) {
     if (marker === Marker.None) {
       this.drawCount += 1;
