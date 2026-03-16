@@ -5,6 +5,8 @@ import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useRecentGames } from '../hooks/useRecentGames';
 import { supabase } from '../lib/supabase';
 import NewsSlideshow from './layout/NewsSlideshow';
+import TutorialOverlay from './layout/TutorialOverlay';
+import { useTutorial } from '../hooks/useTutorial';
 import { Modal } from './modal';
 
 const MainMenu: React.FC = () => {
@@ -15,6 +17,7 @@ const MainMenu: React.FC = () => {
   const [activeSeason, setActiveSeason] = useState(false);
   const [activeTournament, setActiveTournament] = useState(false);
   const [showDifficulty, setShowDifficulty] = useState(false);
+  const { showTutorial, completeTutorial } = useTutorial('home');
 
   useEffect(() => {
     supabase.from('seasons').select('id').eq('status', 'active').limit(1)
@@ -86,6 +89,17 @@ const MainMenu: React.FC = () => {
         <button onClick={() => navigate('/leaderboard')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Leaderboard</button>
         <button onClick={signOut} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Sign out</button>
       </div>
+
+      {showTutorial && (
+        <TutorialOverlay
+          steps={[
+            { title: 'Welcome to MEGA OX!', description: 'MEGA OX is Ultimate Tic-Tac-Toe — a 3×3 grid of smaller boards. Win a small board to claim that cell on the big board. Win three big cells in a row to win the game.' },
+            { title: 'Your move sends your opponent', description: 'The cell you play in a small board determines which small board your opponent must play in next. Plan ahead!' },
+            { title: 'Play vs AI or Online', description: 'Use Training to play against the AI, or use Multiplayer to challenge a friend locally or online. Good luck!' },
+          ]}
+          onComplete={completeTutorial}
+        />
+      )}
 
       <Modal isOpen={showDifficulty} onClose={() => setShowDifficulty(false)} title="Select Difficulty">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
