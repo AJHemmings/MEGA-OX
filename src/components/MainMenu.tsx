@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import NewsSlideshow from './layout/NewsSlideshow';
 import TutorialOverlay from './layout/TutorialOverlay';
 import { useTutorial } from '../hooks/useTutorial';
+import { useLoginStreak } from '../hooks/useLoginStreak';
 import { Modal } from './modal';
 
 const MainMenu: React.FC = () => {
@@ -18,6 +19,8 @@ const MainMenu: React.FC = () => {
   const [activeTournament, setActiveTournament] = useState(false);
   const [showDifficulty, setShowDifficulty] = useState(false);
   const { showTutorial, completeTutorial } = useTutorial('home');
+  const streakData = useLoginStreak();
+  const [streakDismissed, setStreakDismissed] = useState(false);
 
   useEffect(() => {
     supabase.from('seasons').select('id').eq('status', 'active').limit(1)
@@ -89,6 +92,20 @@ const MainMenu: React.FC = () => {
         <button onClick={() => navigate('/leaderboard')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Leaderboard</button>
         <button onClick={signOut} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Sign out</button>
       </div>
+
+      {streakData?.reward && !streakDismissed && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: '#2a3441', borderRadius: '12px', padding: '32px', maxWidth: '380px', width: '100%', textAlign: 'center' }}>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔥</div>
+            <h3 style={{ color: '#00d4aa', margin: '0 0 8px' }}>Day {streakData.current} Streak!</h3>
+            <p style={{ color: '#a0aec0', marginBottom: '20px' }}>You've earned a daily reward: <strong style={{ color: '#fff' }}>{streakData.reward.reward_description ?? streakData.reward.reward_type}</strong></p>
+            <button onClick={() => setStreakDismissed(true)}
+              style={{ background: '#00d4aa', border: 'none', color: '#1a2332', padding: '12px 28px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}>
+              Claim Reward
+            </button>
+          </div>
+        </div>
+      )}
 
       {showTutorial && (
         <TutorialOverlay
