@@ -75,7 +75,6 @@ const MainMenu: React.FC = () => {
     if (!shouldAutoStart) return;
     const timer = setTimeout(startIntro, 500);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldAutoStart]);
 
   const container: React.CSSProperties = { minHeight: '100vh', background: '#1a2332', color: '#fff', fontFamily: 'sans-serif' };
