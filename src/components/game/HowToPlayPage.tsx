@@ -154,7 +154,7 @@ const HowToPlayPage: React.FC = () => {
       arrowRef.current?.remove();
       introRef.current?.exit(true);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // intentional: runs once on mount only
 
   // ── Derive MacroBoard props ────────────────────────────────────────────────
   const microBoards = game.macroBoard?.microBoards.map((mb: any) => ({
