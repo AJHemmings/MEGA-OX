@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
@@ -16,8 +16,8 @@ const MainMenu: React.FC = () => {
   const navigate = useNavigate();
   const profile = usePlayerProfile();
   const recentGames = useRecentGames();
-  const [activeSeason, setActiveSeason] = useState(false);
-  const [activeTournament, setActiveTournament] = useState(false);
+  const [_activeSeason, setActiveSeason] = useState(false);
+  const [_activeTournament, setActiveTournament] = useState(false);
   const [showDifficulty, setShowDifficulty] = useState(false);
   const { shouldAutoStart, markComplete } = useTutorial('home');
   const streakData = useLoginStreak();
@@ -30,7 +30,7 @@ const MainMenu: React.FC = () => {
       .then(({ data }) => setActiveTournament((data?.length ?? 0) > 0));
   }, []);
 
-  const startIntro = () => {
+  const startIntro = useCallback(() => {
     introJs()
       .setOptions({
         steps: [
@@ -69,13 +69,13 @@ const MainMenu: React.FC = () => {
       .oncomplete(markComplete)
       .onexit(markComplete)
       .start();
-  };
+  }, [markComplete]);
 
   useEffect(() => {
     if (!shouldAutoStart) return;
     const timer = setTimeout(startIntro, 500);
     return () => clearTimeout(timer);
-  }, [shouldAutoStart]);
+  }, [shouldAutoStart, startIntro]);
 
   const container: React.CSSProperties = { minHeight: '100vh', background: '#1a2332', color: '#fff', fontFamily: 'sans-serif' };
   const header: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #3a4a5a' };

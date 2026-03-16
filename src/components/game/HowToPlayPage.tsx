@@ -162,13 +162,6 @@ const HowToPlayPage: React.FC = () => {
     winner: mb.winner ?? '',
   })) ?? Array(9).fill({ cells: Array(9).fill(''), winner: '' });
 
-  const currentStep = TUTORIAL_STEPS[currentStepIndex];
-
-  const getDisabled = (boardIndex: number) => {
-    if (!currentStep?.requiresClick) return true;
-    return boardIndex !== currentStep.boardIndex;
-  };
-
   return (
     <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
 
