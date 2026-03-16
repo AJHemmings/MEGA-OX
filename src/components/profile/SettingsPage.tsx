@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTutorial } from '../../hooks/useTutorial';
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -12,6 +13,8 @@ const SettingsPage: React.FC = () => {
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'uploading' | 'saved' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { resetTutorial } = useTutorial('home');
+  const [resetMsg, setResetMsg] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -132,6 +135,22 @@ const SettingsPage: React.FC = () => {
             style={{ background: 'none', border: '1px solid #ff6b35', color: '#ff6b35', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
             Sign Out
           </button>
+        </div>
+
+        {/* Tutorial */}
+        <div style={{ background: '#2a3441', borderRadius: '12px', padding: '24px', marginTop: '16px' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '16px', color: '#a0aec0', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tutorial</div>
+          <button
+            onClick={async () => {
+              await resetTutorial();
+              setResetMsg('Tutorial will show next time you visit the home screen.');
+              setTimeout(() => setResetMsg(''), 3000);
+            }}
+            style={{ background: 'none', border: '1px solid #4a5568', color: '#a0aec0', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}
+          >
+            Replay Home Tutorial
+          </button>
+          {resetMsg && <div style={{ fontSize: '12px', color: '#00d4aa', marginTop: '8px' }}>{resetMsg}</div>}
         </div>
 
       </div>
