@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Modal } from './modal';
 
-interface MultiplayerMenuProps {
-  onBack: () => void;
-  onGameStart: (mode: 'local' | 'online-host' | 'online-join') => void;
-}
-
-const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onBack, onGameStart }) => {
+const MultiplayerMenu: React.FC = () => {
+  const navigate = useNavigate();
   const [showNetworkInfo, setShowNetworkInfo] = useState(false);
 
   return (
@@ -20,30 +17,9 @@ const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onBack, onGameStart }
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Animated background elements */}
-      <div style={{
-        position: 'absolute',
-        top: '15%',
-        right: '10%',
-        width: '120px',
-        height: '120px',
-        backgroundColor: '#00d4aa',
-        borderRadius: '50%',
-        opacity: 0.1,
-        animation: 'float 6s ease-in-out infinite',
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '25%',
-        left: '15%',
-        width: '90px',
-        height: '90px',
-        backgroundColor: '#4299e1',
-        borderRadius: '50%',
-        opacity: 0.1,
-        animation: 'float 7s ease-in-out infinite reverse',
-      }} />
-      
+      <div style={{ position: 'absolute', top: '15%', right: '10%', width: '120px', height: '120px', backgroundColor: '#00d4aa', borderRadius: '50%', opacity: 0.1, animation: 'float 6s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', bottom: '25%', left: '15%', width: '90px', height: '90px', backgroundColor: '#4299e1', borderRadius: '50%', opacity: 0.1, animation: 'float 7s ease-in-out infinite reverse' }} />
+
       <div style={{
         backgroundColor: '#2a3441',
         borderRadius: '24px',
@@ -54,78 +30,35 @@ const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onBack, onGameStart }
         width: '90%',
         animation: 'slideUp 0.8s ease-out',
       }}>
-        <h2 style={{
-          fontSize: '2.8em',
-          margin: '0 0 15px 0',
-          color: '#ffffff',
-          fontWeight: 'bold',
-          textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-        }}>
+        <h2 style={{ fontSize: '2.8em', margin: '0 0 15px 0', color: '#ffffff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
           Multiplayer Mode
         </h2>
-        
-        <p style={{
-          color: '#a0aec0',
-          fontSize: '1.2em',
-          marginBottom: '40px',
-          fontWeight: '500',
-        }}>
+        <p style={{ color: '#a0aec0', fontSize: '1.2em', marginBottom: '40px', fontWeight: '500' }}>
           Choose your multiplayer experience
         </p>
 
         <div style={{ marginBottom: '30px' }}>
-          <MenuButton 
-            onClick={() => onGameStart('local')}
-            primary={true}
-            description="Play with a friend on the same device"
-            color="#00d4aa"
-          >
+          <MenuButton onClick={() => navigate('/local')} primary={true} description="Play with a friend on the same device" color="#00d4aa">
             🏠 Local 2-Player
           </MenuButton>
-          
-          <MenuButton 
-            onClick={() => setShowNetworkInfo(true)}
-            primary={true}
-            description="Host a game for online friends"
-            disabled={true}
-            color="#4299e1"
-          >
+          <MenuButton onClick={() => setShowNetworkInfo(true)} primary={true} description="Host a game for online friends" disabled={true} color="#4299e1">
             🌐 Host Online Game
           </MenuButton>
-          
-          <MenuButton 
-            onClick={() => setShowNetworkInfo(true)}
-            primary={true}
-            description="Join a friend's online game"
-            disabled={true}
-            color="#ed8936"
-          >
+          <MenuButton onClick={() => setShowNetworkInfo(true)} primary={true} description="Join a friend's online game" disabled={true} color="#ed8936">
             🔍 Join Online Game
           </MenuButton>
-          
-          <MenuButton 
-            onClick={onBack}
-            primary={false}
-            description=""
-            color="#ff6b35"
-          >
+          <MenuButton onClick={() => navigate('/')} primary={false} description="" color="#ff6b35">
             ← Back to Main Menu
           </MenuButton>
         </div>
 
-        {/* Network Info Modal */}
-        <Modal
-          isOpen={showNetworkInfo}
-          onClose={() => setShowNetworkInfo(false)}
-          title="Online Multiplayer - Coming Soon!"
-        >
+        <Modal isOpen={showNetworkInfo} onClose={() => setShowNetworkInfo(false)} title="Online Multiplayer - Coming Soon!">
           <div style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '4em', marginBottom: '20px' }}>🚧</div>
             <h3>Online Features Under Development</h3>
             <p style={{ marginBottom: '20px', color: '#666', lineHeight: '1.6' }}>
-              Online multiplayer is currently being developed! Here's what's planned:
+              Online multiplayer is currently being developed!
             </p>
-            
             <div style={{ textAlign: 'left', marginBottom: '20px' }}>
               <h4>🎮 Planned Features:</h4>
               <ul style={{ color: '#666', lineHeight: '1.6' }}>
@@ -133,20 +66,8 @@ const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onBack, onGameStart }
                 <li><strong>Real-time Play:</strong> Live synchronization between players</li>
                 <li><strong>Player Profiles:</strong> Stats, rankings, and match history</li>
                 <li><strong>Matchmaking:</strong> Find random opponents to play against</li>
-                <li><strong>Chat System:</strong> Communicate during games</li>
               </ul>
             </div>
-            
-            <div style={{ textAlign: 'left', marginBottom: '20px' }}>
-              <h4>🛠 Technical Implementation:</h4>
-              <ul style={{ color: '#666', lineHeight: '1.6' }}>
-                <li><strong>Database:</strong> Supabase for user accounts and game data</li>
-                <li><strong>Real-time:</strong> WebSocket connections for live updates</li>
-                <li><strong>Authentication:</strong> Secure sign-in system</li>
-                <li><strong>Game State:</strong> Synchronized across all players</li>
-              </ul>
-            </div>
-            
             <p style={{ color: '#999', fontSize: '14px' }}>
               For now, enjoy local multiplayer and single-player modes!
             </p>
@@ -157,7 +78,6 @@ const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onBack, onGameStart }
   );
 };
 
-// Reusable button component for multiplayer menu
 const MenuButton: React.FC<{
   children: React.ReactNode;
   onClick: () => void;
@@ -178,60 +98,33 @@ const MenuButton: React.FC<{
         fontWeight: 'bold',
         border: primary ? 'none' : `2px solid ${color}`,
         borderRadius: '16px',
-        background: disabled 
-          ? '#3a4553' 
-          : primary 
-            ? color 
-            : 'transparent',
-        color: disabled 
-          ? '#6b7280' 
-          : primary 
-            ? 'white' 
-            : color,
+        background: disabled ? '#3a4553' : primary ? color : 'transparent',
+        color: disabled ? '#6b7280' : primary ? 'white' : color,
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: 'translateY(0) scale(1)',
         opacity: disabled ? 0.6 : 1,
-        boxShadow: disabled
-          ? 'none'
-          : primary 
-            ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)` 
-            : '0 4px 15px rgba(0, 0, 0, 0.1)',
+        boxShadow: disabled ? 'none' : primary ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)` : '0 4px 15px rgba(0, 0, 0, 0.1)',
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
           e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
-          e.currentTarget.style.boxShadow = primary 
-            ? `0 12px 35px ${color}60, 0 8px 20px rgba(0, 0, 0, 0.15)` 
-            : `0 8px 25px ${color}30, 0 4px 15px rgba(0, 0, 0, 0.1)`;
-          
-          if (!primary) {
-            e.currentTarget.style.backgroundColor = `${color}15`;
-          }
+          e.currentTarget.style.boxShadow = primary ? `0 12px 35px ${color}60, 0 8px 20px rgba(0, 0, 0, 0.15)` : `0 8px 25px ${color}30, 0 4px 15px rgba(0, 0, 0, 0.1)`;
+          if (!primary) e.currentTarget.style.backgroundColor = `${color}15`;
         }
       }}
       onMouseLeave={(e) => {
         if (!disabled) {
           e.currentTarget.style.transform = 'translateY(0) scale(1)';
-          e.currentTarget.style.boxShadow = primary 
-            ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)` 
-            : '0 4px 15px rgba(0, 0, 0, 0.1)';
-          
-          if (!primary) {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }
+          e.currentTarget.style.boxShadow = primary ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)` : '0 4px 15px rgba(0, 0, 0, 0.1)';
+          if (!primary) e.currentTarget.style.backgroundColor = 'transparent';
         }
       }}
     >
       {children}
     </button>
     {description && (
-      <p style={{
-        margin: '8px 0 0 0',
-        fontSize: '14px',
-        color: '#718096',
-        textAlign: 'center',
-      }}>
+      <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#718096', textAlign: 'center' }}>
         {description}
       </p>
     )}
@@ -239,27 +132,3 @@ const MenuButton: React.FC<{
 );
 
 export default MultiplayerMenu;
-
-// Add keyframe animations (reuse from MainMenu)
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-20px) rotate(180deg); }
-  }
-  
-  @keyframes slideUp {
-    0% { 
-      opacity: 0; 
-      transform: translateY(30px); 
-    }
-    100% { 
-      opacity: 1; 
-      transform: translateY(0px); 
-    }
-  }
-`;
-if (!document.head.querySelector('style[data-multiplayer-animations]')) {
-  style.setAttribute('data-multiplayer-animations', 'true');
-  document.head.appendChild(style);
-}
