@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(supabase:*)",
+      "Bash(git checkout:*)",
+      "Bash(cd:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
