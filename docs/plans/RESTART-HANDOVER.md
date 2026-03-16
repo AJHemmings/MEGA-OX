@@ -1,121 +1,155 @@
 # Restart Handover — Read This First
 
 ## What you are doing
-The implementation plan is complete. Next session is **UI, UX, and frontend polish** — no new backend work.
+
+The **Intro.js tutorial system** is fully implemented and committed. All 8 tasks are done.
+
+The next session is **manual smoke testing** (Task 9 of the plan) followed by branch completion.
 
 ## Current branch
+
 `feat/network-multiplayer` — all work goes here. Main stays clean for portfolio.
 
-## What has been completed
+---
+
+## Intro.js tutorial system — task tracker
 
 | Task | Status | What was done |
 |---|---|---|
-| Task 1 | ✅ Done | Removed `@types/react-router-dom` v5, installed `@supabase/supabase-js` |
-| Task 2 | ✅ Done | Created `src/lib/supabase.ts` client, `src/lib/database.types.ts`, test in `src/__tests__/supabase.test.ts` |
-| Task 3 | ✅ Done | Rewired `src/index.tsx` + `src/App.tsx` to React Router v7. Created all stub components |
-| Nav fix | ✅ Done | Restored navigation, difficulty sub-menu, `/training`, `/local`, `/multiplayer` routes |
-| Task 4 | ✅ Done | `supabase init`, linked project, created + pushed `20260316000000_initial_schema.sql` (18 tables, leaderboard view, 4 triggers). Generated real TypeScript types into `src/lib/database.types.ts` |
-| Task 5 | ✅ Done | Created + pushed `20260316000001_rls_policies.sql` — RLS on all 20 tables. MMR server-only, auth-gated writes, admin-only news |
-| Task 6 | ✅ Done | Email auth enabled in Supabase dashboard. Confirm email OFF for dev. Site URL set to `http://localhost:3000` |
-| Task 7 | ✅ Done | Implemented `src/contexts/AuthContext.tsx` — session restore on mount, auth state listener, `signUp/signIn/signInWithGoogle/signOut`. Test passes. Also added `@testing-library/react`, `@testing-library/jest-dom`, and `src/setupTests.ts` |
-| Task 8 | ✅ Done | Implemented `src/components/layout/ProtectedRoute.tsx` — redirects unauthenticated users to `/login`, shows loading screen while auth resolves |
-| Task 9 | ✅ Done | Implemented `src/components/auth/LoginPage.tsx` and `SignUpPage.tsx` |
-| Task 10 | ✅ Done | Implemented `src/components/auth/OnboardingPage.tsx` — for Google OAuth users who need to pick a username |
-| Task 11 | ✅ Done | Rewrote `src/components/MainMenu.tsx` as lobby layout. Created `src/hooks/usePlayerProfile.ts`, `src/hooks/useRecentGames.ts`, `src/components/layout/NewsSlideshow.tsx` (stub) |
-| Menu fix | ✅ Done | Training (vs AI) now opens a difficulty modal (Easy/Medium/Hard). Multiplayer navigates to `/multiplayer` screen instead of expanding inline |
-| Task 12 | ✅ Done | Created `src/lib/gameSerializer.ts` + `src/__tests__/gameSerializer.test.ts` — serialise/deserialise `Game` OOP object to/from plain JSON for Postgres storage. Both tests pass |
-| Task 13 | ✅ Done | Created `src/hooks/useOnlineGame.ts` — Realtime hook: loads game from Supabase, subscribes to live updates, exposes `placeMarker()` with turn validation |
-| Task 14 | ✅ Done | Rewrote `src/components/game/MatchmakingPage.tsx` — create game (get a code) + join by code flow with Realtime waiting room |
-| Task 15 | ✅ Done | Created `src/components/game/OnlineGameView.tsx`, updated `App.tsx` `/game/:id` route to render it. Online multiplayer fully wired. |
-| Multiplayer fix | ✅ Done | Enabled Host/Join Online Game buttons in `MultiplayerMenu.tsx` — navigate to `/matchmaking` |
-| RLS fix | ✅ Done | Migration `20260316000002` — added policy allowing authenticated users to join waiting games |
-| Task 17 | ✅ Done | Rewrote `src/components/leaderboard/LeaderboardPage.tsx` — pulls from `leaderboard` view, shows rank tier, W/L/D, links to profile |
-| Task 18 | ✅ Done | Rewrote `src/components/layout/NewsSlideshow.tsx` — auto-rotates every 5s, category colour badges, dot indicators, manual prev/next |
-| Task 19 | ✅ Done | Rewrote `src/components/profile/ProfilePage.tsx` and `SettingsPage.tsx` — profile shows avatar/stats/match history/leaderboard pos; settings allows username change + avatar upload to Supabase Storage |
-| Task 20 | ✅ Done | Created `src/components/layout/TutorialOverlay.tsx` + `src/hooks/useTutorial.ts` — stepped overlay, tracks completion in `tutorial_progress` table, wired into main menu |
-| Task 21 | ✅ Done | Created `src/hooks/useLoginStreak.ts` — detects daily login, updates streak, checks `reward_catalog` for milestones, shows reward modal in main menu |
-| Task 22 | ✅ Done | All 4 tests pass, production build clean |
+| Task 1: Install intro.js + leader-line-new | ✅ Done | `npm install intro.js leader-line-new` |
+| Task 2: Add TS declaration for leader-line-new | ✅ Done | `src/types/leader-line-new.d.ts` |
+| Task 3: Refactor useTutorial.ts | ✅ Done | `shouldAutoStart`, `markComplete` (upsert), `resetTutorial` (delete) |
+| Task 4: Update MainMenu with Intro.js tour | ✅ Done | 5-step spotlight tour, `id` attributes on targets, TutorialOverlay removed from JSX, "How to Play" button added |
+| Task 5: Add Replay Tutorial to SettingsPage | ✅ Done | `resetTutorial` hook + confirmation message |
+| Task 6: Create tutorialScript.ts | ✅ Done | `src/components/game/tutorialScript.ts` — 8-step scripted game |
+| Task 7: Create HowToPlayPage.tsx | ✅ Done | `src/components/game/HowToPlayPage.tsx` — Intro.js + Leader Line |
+| Task 8: Add /how-to-play route | ✅ Done | `App.tsx` |
+| Task 9: Manual smoke test | ⏳ Pending | See checklist below |
 
-## Current app state
+---
+
+## Exact resume point
+
+**Task 9 — smoke test.** Run `npm start`, login, and work through this checklist:
+
+1. Login → main menu spotlight tour **auto-starts** (5 steps: Play, Recent Games, News, Leaderboard, Your Profile)
+2. Walk all 5 steps — each spotlight targets the correct element
+3. Refresh and login again → tour does **not** re-fire (row exists in `tutorial_progress`)
+4. Settings → "Replay Home Tutorial" → confirmation message appears → go back to main menu → tour fires again
+5. Main menu Play card → "How to Play" button → navigates to `/how-to-play`
+6. Walk the How to Play tutorial game:
+   - Intro.js spotlight highlights the correct element per step
+   - On `requiresClick` steps: wrong cell click does nothing
+   - On `requiresClick` steps: correct cell places marker and advances
+   - Arrows appear on steps that have them, disappear on steps that don't
+7. "← Exit Tutorial" button → returns to main menu
+
+After smoke test passes, use `superpowers:finishing-a-development-branch` to complete the branch.
+
+---
+
+## One cleanup item outstanding
+
+`src/components/layout/TutorialOverlay.tsx` still exists on disk. It is no longer imported anywhere (MainMenu was updated to remove it). It can be deleted:
+
+```bash
+git rm src/components/layout/TutorialOverlay.tsx
+git commit -m "chore: remove TutorialOverlay — replaced by Intro.js"
+```
+
+Do this before or after the smoke test, doesn't matter.
+
+---
+
+## ESLint — now properly configured
+
+`.eslintrc.json` was added this session. It:
+- Extends `react-app` (makes CRA's plugin set visible to the IDE's ESLint)
+- Explicitly sets `react-hooks/exhaustive-deps: warn`
+- Ignores `_`-prefixed unused variables
+
+One pre-existing warning remains in `GameWrapper.tsx` (the AI delay `useEffect` has missing deps). It's a warning not an error, and it's pre-existing code — flag with user before touching.
+
+---
+
+## How to start the new session
+
+Tell Claude:
+
+> I've started a fresh session. Read `docs/plans/RESTART-HANDOVER.md`. The Intro.js tutorial system is fully implemented. Next step is the manual smoke test (Task 9), then branch completion.
+
+---
+
+## What the full platform looks like (context)
+
+All 22 tasks of the network multiplayer build are complete. The app currently:
+
 - `localhost:3000` → redirects to `/login` if not authenticated
-- `/login` and `/signup` fully functional — creates Supabase auth user + profile row
+- `/login` and `/signup` functional — creates Supabase auth user + profile row
 - After login → main menu lobby with profile header, last 5 games panel, live news slideshow
-- First-time visitors see a 3-step tutorial overlay on the main menu
-- Login streak is detected on main menu mount; reward modal fires if a milestone is hit
-- Training (vs AI) → difficulty modal (Easy/Medium/Hard) → game (all same random AI for now)
-- Multiplayer → MultiplayerMenu → Local 2-Player works; Host/Join Online Game → `/matchmaking`
-- Online multiplayer works end-to-end: create game → get code → opponent joins → both redirect to live game
-- `/leaderboard` → shows ranked player list (publicly accessible, no auth required)
-- `/profile/:username` → public profile with stats + match history
-- `/settings` → change username, upload avatar, sign out
-- Back navigation works throughout
+- First-time visitors see the **Intro.js 5-step spotlight tour** on the main menu
+- Login streak detected on main menu mount; reward modal fires on milestones
+- Training (vs AI) → difficulty modal → game
+- Multiplayer → MultiplayerMenu → Local 2-Player + Host/Join Online Game → `/matchmaking`
+- Online multiplayer works end-to-end via Supabase Realtime
+- `/leaderboard` — public ranked player list
+- `/profile/:username` — public profile with stats + match history
+- `/settings` — change username, upload avatar, sign out, **Replay Home Tutorial**
+- `/how-to-play` — 8-step interactive tutorial game with Intro.js + Leader Line arrows
 
-## Credentials already configured
-`.env.local` and `.env.test.local` are both written (gitignored). They contain:
+---
+
+## Credentials
+
+`.env.local` and `.env.test.local` are written and gitignored. They contain:
 - `REACT_APP_SUPABASE_URL=https://qioxtkcjtvvkzcoupdfk.supabase.co`
-- `REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (full key in file)
+- `REACT_APP_SUPABASE_ANON_KEY=...` (full key in file)
 
 Supabase project ref: **`qioxtkcjtvvkzcoupdfk`**
 
-The Supabase CLI is already linked (`supabase link` was run). If it needs re-linking in a new shell, run:
-```bash
-supabase login --token <user's access token>
-supabase link --project-ref qioxtkcjtvvkzcoupdfk
-```
+---
 
-## Next session: UI/UX polish
-
-**This is a design and polish session, not a backend session.**
-
-Use the `frontend-design` skill for this work. Things to tackle:
-
-### Tutorial (start here)
-The tutorial overlay exists but needs real thought. Questions to explore:
-- Does the slide-up-from-bottom approach feel right, or would a spotlight/highlight style work better for a game?
-- Are the 3 steps the right content? Too few? Too many?
-- Should it trigger differently — e.g. only for brand new users, not just anyone who hasn't seen it?
-- Should there be tutorials on other pages (matchmaking, game board)?
-
-### Broader UI/UX areas
-- **Login / Sign-up pages** — currently functional but plain. Need proper game branding.
-- **Main menu** — layout works but visual polish needed (typography, spacing, visual hierarchy).
-- **Game board** — the original local game has inline styles throughout. Worth reviewing for visual consistency.
-- **Matchmaking page** — very utilitarian; could use more personality.
-- **Profile page** — avatar placeholder and stats cards could look much better.
-- **Loading states** — most pages show plain text "Loading..." — could use spinners or skeletons.
-- **Empty states** — "No games yet" and similar are bare.
-- **Colour system** — currently ad-hoc (`#1a2332`, `#2a3441`, `#00d4aa`, etc.). Consider formalising into CSS variables.
-
-### How to start the session
-Tell Claude:
-> I've started a fresh session. Read `docs/plans/RESTART-HANDOVER.md`. We're on `feat/network-multiplayer`. This session is UI/UX polish — use the `frontend-design` skill. Let's start with the tutorial overlay.
-
-## Parked for later (not this session)
-- **Task 16 (MMR/Elo)** — skipped intentionally. No ranked matchmaking exists yet; revisit when ranked mode is built.
-- **Cash shop** — design doc at `docs/plans/cash-shop-future-scope.md`. Build after UI polish is shipped.
-- **Deploy to Vercel** — deferred. Run `vercel` in project root when ready; env vars (`REACT_APP_SUPABASE_URL` + `REACT_APP_SUPABASE_ANON_KEY`) must be added in Vercel dashboard.
-
-## Where everything lives
-
-| Document | What it is |
-|---|---|
-| `docs/plans/2026-03-16-implementation-plan.md` | Step-by-step build instructions — 22 tasks (all done) |
-| `docs/plans/2026-03-16-network-multiplayer-design.md` | Full system design and all DB tables |
-| `docs/plans/2026-03-16-handover.md` | Full context on every decision made in the design session |
-| `docs/plans/cash-shop-future-scope.md` | Cash shop architecture decision and build order |
-| `docs/design-log.md` | Running log of major design decisions |
-
-## Key architectural decisions (don't re-litigate these)
+## Key architectural decisions (do not re-litigate)
 
 - Supabase is the entire backend — no Vercel API routes
-- DB-authoritative realtime: both players subscribe to the `games` row via Supabase Realtime
-- Hidden MMR, visible rank tier — RLS blocks `mmr` column from client reads
-- `Game.ts` OOP engine stays client-side for rendering; Postgres is source of truth
-- All work on `feat/network-multiplayer` branch — main stays clean for portfolio
-- Difficulty buttons are placeholder UI — all use same random AI until AI work is scoped separately
-- All styling is currently inline CSS — no CSS framework. If introducing CSS variables, do it incrementally
+- DB-authoritative realtime: both players subscribe to the `games` row
+- Hidden MMR, visible rank tier — RLS blocks `mmr` from client reads
+- `Game.ts` OOP engine stays client-side; Postgres is source of truth
+- All styling is inline CSS — no CSS framework
+- All work on `feat/network-multiplayer` — main stays clean for portfolio
+- Difficulty buttons are placeholder UI — all use same random AI
+
+---
+
+## Key files
+
+| File | Purpose |
+|---|---|
+| `src/models/Game.ts` | Core game logic — OOP, no React |
+| `src/hooks/useGameLogic.ts` | React wrapper. Uses `{ ...game }` spread to trigger re-renders |
+| `src/App.tsx` | React Router v7. All routes defined here |
+| `src/components/GameWrapper.tsx` | Game board + AI logic |
+| `src/components/MainMenu.tsx` | Lobby-style main menu + Intro.js tour |
+| `src/hooks/useTutorial.ts` | Tutorial tracking — `shouldAutoStart`, `markComplete`, `resetTutorial` |
+| `src/components/game/tutorialScript.ts` | **Edit this** to change tutorial content/steps |
+| `src/components/game/HowToPlayPage.tsx` | `/how-to-play` — interactive tutorial game |
+| `src/components/profile/SettingsPage.tsx` | Settings including Replay Tutorial button |
+| `src/types/leader-line-new.d.ts` | Manual TS declaration for leader-line-new |
+| `.eslintrc.json` | ESLint config — extends react-app, adds exhaustive-deps rule |
+| `docs/plans/2026-03-16-intro-tutorial-plan.md` | Full task-by-task build plan |
+| `docs/plans/2026-03-16-intro-tutorial-design.md` | Design rationale for the Intro.js system |
+
+---
+
+## Parked for later (not this work)
+
+- **Task 16 (MMR/Elo)** — skipped. No ranked matchmaking yet.
+- **Cash shop** — design doc at `docs/plans/cash-shop-future-scope.md`.
+- **Deploy to Vercel** — run `vercel` in project root when ready; add `REACT_APP_SUPABASE_URL` + `REACT_APP_SUPABASE_ANON_KEY` in Vercel dashboard.
+
+---
 
 ## MCP plugins active
-- Supabase MCP (needs access token to connect — user has it)
+- Supabase MCP (needs user's access token to connect)
 - Vercel
 - GitHub
