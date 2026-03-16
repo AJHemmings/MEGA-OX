@@ -1,182 +1,108 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Modal } from "./modal";
-
-type View = "main" | "difficulty";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { usePlayerProfile } from '../hooks/usePlayerProfile';
+import { useRecentGames } from '../hooks/useRecentGames';
+import { supabase } from '../lib/supabase';
+import NewsSlideshow from './layout/NewsSlideshow';
 
 const MainMenu: React.FC = () => {
+  const { signOut } = useAuth();
   const navigate = useNavigate();
-  const [view, setView] = useState<View>("main");
-  const [showRules, setShowRules] = useState(false);
+  const profile = usePlayerProfile();
+  const recentGames = useRecentGames();
+  const [activeSeason, setActiveSeason] = useState(false);
+  const [activeTournament, setActiveTournament] = useState(false);
+  const [showMultiplayer, setShowMultiplayer] = useState(false);
+
+  useEffect(() => {
+    supabase.from('seasons').select('id').eq('status', 'active').limit(1)
+      .then(({ data }) => setActiveSeason((data?.length ?? 0) > 0));
+    supabase.from('tournaments').select('id').in('status', ['registration', 'active']).limit(1)
+      .then(({ data }) => setActiveTournament((data?.length ?? 0) > 0));
+  }, []);
+
+  const container: React.CSSProperties = { minHeight: '100vh', background: '#1a2332', color: '#fff', fontFamily: 'sans-serif' };
+  const header: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #3a4a5a' };
+  const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', padding: '24px', maxWidth: '900px', margin: '0 auto' };
+  const card: React.CSSProperties = { background: '#2a3441', borderRadius: '12px', padding: '24px' };
+  const modeBtn = (disabled: boolean): React.CSSProperties => ({
+    display: 'block', width: '100%', padding: '14px', marginBottom: '10px', borderRadius: '8px',
+    border: `1px solid ${disabled ? '#3a4a5a' : '#00d4aa'}`, background: 'transparent',
+    color: disabled ? '#5a6a7a' : '#fff', cursor: disabled ? 'not-allowed' : 'pointer',
+    fontSize: '15px', textAlign: 'left', opacity: disabled ? 0.5 : 1
+  });
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#1a2332",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Animated background elements */}
-      <div style={{ position: "absolute", top: "10%", left: "10%", width: "100px", height: "100px", backgroundColor: "#ff6b35", borderRadius: "50%", opacity: 0.1, animation: "float 6s ease-in-out infinite" }} />
-      <div style={{ position: "absolute", top: "60%", right: "15%", width: "150px", height: "150px", backgroundColor: "#f7931e", borderRadius: "50%", opacity: 0.1, animation: "float 8s ease-in-out infinite reverse" }} />
-      <div style={{ position: "absolute", bottom: "20%", left: "20%", width: "80px", height: "80px", backgroundColor: "#00d4aa", borderRadius: "50%", opacity: 0.1, animation: "float 7s ease-in-out infinite" }} />
+    <div style={container}>
+      {/* Header */}
+      <div style={header}>
+        <h1 style={{ color: '#00d4aa', margin: 0 }}>MEGA OX</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {profile && (
+            <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={() => navigate(`/profile/${profile.username}`)}>
+              <div style={{ fontWeight: 'bold' }}>{profile.username}</div>
+              <div style={{ fontSize: '12px', color: '#a0aec0' }}>{profile.rank_tier} · W:{profile.wins} L:{profile.losses} D:{profile.draws}</div>
+            </div>
+          )}
+          <button onClick={() => navigate('/settings')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer' }}>Settings</button>
+        </div>
+      </div>
 
-      <div
-        style={{
-          backgroundColor: "#2a3441",
-          borderRadius: "24px",
-          padding: "50px 40px",
-          textAlign: "center",
-          boxShadow: "0 25px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)",
-          maxWidth: "420px",
-          width: "90%",
-          position: "relative",
-          animation: "slideUp 0.8s ease-out",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "3.5em",
-            margin: "0 0 15px 0",
-            color: "#ffffff",
-            fontWeight: "bold",
-            textShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
-            animation: "titleGlow 2s ease-in-out infinite alternate",
-          }}
-        >
-          Mega OX
-        </h1>
+      <div style={grid}>
+        {/* Play section */}
+        <div style={card}>
+          <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Play</h2>
+          <button style={modeBtn(false)} onClick={() => navigate('/training')}>Training (vs AI)</button>
+          {!showMultiplayer ? (
+            <button style={modeBtn(false)} onClick={() => setShowMultiplayer(true)}>Multiplayer</button>
+          ) : (
+            <>
+              <button style={{ ...modeBtn(false), paddingLeft: '28px' }} onClick={() => navigate('/matchmaking?mode=friendly')}>↳ Friendly</button>
+              <button
+                style={{ ...modeBtn(!activeSeason), paddingLeft: '28px' }}
+                onClick={() => activeSeason && navigate('/matchmaking?mode=season')}
+                title={!activeSeason ? 'No active season' : ''}
+              >↳ Season {!activeSeason && '(inactive)'}</button>
+              <button
+                style={{ ...modeBtn(!activeTournament), paddingLeft: '28px' }}
+                onClick={() => activeTournament && navigate('/matchmaking?mode=tournament')}
+                title={!activeTournament ? 'No active tournament' : ''}
+              >↳ Tournament {!activeTournament && '(inactive)'}</button>
+            </>
+          )}
+        </div>
 
-        <p style={{ color: "#a0aec0", fontSize: "1.2em", marginBottom: "40px", fontWeight: "500" }}>
-          The Ultimate Naughts and Crosses Experience
-        </p>
+        {/* Last 5 games */}
+        <div style={card}>
+          <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Last 5 Games</h2>
+          {recentGames.length === 0 ? (
+            <div style={{ color: '#a0aec0', fontSize: '14px' }}>No games yet — play your first!</div>
+          ) : (
+            recentGames.map(g => (
+              <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '14px' }}>
+                <span style={{ color: g.result === 'Win' ? '#00d4aa' : g.result === 'Loss' ? '#ff6b35' : '#a0aec0', fontWeight: 'bold', width: '40px' }}>{g.result}</span>
+                <span style={{ color: '#fff' }}>vs {g.opponentUsername}</span>
+                <span style={{ color: '#a0aec0', textTransform: 'capitalize' }}>{g.match_type}</span>
+              </div>
+            ))
+          )}
+        </div>
 
-        {view === "main" && (
-          <div style={{ marginBottom: "30px" }}>
-            <MenuButton onClick={() => setView("difficulty")} primary={true} color="#ff6b35">
-              🤖 Player vs AI
-            </MenuButton>
-            <MenuButton onClick={() => navigate("/multiplayer")} primary={true} color="#00d4aa">
-              👥 Multiplayer
-            </MenuButton>
-            <MenuButton onClick={() => setShowRules(true)} primary={false} color="#4299e1">
-              📖 Rules
-            </MenuButton>
-          </div>
-        )}
+        {/* News */}
+        <div style={{ ...card, gridColumn: '1 / -1' }}>
+          <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>News</h2>
+          <NewsSlideshow />
+        </div>
+      </div>
 
-        {view === "difficulty" && (
-          <div style={{ marginBottom: "30px" }}>
-            <p style={{ color: "#a0aec0", fontSize: "1em", marginBottom: "20px" }}>
-              Select difficulty
-            </p>
-            <MenuButton onClick={() => navigate("/training")} primary={true} color="#00d4aa">
-              🟢 Easy
-            </MenuButton>
-            <MenuButton onClick={() => navigate("/training")} primary={true} color="#f7931e">
-              🟡 Medium
-            </MenuButton>
-            <MenuButton onClick={() => navigate("/training")} primary={true} color="#ff6b35">
-              🔴 Hard
-            </MenuButton>
-            <MenuButton onClick={() => setView("main")} primary={false} color="#718096">
-              ← Back
-            </MenuButton>
-          </div>
-        )}
-
-        <Modal isOpen={showRules} onClose={() => setShowRules(false)} title="How to Play Mega OX">
-          <div style={{ textAlign: "left", fontSize: "14px", lineHeight: "1.6" }}>
-            <h3>🎯 Objective</h3>
-            <p>Win 3 micro boards in a row on the macro board to win the game.</p>
-            <h3>🎮 How to Play</h3>
-            <ul>
-              <li>Players take turns placing their marker (X or O) in cells</li>
-              <li>The first player can choose any cell on the macro board</li>
-              <li>Your move determines which micro board your opponent must play in next</li>
-              <li>Win a micro board by getting 3 in a row within it</li>
-              <li>If the required micro board is full, you can choose any available board</li>
-            </ul>
-            <h3>🏆 Winning</h3>
-            <ul>
-              <li>Get 3 micro board wins in a row (horizontal, vertical, or diagonal)</li>
-              <li>If all micro boards are filled without a macro winner, it's a draw</li>
-            </ul>
-          </div>
-        </Modal>
+      {/* Footer */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', padding: '16px', borderTop: '1px solid #3a4a5a' }}>
+        <button onClick={() => navigate('/leaderboard')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Leaderboard</button>
+        <button onClick={signOut} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Sign out</button>
       </div>
     </div>
   );
 };
 
-const MenuButton: React.FC<{
-  children: React.ReactNode;
-  onClick: () => void;
-  primary: boolean;
-  color: string;
-}> = ({ children, onClick, primary, color }) => (
-  <button
-    onClick={onClick}
-    style={{
-      display: "block",
-      width: "100%",
-      padding: "18px 24px",
-      margin: "12px 0",
-      fontSize: "18px",
-      fontWeight: "bold",
-      border: primary ? "none" : `2px solid ${color}`,
-      borderRadius: "16px",
-      background: primary ? color : "transparent",
-      color: primary ? "white" : color,
-      cursor: "pointer",
-      transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-      transform: "translateY(0) scale(1)",
-      boxShadow: primary ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)` : "0 4px 15px rgba(0, 0, 0, 0.1)",
-      position: "relative",
-      overflow: "hidden",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
-      e.currentTarget.style.boxShadow = primary
-        ? `0 12px 35px ${color}60, 0 8px 20px rgba(0, 0, 0, 0.15)`
-        : `0 8px 25px ${color}30, 0 4px 15px rgba(0, 0, 0, 0.1)`;
-      if (!primary) e.currentTarget.style.backgroundColor = `${color}15`;
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = "translateY(0) scale(1)";
-      e.currentTarget.style.boxShadow = primary
-        ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)`
-        : "0 4px 15px rgba(0, 0, 0, 0.1)";
-      if (!primary) e.currentTarget.style.backgroundColor = "transparent";
-    }}
-    onMouseDown={(e) => { e.currentTarget.style.transform = "translateY(-1px) scale(0.98)"; }}
-    onMouseUp={(e) => { e.currentTarget.style.transform = "translateY(-3px) scale(1.02)"; }}
-  >
-    {children}
-  </button>
-);
-
 export default MainMenu;
-
-const style = document.createElement("style");
-style.textContent = `
-  @keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-20px) rotate(180deg); }
-  }
-  @keyframes slideUp {
-    0% { opacity: 0; transform: translateY(30px); }
-    100% { opacity: 1; transform: translateY(0px); }
-  }
-  @keyframes titleGlow {
-    0% { text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
-    100% { text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.3); }
-  }
-`;
-document.head.appendChild(style);
