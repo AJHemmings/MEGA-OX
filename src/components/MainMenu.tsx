@@ -5,6 +5,7 @@ import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useRecentGames } from '../hooks/useRecentGames';
 import { supabase } from '../lib/supabase';
 import NewsSlideshow from './layout/NewsSlideshow';
+import { Modal } from './modal';
 
 const MainMenu: React.FC = () => {
   const { signOut } = useAuth();
@@ -13,7 +14,7 @@ const MainMenu: React.FC = () => {
   const recentGames = useRecentGames();
   const [activeSeason, setActiveSeason] = useState(false);
   const [activeTournament, setActiveTournament] = useState(false);
-  const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [showDifficulty, setShowDifficulty] = useState(false);
 
   useEffect(() => {
     supabase.from('seasons').select('id').eq('status', 'active').limit(1)
@@ -53,24 +54,8 @@ const MainMenu: React.FC = () => {
         {/* Play section */}
         <div style={card}>
           <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Play</h2>
-          <button style={modeBtn(false)} onClick={() => navigate('/training')}>Training (vs AI)</button>
-          {!showMultiplayer ? (
-            <button style={modeBtn(false)} onClick={() => setShowMultiplayer(true)}>Multiplayer</button>
-          ) : (
-            <>
-              <button style={{ ...modeBtn(false), paddingLeft: '28px' }} onClick={() => navigate('/matchmaking?mode=friendly')}>↳ Friendly</button>
-              <button
-                style={{ ...modeBtn(!activeSeason), paddingLeft: '28px' }}
-                onClick={() => activeSeason && navigate('/matchmaking?mode=season')}
-                title={!activeSeason ? 'No active season' : ''}
-              >↳ Season {!activeSeason && '(inactive)'}</button>
-              <button
-                style={{ ...modeBtn(!activeTournament), paddingLeft: '28px' }}
-                onClick={() => activeTournament && navigate('/matchmaking?mode=tournament')}
-                title={!activeTournament ? 'No active tournament' : ''}
-              >↳ Tournament {!activeTournament && '(inactive)'}</button>
-            </>
-          )}
+          <button style={modeBtn(false)} onClick={() => setShowDifficulty(true)}>Training (vs AI)</button>
+          <button style={modeBtn(false)} onClick={() => navigate('/multiplayer')}>Multiplayer</button>
         </div>
 
         {/* Last 5 games */}
@@ -101,6 +86,23 @@ const MainMenu: React.FC = () => {
         <button onClick={() => navigate('/leaderboard')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Leaderboard</button>
         <button onClick={signOut} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Sign out</button>
       </div>
+
+      <Modal isOpen={showDifficulty} onClose={() => setShowDifficulty(false)} title="Select Difficulty">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {(['Easy', 'Medium', 'Hard'] as const).map((level) => {
+            const colors = { Easy: '#00d4aa', Medium: '#f7931e', Hard: '#ff6b35' };
+            return (
+              <button
+                key={level}
+                onClick={() => { setShowDifficulty(false); navigate(`/training?difficulty=${level.toLowerCase()}`); }}
+                style={{ padding: '14px', borderRadius: '8px', border: 'none', background: colors[level], color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                {level}
+              </button>
+            );
+          })}
+        </div>
+      </Modal>
     </div>
   );
 };
