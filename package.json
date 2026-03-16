@@ -5,7 +5,8 @@
   "description": "Macro/Micro Naughts and Crosses game in React and TypeScript",
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build"
+    "build": "react-scripts build",
+    "test": "react-scripts test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.2",
