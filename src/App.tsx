@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import MainMenu from './components/MainMenu';
 import MultiplayerMenu from './components/MultiplayerMenu';
 import LoginPage from './components/auth/LoginPage';
@@ -10,6 +10,7 @@ import ProfilePage from './components/profile/ProfilePage';
 import SettingsPage from './components/profile/SettingsPage';
 import GameWrapper from './components/GameWrapper';
 import MatchmakingPage from './components/game/MatchmakingPage';
+import OnlineGameView from './components/game/OnlineGameView';
 import LeaderboardPage from './components/leaderboard/LeaderboardPage';
 import SeasonPage from './components/season/SeasonPage';
 import { AuthProvider } from './contexts/AuthContext';
@@ -23,6 +24,12 @@ const TrainingRoute: React.FC = () => {
 const LocalGameRoute: React.FC = () => {
   const navigate = useNavigate();
   return <GameWrapper gameMode="local" onBackToMenu={() => navigate('/multiplayer')} />;
+};
+
+const OnlineGameRoute: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  if (!id) return null;
+  return <OnlineGameView gameId={id} />;
 };
 
 const App: React.FC = () => {
@@ -46,7 +53,7 @@ const App: React.FC = () => {
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/game/:id" element={<GameWrapper gameMode="single" onBackToMenu={() => {}} />} />
+          <Route path="/game/:id" element={<OnlineGameRoute />} />
           <Route path="/matchmaking" element={<MatchmakingPage />} />
         </Route>
 
