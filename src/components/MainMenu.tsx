@@ -4,8 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useRecentGames } from '../hooks/useRecentGames';
 import { supabase } from '../lib/supabase';
+import introJs from 'intro.js';
+import 'intro.js/introjs.css';
 import NewsSlideshow from './layout/NewsSlideshow';
-import TutorialOverlay from './layout/TutorialOverlay';
 import { useTutorial } from '../hooks/useTutorial';
 import { useLoginStreak } from '../hooks/useLoginStreak';
 import { Modal } from './modal';
@@ -18,7 +19,7 @@ const MainMenu: React.FC = () => {
   const [activeSeason, setActiveSeason] = useState(false);
   const [activeTournament, setActiveTournament] = useState(false);
   const [showDifficulty, setShowDifficulty] = useState(false);
-  const { showTutorial, completeTutorial } = useTutorial('home');
+  const { shouldAutoStart, markComplete } = useTutorial('home');
   const streakData = useLoginStreak();
   const [streakDismissed, setStreakDismissed] = useState(false);
 
@@ -28,6 +29,54 @@ const MainMenu: React.FC = () => {
     supabase.from('tournaments').select('id').in('status', ['registration', 'active']).limit(1)
       .then(({ data }) => setActiveTournament((data?.length ?? 0) > 0));
   }, []);
+
+  const startIntro = () => {
+    introJs()
+      .setOptions({
+        steps: [
+          {
+            element: document.querySelector('#menu-play') as Element,
+            intro: 'This is the <b>Play area</b>. Train against the AI, challenge a friend locally or online, join a league, play in a tournament, or compete in a season.',
+            title: 'Play',
+          },
+          {
+            element: document.querySelector('#menu-recent-games') as Element,
+            intro: 'Your <b>last 5 games</b> are shown here. Win/Loss/Draw and who you played.',
+            title: 'Recent Games',
+          },
+          {
+            element: document.querySelector('#menu-news') as Element,
+            intro: 'Stay up to date with <b>news</b> — updates, events, and announcements.',
+            title: 'News',
+          },
+          {
+            element: document.querySelector('#menu-leaderboard-btn') as Element,
+            intro: 'Check the <b>Leaderboard</b> to see the top-ranked players.',
+            title: 'Leaderboard',
+          },
+          {
+            element: document.querySelector('#menu-profile') as Element,
+            intro: 'Your <b>profile</b>, <b>rank tier</b>, and <b>settings</b> live up here. Click your name to view your full profile.',
+            title: 'Your Profile',
+          },
+        ],
+        nextLabel: 'Next →',
+        prevLabel: '← Back',
+        doneLabel: 'Got it!',
+        showBullets: false,
+        exitOnOverlayClick: false,
+      })
+      .oncomplete(markComplete)
+      .onexit(markComplete)
+      .start();
+  };
+
+  useEffect(() => {
+    if (!shouldAutoStart) return;
+    const timer = setTimeout(startIntro, 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAutoStart]);
 
   const container: React.CSSProperties = { minHeight: '100vh', background: '#1a2332', color: '#fff', fontFamily: 'sans-serif' };
   const header: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #3a4a5a' };
@@ -45,7 +94,7 @@ const MainMenu: React.FC = () => {
       {/* Header */}
       <div style={header}>
         <h1 style={{ color: '#00d4aa', margin: 0 }}>MEGA OX</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div id="menu-profile" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {profile && (
             <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={() => navigate(`/profile/${profile.username}`)}>
               <div style={{ fontWeight: 'bold' }}>{profile.username}</div>
@@ -58,14 +107,15 @@ const MainMenu: React.FC = () => {
 
       <div style={grid}>
         {/* Play section */}
-        <div style={card}>
+        <div id="menu-play" style={card}>
           <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Play</h2>
           <button style={modeBtn(false)} onClick={() => setShowDifficulty(true)}>Training (vs AI)</button>
           <button style={modeBtn(false)} onClick={() => navigate('/multiplayer')}>Multiplayer</button>
+          <button style={modeBtn(false)} onClick={() => navigate('/how-to-play')}>How to Play</button>
         </div>
 
         {/* Last 5 games */}
-        <div style={card}>
+        <div id="menu-recent-games" style={card}>
           <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Last 5 Games</h2>
           {recentGames.length === 0 ? (
             <div style={{ color: '#a0aec0', fontSize: '14px' }}>No games yet — play your first!</div>
@@ -81,7 +131,7 @@ const MainMenu: React.FC = () => {
         </div>
 
         {/* News */}
-        <div style={{ ...card, gridColumn: '1 / -1' }}>
+        <div id="menu-news" style={{ ...card, gridColumn: '1 / -1' }}>
           <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>News</h2>
           <NewsSlideshow />
         </div>
@@ -89,7 +139,7 @@ const MainMenu: React.FC = () => {
 
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', padding: '16px', borderTop: '1px solid #3a4a5a' }}>
-        <button onClick={() => navigate('/leaderboard')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Leaderboard</button>
+        <button id="menu-leaderboard-btn" onClick={() => navigate('/leaderboard')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Leaderboard</button>
         <button onClick={signOut} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Sign out</button>
       </div>
 
@@ -105,17 +155,6 @@ const MainMenu: React.FC = () => {
             </button>
           </div>
         </div>
-      )}
-
-      {showTutorial && (
-        <TutorialOverlay
-          steps={[
-            { title: 'Welcome to MEGA OX!', description: 'MEGA OX is Ultimate Tic-Tac-Toe — a 3×3 grid of smaller boards. Win a small board to claim that cell on the big board. Win three big cells in a row to win the game.' },
-            { title: 'Your move sends your opponent', description: 'The cell you play in a small board determines which small board your opponent must play in next. Plan ahead!' },
-            { title: 'Play vs AI or Online', description: 'Use Training to play against the AI, or use Multiplayer to challenge a friend locally or online. Good luck!' },
-          ]}
-          onComplete={completeTutorial}
-        />
       )}
 
       <Modal isOpen={showDifficulty} onClose={() => setShowDifficulty(false)} title="Select Difficulty">
