@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Modal } from './modal';
+
 
 const MultiplayerMenu: React.FC = () => {
   const navigate = useNavigate();
-  const [showNetworkInfo, setShowNetworkInfo] = useState(false);
 
   return (
     <div style={{
@@ -41,10 +40,10 @@ const MultiplayerMenu: React.FC = () => {
           <MenuButton onClick={() => navigate('/local')} primary={true} description="Play with a friend on the same device" color="#00d4aa">
             🏠 Local 2-Player
           </MenuButton>
-          <MenuButton onClick={() => setShowNetworkInfo(true)} primary={true} description="Host a game for online friends" disabled={true} color="#4299e1">
+          <MenuButton onClick={() => navigate('/matchmaking?mode=friendly')} primary={true} description="Host a game for online friends" color="#4299e1">
             🌐 Host Online Game
           </MenuButton>
-          <MenuButton onClick={() => setShowNetworkInfo(true)} primary={true} description="Join a friend's online game" disabled={true} color="#ed8936">
+          <MenuButton onClick={() => navigate('/matchmaking?mode=friendly')} primary={true} description="Join a friend's online game" color="#ed8936">
             🔍 Join Online Game
           </MenuButton>
           <MenuButton onClick={() => navigate('/')} primary={false} description="" color="#ff6b35">
@@ -52,27 +51,6 @@ const MultiplayerMenu: React.FC = () => {
           </MenuButton>
         </div>
 
-        <Modal isOpen={showNetworkInfo} onClose={() => setShowNetworkInfo(false)} title="Online Multiplayer - Coming Soon!">
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <div style={{ fontSize: '4em', marginBottom: '20px' }}>🚧</div>
-            <h3>Online Features Under Development</h3>
-            <p style={{ marginBottom: '20px', color: '#666', lineHeight: '1.6' }}>
-              Online multiplayer is currently being developed!
-            </p>
-            <div style={{ textAlign: 'left', marginBottom: '20px' }}>
-              <h4>🎮 Planned Features:</h4>
-              <ul style={{ color: '#666', lineHeight: '1.6' }}>
-                <li><strong>Game Codes:</strong> Share a code with friends to invite them</li>
-                <li><strong>Real-time Play:</strong> Live synchronization between players</li>
-                <li><strong>Player Profiles:</strong> Stats, rankings, and match history</li>
-                <li><strong>Matchmaking:</strong> Find random opponents to play against</li>
-              </ul>
-            </div>
-            <p style={{ color: '#999', fontSize: '14px' }}>
-              For now, enjoy local multiplayer and single-player modes!
-            </p>
-          </div>
-        </Modal>
       </div>
     </div>
   );
