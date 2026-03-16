@@ -1,61 +1,45 @@
-import React, { useState } from "react";
-import MainMenu from "./components/MainMenu";
-import MultiplayerMenu from "./components/MultiplayerMenu";
-import GameWrapper from "./components/GameWrapper";
-
-type AppState = 'menu' | 'multiplayer-menu' | 'game';
-type GameMode = 'single' | 'local' | 'online-host' | 'online-join';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import MainMenu from './components/MainMenu';
+import LoginPage from './components/auth/LoginPage';
+import SignUpPage from './components/auth/SignUpPage';
+import OnboardingPage from './components/auth/OnboardingPage';
+import ProtectedRoute from './components/layout/ProtectedRoute';
+import ProfilePage from './components/profile/ProfilePage';
+import SettingsPage from './components/profile/SettingsPage';
+import GameWrapper from './components/GameWrapper';
+import MatchmakingPage from './components/game/MatchmakingPage';
+import LeaderboardPage from './components/leaderboard/LeaderboardPage';
+import SeasonPage from './components/season/SeasonPage';
+import { AuthProvider } from './contexts/AuthContext';
 
 const App: React.FC = () => {
-  const [currentState, setCurrentState] = useState<AppState>('menu');
-  const [gameMode, setGameMode] = useState<GameMode>('single');
+  return (
+    <AuthProvider>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/season" element={<SeasonPage />} />
 
-  const handleGameModeSelect = (mode: 'single' | 'multi') => {
-    if (mode === 'single') {
-      setGameMode('single');
-      setCurrentState('game');
-    } else {
-      setCurrentState('multiplayer-menu');
-    }
-  };
+        {/* Training mode — accessible without auth */}
+        <Route path="/training" element={<GameWrapper gameMode="single" onBackToMenu={() => {}} />} />
 
-  const handleMultiplayerGameStart = (mode: GameMode) => {
-    setGameMode(mode);
-    setCurrentState('game');
-  };
+        {/* Protected routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<MainMenu onGameModeSelect={() => {}} />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/game/:id" element={<GameWrapper gameMode="single" onBackToMenu={() => {}} />} />
+          <Route path="/matchmaking" element={<MatchmakingPage />} />
+        </Route>
 
-  const handleBackToMenu = () => {
-    setCurrentState('menu');
-  };
-
-  const handleBackToMultiplayerMenu = () => {
-    setCurrentState('multiplayer-menu');
-  };
-
-  // Render based on current state
-  switch (currentState) {
-    case 'menu':
-      return <MainMenu onGameModeSelect={handleGameModeSelect} />;
-    
-    case 'multiplayer-menu':
-      return (
-        <MultiplayerMenu 
-          onBack={handleBackToMenu}
-          onGameStart={handleMultiplayerGameStart}
-        />
-      );
-    
-    case 'game':
-      return (
-        <GameWrapper 
-          gameMode={gameMode === 'online-host' || gameMode === 'online-join' ? 'local' : gameMode}
-          onBackToMenu={gameMode === 'single' ? handleBackToMenu : handleBackToMultiplayerMenu}
-        />
-      );
-    
-    default:
-      return <MainMenu onGameModeSelect={handleGameModeSelect} />;
-  }
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
+  );
 };
 
 export default App;
