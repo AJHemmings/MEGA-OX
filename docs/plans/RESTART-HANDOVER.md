@@ -2,13 +2,20 @@
 
 ## Session start prompt
 
-Read this file in full, then say: "I've read the handover. The guest landing + demo game feature is complete. What's next?"
+Read this file in full, then say:
+
+> "I've read the handover. There's one known bug to fix on `/demo` before we merge: the game board is left-aligned instead of centred — the whole page should be centred both vertically and horizontally.
+>
+> Should I fix that now, or is there something else you want to tackle first?"
 
 ---
 
 ## Current branch
 
-`main` — `feat/network-multiplayer` was merged and deleted this session.
+`feat/guest-landing-demo` — guest landing + demo game feature, not yet merged to `main`.
+
+**Known bug (fix before merging):** `/demo` — the game board is left-aligned. The layout should be centred both horizontally and vertically. The outer container in `DemoGamePage.tsx` uses `display: flex; justify-content: center` but the `GameWrapper` inside it has `maxWidth: 480; margin: 20px auto` which fights the flex centering. Fix in `DemoGamePage.tsx` — do not touch `GameWrapper.tsx`.
+
 New feature work goes on a new `feat/` branch (create it before touching code).
 
 ---
