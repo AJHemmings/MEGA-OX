@@ -31,7 +31,7 @@ const SignUpPage: React.FC = () => {
     if (error) {
       setError(error.message);
     } else {
-      navigate('/');
+      navigate('/menu');
     }
   };
 

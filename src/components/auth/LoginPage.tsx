@@ -29,7 +29,7 @@ const LoginPage: React.FC = () => {
     if (error) {
       setError(error.message);
     } else {
-      navigate('/');
+      navigate('/menu');
     }
   };
 

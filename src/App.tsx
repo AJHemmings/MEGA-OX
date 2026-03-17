@@ -15,10 +15,9 @@ import LeaderboardPage from './components/leaderboard/LeaderboardPage';
 import SeasonPage from './components/season/SeasonPage';
 import HowToPlayPage from './components/game/HowToPlayPage';
 import HowToPlaySelectPage from './components/game/HowToPlaySelectPage';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import GuestLandingPage from './components/GuestLandingPage';
 import DemoGamePage from './components/DemoGamePage';
-import { useAuth } from './contexts/AuthContext';
 
 // Thin wrappers so GameWrapper gets a real navigate callback from the router
 const TrainingRoute: React.FC = () => {
