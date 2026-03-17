@@ -396,4 +396,6 @@ export const INTERMEDIATE_STEPS: TutorialStep[] = [
   },
 ];
 
+// Beginner = steps idx 0–6: Welcome → Key rule → First move → AI spotlight → Chain → Forced board → Bridge.
+// Update the slice bound if steps are inserted before the bridge (idx 6).
 export const BEGINNER_STEPS: TutorialStep[] = INTERMEDIATE_STEPS.slice(0, 7);
