@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import introJs from 'intro.js';
 import 'intro.js/introjs.css';
 import LeaderLine from 'leader-line-new';
 import MacroBoard from '../MacroBoard';
-import { Game } from '../../models/Game';
-import { TUTORIAL_STEPS } from './tutorialScript';
+import { Game, Marker } from '../../models/Game';
+import { BEGINNER_STEPS, INTERMEDIATE_STEPS } from './tutorialScript';
 
 const HowToPlayPage: React.FC = () => {
   const navigate = useNavigate();
+  const { mode } = useParams<{ mode: string }>();
+  const steps = mode === 'beginner' ? BEGINNER_STEPS : INTERMEDIATE_STEPS;
 
   // ── Game state ─────────────────────────────────────────────────────────────
   // One Game instance kept in a ref; spread trick forces re-renders after mutations.
@@ -20,7 +22,9 @@ const HowToPlayPage: React.FC = () => {
   }, []);
 
   // ── Tutorial state ─────────────────────────────────────────────────────────
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  // useRef instead of useState — updates are synchronous and don't trigger
+  // re-renders, so handlePlaceMarker never reads a stale step index.
+  const currentStepIndexRef = useRef(0);
   const introRef = useRef<ReturnType<typeof introJs> | null>(null);
   const arrowRef = useRef<InstanceType<typeof LeaderLine> | null>(null);
 
@@ -51,7 +55,7 @@ const HowToPlayPage: React.FC = () => {
   }, [game, addBoardIds]);
 
   // ── Draw / remove Leader Line arrow ───────────────────────────────────────
-  const drawArrow = useCallback((step: typeof TUTORIAL_STEPS[0]) => {
+  const drawArrow = useCallback((step: typeof INTERMEDIATE_STEPS[0]) => {
     arrowRef.current?.remove();
     arrowRef.current = null;
 
@@ -71,35 +75,37 @@ const HowToPlayPage: React.FC = () => {
 
   // ── Advance to the next step ───────────────────────────────────────────────
   const advanceStep = useCallback((nextIndex: number) => {
-    if (nextIndex >= TUTORIAL_STEPS.length) {
+    if (nextIndex >= steps.length) {
       arrowRef.current?.remove();
       introRef.current?.exit(true);
       navigate('/');
       return;
     }
-    setCurrentStepIndex(nextIndex);
+    currentStepIndexRef.current = nextIndex;
     introRef.current?.goToStepNumber(nextIndex + 1); // intro.js steps are 1-indexed
   }, [navigate]);
 
   // ── Handle player clicking a tutorial cell ────────────────────────────────
   const handlePlaceMarker = useCallback((microBoardIndex: number, cellIndex: number) => {
-    const step = TUTORIAL_STEPS[currentStepIndex];
+    const idx = currentStepIndexRef.current;
+    const step = steps[idx];
 
     if (!step.requiresClick) return;
     if (microBoardIndex !== step.boardIndex || cellIndex !== step.cellIndex) return;
 
+    // Place the player's marker.
     gameRef.current.placeMarker(microBoardIndex, cellIndex);
 
+    // Fire any AI response synchronously — both moves land in the same
+    // refreshGame call, so step 4 renders with the correct nextMicroBoardIndex
+    // immediately, eliminating the 300 ms race condition.
     if (step.aiMoveAfter && step.aiBoardIndex !== null && step.aiCellIndex !== null) {
-      setTimeout(() => {
-        gameRef.current.placeMarker(step.aiBoardIndex!, step.aiCellIndex!);
-        refreshGame();
-      }, 600);
+      gameRef.current.placeMarker(step.aiBoardIndex, step.aiCellIndex);
     }
 
     refreshGame();
-    advanceStep(currentStepIndex + 1);
-  }, [currentStepIndex, refreshGame, advanceStep]);
+    advanceStep(idx + 1);
+  }, [refreshGame, advanceStep]);
 
   // ── Initialise Intro.js ───────────────────────────────────────────────────
   useEffect(() => {
@@ -107,7 +113,7 @@ const HowToPlayPage: React.FC = () => {
       const intro = introJs();
 
       intro.setOptions({
-        steps: TUTORIAL_STEPS.map((step) => ({
+        steps: steps.map((step) => ({
           element: document.querySelector(step.targetSelector) as Element,
           intro: step.intro,
           title: step.title,
@@ -122,25 +128,53 @@ const HowToPlayPage: React.FC = () => {
       });
 
       intro.onafterchange(() => {
-        const idx = (intro as any)._currentStep as number;
-        const step = TUTORIAL_STEPS[idx];
+        // intro.js 8.x exposes currentStep() as a method, not a property.
+        const idx = (intro as any).currentStep() as number;
+        const step = steps[idx];
         if (!step) return;
+
+        // Keep the ref in sync so handlePlaceMarker always reads the correct step
+        // when the user advances via the built-in Next button.
+        currentStepIndexRef.current = idx;
+
+        // If this step carries a preset board state, replace the game entirely.
+        // This is used to teleport to the endgame scenario without playing through
+        // every intermediate move.
+        if (step.preloadState) {
+          const newGame = new Game();
+          step.preloadState.microBoards.forEach((mbState, i) => {
+            const mb = newGame.macroBoard.microBoards[i];
+            mbState.cells.forEach((marker, j) => {
+              if (marker !== '') mb.cells[j].marker = marker as Marker;
+            });
+            if (mbState.winner !== '') mb.winner = mbState.winner as Marker;
+            mb.checkFull();
+          });
+          newGame.macroBoard.checkWinner();
+          newGame.nextMicroBoardIndex = step.preloadState.nextMicroBoardIndex;
+          newGame.currentPlayerIndex = step.preloadState.currentPlayerIndex;
+          gameRef.current = newGame;
+          refreshGame();
+        }
+
+        // Toggle a body class instead of setting inline display.
+        // Intro.js may rebuild the tooltip DOM after onafterchange returns,
+        // wiping any inline style. A body class targeting the button survives
+        // those DOM rebuilds because the rule lives in a stylesheet, not on the node.
+        document.body.classList.toggle('tutorial-requires-click', step.requiresClick);
 
         // Small delay so the spotlight has settled before measuring positions
         setTimeout(() => drawArrow(step), 100);
-
-        const nextBtn = document.querySelector('.introjs-nextbutton') as HTMLElement | null;
-        if (nextBtn) {
-          nextBtn.style.display = step.requiresClick ? 'none' : '';
-        }
       });
 
       intro.oncomplete(() => {
+        document.body.classList.remove('tutorial-requires-click');
         arrowRef.current?.remove();
         navigate('/');
       });
 
       intro.onexit(() => {
+        document.body.classList.remove('tutorial-requires-click');
         arrowRef.current?.remove();
         navigate('/');
       });
@@ -151,6 +185,7 @@ const HowToPlayPage: React.FC = () => {
 
     return () => {
       clearTimeout(t);
+      document.body.classList.remove('tutorial-requires-click');
       arrowRef.current?.remove();
       introRef.current?.exit(true);
     };
@@ -164,6 +199,10 @@ const HowToPlayPage: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+
+      {/* Hide the Intro.js Next button on steps where the player must click a cell.
+          Using a stylesheet rule + body class so it survives intro.js DOM rebuilds. */}
+      <style>{`body.tutorial-requires-click .introjs-nextbutton { display: none !important; }`}</style>
 
       {/* Exit button */}
       <button
