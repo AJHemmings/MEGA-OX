@@ -54,7 +54,8 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     if (gameOver && onGameOver) {
       onGameOver(winner === Marker.None ? 'draw' : winner);
     }
-  }, [gameOver, winner, onGameOver]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameOver]); // intentionally omit winner/onGameOver: winner is stable when gameOver flips, and including onGameOver would cause double-firing as DemoGamePage re-renders
 
   const makeAiMove = () => {
     // Simple AI: find the best available move
