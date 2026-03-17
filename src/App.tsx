@@ -16,11 +16,14 @@ import SeasonPage from './components/season/SeasonPage';
 import HowToPlayPage from './components/game/HowToPlayPage';
 import HowToPlaySelectPage from './components/game/HowToPlaySelectPage';
 import { AuthProvider } from './contexts/AuthContext';
+import GuestLandingPage from './components/GuestLandingPage';
+import DemoGamePage from './components/DemoGamePage';
+import { useAuth } from './contexts/AuthContext';
 
 // Thin wrappers so GameWrapper gets a real navigate callback from the router
 const TrainingRoute: React.FC = () => {
   const navigate = useNavigate();
-  return <GameWrapper gameMode="single" onBackToMenu={() => navigate('/')} />;
+  return <GameWrapper gameMode="single" onBackToMenu={() => navigate('/menu')} />;
 };
 
 const LocalGameRoute: React.FC = () => {
@@ -34,11 +37,25 @@ const OnlineGameRoute: React.FC = () => {
   return <OnlineGameView gameId={id} />;
 };
 
+// Shows GuestLandingPage to unauthenticated users; redirects logged-in users to /menu
+const RootRoute: React.FC = () => {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a2332' }}>
+      <div style={{ color: '#00d4aa', fontSize: '18px' }}>Loading...</div>
+    </div>
+  );
+  if (user) return <Navigate to="/menu" replace />;
+  return <GuestLandingPage />;
+};
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<RootRoute />} />
+        <Route path="/demo" element={<DemoGamePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
@@ -53,7 +70,7 @@ const App: React.FC = () => {
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<MainMenu />} />
+          <Route path="/menu" element={<MainMenu />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />

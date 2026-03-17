@@ -14,7 +14,7 @@ const OnboardingPage: React.FC = () => {
     // If profile already exists, skip onboarding
     if (!user) return;
     supabase.from('profiles').select('id').eq('id', user.id).single().then(({ data }) => {
-      if (data) navigate('/');
+      if (data) navigate('/menu');
     });
   }, [user, navigate]);
 
@@ -28,7 +28,7 @@ const OnboardingPage: React.FC = () => {
     if (error) {
       setError(error.message.includes('unique') ? 'Username taken — try another' : error.message);
     } else {
-      navigate('/');
+      navigate('/menu');
     }
   };
 

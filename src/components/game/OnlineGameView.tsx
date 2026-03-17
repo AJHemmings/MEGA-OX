@@ -25,7 +25,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     return (
       <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexDirection: 'column', gap: '16px' }}>
         <p>Waiting for opponent to join...</p>
-        <button onClick={() => navigate('/')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer' }}>
+        <button onClick={() => navigate('/menu')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -55,7 +55,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', backgroundColor: '#2a3441', padding: '15px 20px', borderRadius: '16px', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/menu')}
           style={{ padding: '10px 16px', fontSize: '14px', cursor: 'pointer', borderRadius: 12, border: '2px solid #ff6b35', backgroundColor: 'transparent', color: '#ff6b35', fontWeight: 'bold' }}
         >
           ← Menu
@@ -94,7 +94,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
           {getWinnerText()}
           <div>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/menu')}
               style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
             >
               Back to Menu

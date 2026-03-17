@@ -89,7 +89,7 @@ const MatchmakingPage: React.FC = () => {
         <p style={{ color: '#a0aec0' }}>Share this code:</p>
         <div style={{ fontSize: '36px', letterSpacing: '8px', color: '#00d4aa', fontWeight: 'bold', margin: '16px 0' }}>{code}</div>
         <p style={{ color: '#a0aec0', fontSize: '14px' }}>Game will start automatically when they join.</p>
-        <button onClick={() => navigate('/')} style={{ marginTop: '24px', background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
+        <button onClick={() => navigate('/menu')} style={{ marginTop: '24px', background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
       </div>
     </div>
   );
@@ -120,7 +120,7 @@ const MatchmakingPage: React.FC = () => {
             <button onClick={() => setView('choose')} style={{ marginTop: '12px', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer' }}>← Back</button>
           </>
         )}
-        <button onClick={() => navigate('/')} style={{ marginTop: '24px', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', display: 'block' }}>← Back to menu</button>
+        <button onClick={() => navigate('/menu')} style={{ marginTop: '24px', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', display: 'block' }}>← Back to menu</button>
       </div>
     </div>
   );

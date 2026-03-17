@@ -108,7 +108,7 @@ const ProfilePage: React.FC = () => {
   if (!profile) return (
     <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#a0aec0', gap: '16px' }}>
       <div>Player not found.</div>
-      <button onClick={() => navigate('/')} style={{ background: 'none', border: '1px solid #4a5568', color: '#a0aec0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>Back</button>
+      <button onClick={() => navigate('/menu')} style={{ background: 'none', border: '1px solid #4a5568', color: '#a0aec0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>Back</button>
     </div>
   );
 
