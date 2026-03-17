@@ -14,6 +14,7 @@ import OnlineGameView from './components/game/OnlineGameView';
 import LeaderboardPage from './components/leaderboard/LeaderboardPage';
 import SeasonPage from './components/season/SeasonPage';
 import HowToPlayPage from './components/game/HowToPlayPage';
+import HowToPlaySelectPage from './components/game/HowToPlaySelectPage';
 import { AuthProvider } from './contexts/AuthContext';
 
 // Thin wrappers so GameWrapper gets a real navigate callback from the router
@@ -42,7 +43,8 @@ const App: React.FC = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/season" element={<SeasonPage />} />
-        <Route path="/how-to-play" element={<HowToPlayPage />} />
+        <Route path="/how-to-play" element={<HowToPlaySelectPage />} />
+        <Route path="/how-to-play/:mode" element={<HowToPlayPage />} />
 
         {/* Game modes — accessible without auth for now */}
         <Route path="/training" element={<TrainingRoute />} />
