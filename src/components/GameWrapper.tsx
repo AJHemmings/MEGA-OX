@@ -8,11 +8,13 @@ import { Modal } from "./modal";
 interface GameWrapperProps {
   gameMode: "single" | "local";
   onBackToMenu: () => void;
+  onGameOver?: (winner: string) => void;
 }
 
 const GameWrapper: React.FC<GameWrapperProps> = ({
   gameMode,
   onBackToMenu,
+  onGameOver,
 }) => {
   const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } =
     useGameLogic();
@@ -47,6 +49,12 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
       return () => clearTimeout(aiMoveTimer);
     }
   }, [game.currentPlayer, gameOver, gameMode]);
+
+  useEffect(() => {
+    if (gameOver && onGameOver) {
+      onGameOver(winner === Marker.None ? 'draw' : winner);
+    }
+  }, [gameOver]);
 
   const makeAiMove = () => {
     // Simple AI: find the best available move
@@ -319,7 +327,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
         lastMove={lastMove}
       />
 
-      {gameOver && (
+      {gameOver && !onGameOver && (
         <div
           style={{
             marginTop: 20,
