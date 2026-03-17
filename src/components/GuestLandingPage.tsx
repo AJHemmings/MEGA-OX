@@ -1,12 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const UNLOCK_FEATURES = [
-  'Online multiplayer — play against others in real time',
-  'Leaderboard — track your ranking and win rate',
-  "Game history — review every game you've played",
-  'Profile customisation — username and avatar',
-];
+import { UNLOCK_FEATURES } from './guestUnlockFeatures';
 
 const GuestLandingPage: React.FC = () => {
   const navigate = useNavigate();
