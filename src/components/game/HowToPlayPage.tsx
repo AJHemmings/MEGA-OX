@@ -5,7 +5,7 @@ import 'intro.js/introjs.css';
 import LeaderLine from 'leader-line-new';
 import MacroBoard from '../MacroBoard';
 import { Game, Marker } from '../../models/Game';
-import { BEGINNER_STEPS, INTERMEDIATE_STEPS } from './tutorialScript';
+import { BEGINNER_STEPS, INTERMEDIATE_STEPS, TutorialStep } from './tutorialScript';
 
 const HowToPlayPage: React.FC = () => {
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ const HowToPlayPage: React.FC = () => {
   }, [game, addBoardIds]);
 
   // ── Draw / remove Leader Line arrow ───────────────────────────────────────
-  const drawArrow = useCallback((step: typeof INTERMEDIATE_STEPS[0]) => {
+  const drawArrow = useCallback((step: TutorialStep) => {
     arrowRef.current?.remove();
     arrowRef.current = null;
 
@@ -83,7 +83,7 @@ const HowToPlayPage: React.FC = () => {
     }
     currentStepIndexRef.current = nextIndex;
     introRef.current?.goToStepNumber(nextIndex + 1); // intro.js steps are 1-indexed
-  }, [navigate]);
+  }, [navigate, steps]);
 
   // ── Handle player clicking a tutorial cell ────────────────────────────────
   const handlePlaceMarker = useCallback((microBoardIndex: number, cellIndex: number) => {
@@ -105,7 +105,7 @@ const HowToPlayPage: React.FC = () => {
 
     refreshGame();
     advanceStep(idx + 1);
-  }, [refreshGame, advanceStep]);
+  }, [refreshGame, advanceStep, steps]);
 
   // ── Initialise Intro.js ───────────────────────────────────────────────────
   useEffect(() => {
@@ -189,7 +189,8 @@ const HowToPlayPage: React.FC = () => {
       arrowRef.current?.remove();
       introRef.current?.exit(true);
     };
-  }, []); // intentional: runs once on mount only
+  }, []); // intentional: runs once — `steps` is stable because `mode` comes from
+          // a URL param and cannot change without unmounting this component.
 
   // ── Derive MacroBoard props ────────────────────────────────────────────────
   const microBoards = game.macroBoard?.microBoards.map((mb: any) => ({
