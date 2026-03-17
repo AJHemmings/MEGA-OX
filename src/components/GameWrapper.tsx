@@ -54,7 +54,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     if (gameOver && onGameOver) {
       onGameOver(winner === Marker.None ? 'draw' : winner);
     }
-  }, [gameOver]);
+  }, [gameOver, winner, onGameOver]);
 
   const makeAiMove = () => {
     // Simple AI: find the best available move
