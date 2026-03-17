@@ -131,7 +131,7 @@ const SettingsPage: React.FC = () => {
         {/* Danger zone: sign out */}
         <div style={{ background: '#2a3441', borderRadius: '12px', padding: '24px' }}>
           <div style={{ fontWeight: 'bold', marginBottom: '16px', color: '#a0aec0', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Account</div>
-          <button onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
+          <button onClick={async () => { await supabase.auth.signOut(); navigate('/'); }}
             style={{ background: 'none', border: '1px solid #ff6b35', color: '#ff6b35', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
             Sign Out
           </button>
