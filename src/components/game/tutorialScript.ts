@@ -349,7 +349,7 @@ export const INTERMEDIATE_STEPS: TutorialStep[] = [
       'X won Board E! By playing Cell 5, you sent Circle to Board E — ' +
       'but you just won it! Circle got a <b>free pick</b> and played Board I, ' +
       'sending you to <b>Board H</b>. Win it to complete the middle column!',
-    targetSelector: '#tutorial-micro-7', // Board H
+    targetSelector: '#tutorial-cell-8-7', // O's marker — Board I (8), Cell 8 (idx 7)
     requiresClick: false,
     boardIndex: null,
     cellIndex: null,
