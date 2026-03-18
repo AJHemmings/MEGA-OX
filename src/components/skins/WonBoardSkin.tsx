@@ -47,7 +47,7 @@ const WonBoardSkin: React.FC<WonBoardSkinProps> = ({ player, currentEvent }) => 
   return (
     <Lottie
       lottieRef={lottieRef}
-      path={skin.assetUrl}
+      animationData={skin.assetUrl as any}
       loop
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
     />

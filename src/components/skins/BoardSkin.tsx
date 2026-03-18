@@ -29,7 +29,7 @@ const BoardSkin: React.FC<BoardSkinProps> = ({ currentEvent, children }) => {
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <Lottie
         lottieRef={lottieRef}
-        path={skin.assetUrl}
+        animationData={skin.assetUrl as any}
         loop
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       />

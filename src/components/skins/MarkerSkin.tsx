@@ -45,7 +45,7 @@ const MarkerSkin: React.FC<MarkerSkinProps> = ({ player, value, currentEvent }) 
   return (
     <Lottie
       lottieRef={lottieRef}
-      path={skin.assetUrl}
+      animationData={skin.assetUrl as any}
       loop
       style={{ width: '100%', height: '100%' }}
     />
