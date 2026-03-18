@@ -27,11 +27,12 @@ describe('resolveGameSkins', () => {
     expect(result.p2WonBoardSkin).toEqual(DEFAULT_WON_BOARD_O_SKIN);
   });
 
-  it('uses p2 board skin for the board', () => {
-    const result = resolveGameSkins(emptyEquipped, {
-      ...emptyEquipped,
-      board_skin_id: 'default-board', // same ID as default for simplicity
-    });
+  it('uses p2 board skin, not p1, for the board', () => {
+    // Give p1 a different board_skin_id than p2 — only p2's should win
+    const result = resolveGameSkins(
+      { ...emptyEquipped, board_skin_id: 'default-marker-x' }, // p1 has a board_skin_id
+      { ...emptyEquipped, board_skin_id: 'default-board' },    // p2 has a different one
+    );
     expect(result.boardSkin.id).toBe('default-board');
   });
 
