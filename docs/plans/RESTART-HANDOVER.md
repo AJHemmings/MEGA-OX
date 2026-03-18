@@ -66,28 +66,10 @@ every screen and every system.
 
 ## Where we left off — Phase 2 brainstorm
 
-We were starting the brainstorm for Phase 2 (skin system code refactor). The first
-clarifying question was asked and not yet answered.
+**Phase 2 brainstorm is complete.** Design doc written and committed:
+`docs/plans/2026-03-18-phase-2-skin-system-design.md`
 
-**Context on current rendering:**
-- `src/components/Cell.tsx` — renders `{value}` (plain string "X" or "O") inside a button. No skin concept.
-- `src/components/MicroBoard.tsx` — won board is a background colour change (blue/red) + small "Winner: X" text. No large overlay symbol.
-
-**Open question (answer this before continuing the brainstorm):**
-
-When implementing the default skin as part of Phase 2, should it be:
-
-**A) Functional placeholder** — wrap the plain text in a component so the architecture
-is ready, but the visual stays roughly as it is now (plain X and O text). The nice
-version comes in Phase 5 with the full visual redesign.
-
-**B) Clean default** — as part of Phase 2, the default skin is a properly styled X and O
-(SVG or styled component — simple, not art-directed, but looks intentional rather than
-accidental). The won board gets a proper large X or O overlay. The game looks like a
-finished product without waiting for Phase 5.
-
-The roadmap deferred art direction to Phase 5, but a clean default isn't art direction —
-it's the baseline that other skins are measured against. This is the tension to resolve.
+Ready to move to implementation planning (writing-plans).
 
 ---
 
