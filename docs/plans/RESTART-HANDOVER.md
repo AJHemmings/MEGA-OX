@@ -4,24 +4,23 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Main is clean. The product roadmap has been designed and approved —
-> 8 phases from infrastructure planning through to admin tools.
+> "I've read the handover. Main is clean. Phase 1 (AI difficulty) is complete and merged.
 >
-> The next session should pick a phase to start on. Phase 0 (infrastructure and cost planning)
-> and Phase 1 (AI improvement) are both good starting points as they have no dependencies.
+> We were mid-brainstorm on Phase 2 (skin system refactor). There is one open question
+> to answer before the brainstorm can continue — it is recorded below under
+> 'Where we left off'.
 >
-> Ready to begin, or would you like to review the roadmap first?"
+> Ready to pick up the Phase 2 brainstorm, or would you like to review anything first?"
 
 ---
 
 ## Current state
 
-**Branch:** `main` — everything merged, README updated and pushed live.
+**Branch:** `main` — everything merged, Phase 1 complete.
 New feature work goes on a new `feat/` branch (create it before touching code).
 
-**Important:** Local `main` is 73 commits ahead of `origin/main`. This is intentional.
-The live repo has only the README updates pushed to it. Do not push local main to origin/main
-without explicit instruction from the user.
+**Important:** Local `main` is ahead of `origin/main`. This is intentional.
+Do not push local main to origin/main without explicit instruction from the user.
 
 ---
 
@@ -47,26 +46,52 @@ without explicit instruction from the user.
 
 Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
-| Phase | Area | Key dependency |
+| Phase | Area | Status |
 | --- | --- | --- |
-| 0 | Infrastructure and cost planning | None — brief written, awaiting AI model responses |
+| 0 | Infrastructure and cost planning | Brief written (`docs/plans/phase-0-infrastructure-brief.md`) — awaiting AI model responses |
 | 1 | AI improvement (Easy / Medium / Hard) | **Complete** |
-| 2 | Skin system code refactor (architecture only, no art) | Phase 1 |
-| 3 | Player progression + achievements + virtual currency | Phase 2 |
-| 4 | Profile customisation + emoji communication | Phase 3 |
-| 5 | Visual redesign (full pass once all screens exist) | Phase 4 |
-| 6 | Cash shop | Phase 5 |
-| 7 | Admin dashboard | Phase 6 |
-| 8 | Bug report system | Phase 6 |
+| 2 | Skin system code refactor (architecture only, no art) | Brainstorm in progress — see below |
+| 3 | Player progression + achievements + virtual currency | Not started |
+| 4 | Profile customisation + emoji communication | Not started |
+| 5 | Visual redesign (full pass once all screens exist) | Not started |
+| 6 | Cash shop | Not started |
+| 7 | Admin dashboard | Not started |
+| 8 | Bug report system | Not started |
 
 **Why this order:** All backend systems are built before any visual redesign.
 The visual redesign happens last so it can be designed with full knowledge of
-every screen and every system. The skin system code refactor (Phase 2) is
-architectural groundwork only - no art direction until Phase 5.
+every screen and every system.
 
 ---
 
-## Key design decisions made this session
+## Where we left off — Phase 2 brainstorm
+
+We were starting the brainstorm for Phase 2 (skin system code refactor). The first
+clarifying question was asked and not yet answered.
+
+**Context on current rendering:**
+- `src/components/Cell.tsx` — renders `{value}` (plain string "X" or "O") inside a button. No skin concept.
+- `src/components/MicroBoard.tsx` — won board is a background colour change (blue/red) + small "Winner: X" text. No large overlay symbol.
+
+**Open question (answer this before continuing the brainstorm):**
+
+When implementing the default skin as part of Phase 2, should it be:
+
+**A) Functional placeholder** — wrap the plain text in a component so the architecture
+is ready, but the visual stays roughly as it is now (plain X and O text). The nice
+version comes in Phase 5 with the full visual redesign.
+
+**B) Clean default** — as part of Phase 2, the default skin is a properly styled X and O
+(SVG or styled component — simple, not art-directed, but looks intentional rather than
+accidental). The won board gets a proper large X or O overlay. The game looks like a
+finished product without waiting for Phase 5.
+
+The roadmap deferred art direction to Phase 5, but a clean default isn't art direction —
+it's the baseline that other skins are measured against. This is the tension to resolve.
+
+---
+
+## Key design decisions already made
 
 - **Visual redesign is Phase 5, not Phase 0.** Designing the shop window before knowing
   what is in the shop leads to rework. All systems are built first.
@@ -75,10 +100,20 @@ architectural groundwork only - no art direction until Phase 5.
 - **Progression, achievements, and currency are one phase** (Phase 3) because they form
   a single reward economy and must be balanced together.
 - **AI improvement (Phase 1) comes before progression** because achievements and XP rewards
-  will reference AI difficulty levels - designing those before difficulty levels exist
-  creates assumptions.
-- **Hand-coded AI only** (no external AI API) - cost, latency, and complexity are not
-  justified for a casual game. Minimax with alpha-beta pruning for Hard difficulty.
+  will reference AI difficulty levels.
+- **Hand-coded AI only** (no external AI API) — minimax with alpha-beta pruning for Hard.
+- **AI difficulty variables** (strength constants 0–100 per rule) are hardcoded in Phase 1
+  and exposed via admin dashboard in Phase 7.
+
+---
+
+## Phase 1 AI — key files
+
+| File | Purpose |
+| --- | --- |
+| `src/ai/aiPlayer.ts` | Pure TS AI module. easyMove, mediumMove, hardMove + strength constants |
+| `src/components/GameWrapper.tsx` | Accepts `difficulty` prop, calls aiPlayer, delay ranges keyed by difficulty |
+| `src/App.tsx` | TrainingRoute reads `?difficulty` query param and passes to GameWrapper |
 
 ---
 
@@ -103,17 +138,19 @@ architectural groundwork only - no art direction until Phase 5.
 | `src/models/Game.ts` | Core game logic - OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper. Uses `{ ...game }` spread to trigger re-renders |
 | `src/App.tsx` | React Router v7. All routes defined here |
+| `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
+| `src/components/Cell.tsx` | Individual cell — renders plain string marker, no skin concept yet |
+| `src/components/MicroBoard.tsx` | 3×3 grid + won board state — background colour only, no overlay |
+| `src/components/MacroBoard.tsx` | 3×3 grid of MicroBoards |
 | `src/components/GuestLandingPage.tsx` | Guest landing page (unauthenticated `/`) |
 | `src/components/DemoGamePage.tsx` | Demo game - GameWrapper + Want More modal + post-game modal |
-| `src/components/guestUnlockFeatures.ts` | Shared unlock features constant |
-| `src/components/GameWrapper.tsx` | Game board + AI logic + nav bar (accepts `navExtra` prop) |
+| `src/components/GameWrapper.tsx` | Game board + AI + nav bar (accepts `navExtra` prop) |
 | `src/components/MainMenu.tsx` | Lobby-style main menu (authenticated users only) |
 | `src/contexts/AuthContext.tsx` | Auth state - `user`, `loading`, `signOut` |
-| `src/components/layout/ProtectedRoute.tsx` | Redirects unauthed users to `/login` |
-| `src/components/game/tutorialScript.ts` | Tutorial step content |
-| `src/components/game/HowToPlayPage.tsx` | `/how-to-play/:mode` interactive tutorial |
-| `docs/plans/cash-shop-future-scope.md` | Cash shop architecture and build order |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap |
+| `docs/plans/phase-0-infrastructure-brief.md` | Phase 0 cost modelling brief for AI models |
+| `docs/plans/2026-03-18-phase-1-ai-difficulty-design.md` | Phase 1 design doc |
+| `docs/plans/game-theory-evaluation-notes.md` | UTTT game theory notes + simulation harness ideas |
 
 ---
 
