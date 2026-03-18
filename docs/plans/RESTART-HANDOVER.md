@@ -4,85 +4,116 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. There's one known bug to fix on `/demo` before we merge: the game board is left-aligned instead of centred — the whole page should be centred both vertically and horizontally.
+> "I've read the handover. Main is clean. The product roadmap has been designed and approved —
+> 8 phases from infrastructure planning through to admin tools.
 >
-> Should I fix that now, or is there something else you want to tackle first?"
+> The next session should pick a phase to start on. Phase 0 (infrastructure and cost planning)
+> and Phase 1 (AI improvement) are both good starting points as they have no dependencies.
+>
+> Ready to begin, or would you like to review the roadmap first?"
 
 ---
 
-## Current branch
+## Current state
 
-`feat/guest-landing-demo` — guest landing + demo game feature, not yet merged to `main`.
-
-**Known bug (fix before merging):** `/demo` — the game board is left-aligned. The layout should be centred both horizontally and vertically. The outer container in `DemoGamePage.tsx` uses `display: flex; justify-content: center` but the `GameWrapper` inside it has `maxWidth: 480; margin: 20px auto` which fights the flex centering. Fix in `DemoGamePage.tsx` — do not touch `GameWrapper.tsx`.
-
+**Branch:** `main` — everything merged, README updated and pushed live.
 New feature work goes on a new `feat/` branch (create it before touching code).
 
+**Important:** Local `main` is 73 commits ahead of `origin/main`. This is intentional.
+The live repo has only the README updates pushed to it. Do not push local main to origin/main
+without explicit instruction from the user.
+
 ---
 
-## What was completed this session
+## What is built and working
 
-| Work | Status |
+| Feature | Status |
 | --- | --- |
-| Tutorial bug: abrupt section transition | ✅ Fixed — bridge step inserted at idx 6 |
-| Tutorial bug: centre cell click silently rejected | ✅ Fixed — `nextMicroBoardIndex: null` in ENDGAME_PRELOAD |
-| Tutorial endgame redesign — O's turn first, O makes visible move | ✅ Done |
-| Tutorial endgame — Circle's free pick step spotlights correct cell | ✅ Fixed |
-| Tutorial split into Beginner (7 steps) and Intermediate (14 steps) | ✅ Done |
-| Guest landing + demo game feature | ✅ Done |
+| Guest landing page (`/`) | Done |
+| Demo game (`/demo`) - vs AI, Want More modal, post-game modal | Done |
+| Auth flow - login, signup, sign out, protected routes | Done |
+| Main menu (`/menu`) - authenticated users only | Done |
+| Tutorial - Beginner (7 steps) + Intermediate (14 steps) | Done |
+| Single player vs AI (Easy / Medium / Hard difficulty) | Done — Phase 1 complete |
+| Local 2-player | Done |
+| Network multiplayer | Alpha - working locally across two browsers |
+| User profiles (initial) | Done |
+| Leaderboard | Done |
+| Stat tracking | Done |
 
 ---
 
-## Tutorial state (complete — do not touch unless asked)
+## Approved product roadmap
 
-**Routes:**
-- `/how-to-play` → `HowToPlaySelectPage` (mode picker: Beginner / Intermediate)
-- `/how-to-play/beginner` → 7 steps (chain rule only, idx 0–6)
-- `/how-to-play/intermediate` → 14 steps (full tutorial including endgame, idx 0–13)
+Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
-**Key files:**
-- `src/components/game/tutorialScript.ts` — all step content. `INTERMEDIATE_STEPS` is the full array. `BEGINNER_STEPS = INTERMEDIATE_STEPS.slice(0, 7)`.
-- `src/components/game/HowToPlayPage.tsx` — reads `:mode` URL param, picks step array.
-- `src/components/game/HowToPlaySelectPage.tsx` — mode selection screen.
+| Phase | Area | Key dependency |
+| --- | --- | --- |
+| 0 | Infrastructure and cost planning | None — brief written, awaiting AI model responses |
+| 1 | AI improvement (Easy / Medium / Hard) | **Complete** |
+| 2 | Skin system code refactor (architecture only, no art) | Phase 1 |
+| 3 | Player progression + achievements + virtual currency | Phase 2 |
+| 4 | Profile customisation + emoji communication | Phase 3 |
+| 5 | Visual redesign (full pass once all screens exist) | Phase 4 |
+| 6 | Cash shop | Phase 5 |
+| 7 | Admin dashboard | Phase 6 |
+| 8 | Bug report system | Phase 6 |
+
+**Why this order:** All backend systems are built before any visual redesign.
+The visual redesign happens last so it can be designed with full knowledge of
+every screen and every system. The skin system code refactor (Phase 2) is
+architectural groundwork only - no art direction until Phase 5.
 
 ---
 
-## Guest landing + demo game (complete)
+## Key design decisions made this session
 
-### What was built
+- **Visual redesign is Phase 5, not Phase 0.** Designing the shop window before knowing
+  what is in the shop leads to rework. All systems are built first.
+- **Skin system is split:** the code refactor (markers become components) is Phase 2;
+  the visual art direction is Phase 5.
+- **Progression, achievements, and currency are one phase** (Phase 3) because they form
+  a single reward economy and must be balanced together.
+- **AI improvement (Phase 1) comes before progression** because achievements and XP rewards
+  will reference AI difficulty levels - designing those before difficulty levels exist
+  creates assumptions.
+- **Hand-coded AI only** (no external AI API) - cost, latency, and complexity are not
+  justified for a casual game. Minimax with alpha-beta pruning for Hard difficulty.
 
-- `/` — `GuestLandingPage` for unauthenticated users; redirects authenticated users to `/menu`
-- `/demo` — `DemoGamePage`: `GameWrapper gameMode="single"` + always-visible signup sidebar + post-game modal with result + sign-up CTAs + Play Again
-- `/menu` — `MainMenu` (moved from `/`). All authenticated navigation now targets `/menu`, not `/`
+---
 
-### Key files
+## Open questions (resolve at each phase's detail design)
+
+- Currency name and branding
+- EXP values and level curve shape
+- Art direction for visual redesign (dark/neon vs clean/minimal vs other)
+- Which profile items are free progression unlocks vs paid vs both
+- Achievement trigger method (DB trigger vs edge function vs client + server validation)
+- Admin access control: private API vs direct Supabase RLS
+- Single admin or role-based admin permissions
+- Bug reports: email notifications to admin on new submission?
+- Bug reports: should resolved reports be visible to the filing player?
+
+---
+
+## Key files
 
 | File | Purpose |
 | --- | --- |
-| `src/components/GuestLandingPage.tsx` | Guest landing page |
-| `src/components/DemoGamePage.tsx` | Demo game + sidebar + post-game modal |
-| `src/components/guestUnlockFeatures.ts` | Shared `UNLOCK_FEATURES` constant |
-| `src/App.tsx` | Routes updated — `RootRoute` handles `/` auth split |
-| `src/components/GameWrapper.tsx` | Added `onGameOver?: (winner: string) => void` prop |
-
----
-
-## Key files (full project)
-
-| File | Purpose |
-| --- | --- |
-| `src/models/Game.ts` | Core game logic — OOP, no React |
+| `src/models/Game.ts` | Core game logic - OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper. Uses `{ ...game }` spread to trigger re-renders |
-| `src/App.tsx` | React Router v7. All routes defined here. `/menu` is now the authenticated home (moved from `/`) |
+| `src/App.tsx` | React Router v7. All routes defined here |
 | `src/components/GuestLandingPage.tsx` | Guest landing page (unauthenticated `/`) |
-| `src/components/DemoGamePage.tsx` | Demo game page — GameWrapper + signup sidebar + post-game modal |
+| `src/components/DemoGamePage.tsx` | Demo game - GameWrapper + Want More modal + post-game modal |
 | `src/components/guestUnlockFeatures.ts` | Shared unlock features constant |
-| `src/components/GameWrapper.tsx` | Game board + AI logic |
+| `src/components/GameWrapper.tsx` | Game board + AI logic + nav bar (accepts `navExtra` prop) |
 | `src/components/MainMenu.tsx` | Lobby-style main menu (authenticated users only) |
-| `src/contexts/AuthContext.tsx` | Auth state — `user`, `loading`, `signOut` |
+| `src/contexts/AuthContext.tsx` | Auth state - `user`, `loading`, `signOut` |
 | `src/components/layout/ProtectedRoute.tsx` | Redirects unauthed users to `/login` |
 | `src/components/game/tutorialScript.ts` | Tutorial step content |
 | `src/components/game/HowToPlayPage.tsx` | `/how-to-play/:mode` interactive tutorial |
+| `docs/plans/cash-shop-future-scope.md` | Cash shop architecture and build order |
+| `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap |
 
 ---
 
