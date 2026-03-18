@@ -119,33 +119,31 @@ function winMoves(game: Game, candidates: Move[], marker: Marker): Move[] {
 function filterPoisonSends(
   game: Game,
   candidates: Move[],
+  aiMarker: Marker,
   opponentMarker: Marker
 ): Move[] {
-  const { microBoards } = game.macroBoard;
+  const safe = candidates.filter(({ microIndex, cellIndex }) => {
+    const targetBoardIndex = cellIndex;
+    const targetBoard = game.macroBoard.microBoards[targetBoardIndex];
 
-  const safe = candidates.filter((move) => {
-    const targetMb = microBoards[move.cellIndex];
+    if (targetBoard.winner !== Marker.None || targetBoard.isFull) return true;
 
-    // If target board is already decided or full, opponent gets free choice — safe.
-    if (targetMb.winner !== Marker.None || targetMb.isFull) {
-      return true;
-    }
-
-    // Check if any cell in targetMb would immediately win for opponent
-    for (let cIdx = 0; cIdx < 9; cIdx++) {
-      if (!targetMb.cells[cIdx].isEmpty()) continue;
-
+    const opponentCanWin = targetBoard.cells.some((cell, ci) => {
+      if (!cell.isEmpty()) return false;
       const clone = cloneGame(game);
-      const clonedMb = clone.macroBoard.microBoards[move.cellIndex];
-      clonedMb.cells[cIdx].marker = opponentMarker;
-      const result = clonedMb.checkWinner();
-      if (result === opponentMarker) {
-        // This move sends opponent somewhere they can win — unsafe
-        return false;
-      }
-    }
+      const clonedTarget = clone.macroBoard.microBoards[targetBoardIndex];
 
-    return true;
+      // If the AI's move is in the same board it's sending the opponent to,
+      // apply the AI's marker first so the threat check is accurate
+      if (microIndex === targetBoardIndex) {
+        clonedTarget.cells[cellIndex].marker = aiMarker; // AI's move already placed
+      }
+
+      clonedTarget.cells[ci].marker = opponentMarker;
+      return clonedTarget.checkWinner() === opponentMarker;
+    });
+
+    return !opponentCanWin;
   });
 
   // Never leave the AI with zero moves
@@ -261,6 +259,7 @@ function pickRandom<T>(arr: T[]): T {
 /** Easy: purely random legal move. */
 export function easyMove(game: Game): Move {
   const moves = getLegalMoves(game);
+  if (moves.length === 0) throw new Error('AI called with no legal moves — game may already be over');
   return pickRandom(moves);
 }
 
@@ -275,6 +274,7 @@ export function mediumMove(game: Game): Move {
   const opponentMarker = aiMarker === Marker.X ? Marker.O : Marker.X;
 
   let candidates = getLegalMoves(game);
+  if (candidates.length === 0) throw new Error('AI called with no legal moves — game may already be over');
 
   // Win rule
   if (Math.random() * 100 < MEDIUM_WIN_RULE_STRENGTH) {
@@ -284,7 +284,7 @@ export function mediumMove(game: Game): Move {
 
   // Poison filter
   if (Math.random() * 100 < MEDIUM_POISON_RULE_STRENGTH) {
-    candidates = filterPoisonSends(game, candidates, opponentMarker);
+    candidates = filterPoisonSends(game, candidates, aiMarker, opponentMarker);
   }
 
   return pickRandom(candidates);
@@ -301,6 +301,7 @@ export function hardMove(game: Game): Move {
   const opponentMarker = aiMarker === Marker.X ? Marker.O : Marker.X;
 
   let candidates = getLegalMoves(game);
+  if (candidates.length === 0) throw new Error('AI called with no legal moves — game may already be over');
 
   // Win rule
   if (Math.random() * 100 < HARD_WIN_RULE_STRENGTH) {
@@ -310,7 +311,7 @@ export function hardMove(game: Game): Move {
 
   // Poison filter
   if (Math.random() * 100 < HARD_POISON_RULE_STRENGTH) {
-    candidates = filterPoisonSends(game, candidates, opponentMarker);
+    candidates = filterPoisonSends(game, candidates, aiMarker, opponentMarker);
   }
 
   // Minimax: score each remaining candidate
