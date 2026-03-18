@@ -26,12 +26,6 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   const [showRules, setShowRules] = useState(false);
   const [isAiTurn, setIsAiTurn] = useState(false);
 
-  // UX: Adjust delay and animation timing here:
-  const DELAY_RANGES = {
-    easy:   { min: 500,  max: 1500 },
-    medium: { min: 1000, max: 2500 },
-    hard:   { min: 1500, max: 3000 },
-  };
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
     winner: mb.winner,
@@ -45,6 +39,12 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
       !gameOver
     ) {
       setIsAiTurn(true);
+      // UX: Adjust delay and animation timing here:
+      const DELAY_RANGES = {
+        easy:   { min: 500,  max: 1500 },
+        medium: { min: 1000, max: 2500 },
+        hard:   { min: 1500, max: 3000 },
+      };
       const { min: MIN_DELAY_MS, max: MAX_DELAY_MS } = DELAY_RANGES[difficulty];
       const AI_THINKING_DELAY_MS = Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
       const aiMoveTimer = setTimeout(() => {
