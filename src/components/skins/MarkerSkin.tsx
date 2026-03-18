@@ -26,7 +26,7 @@ const MarkerSkin: React.FC<MarkerSkinProps> = ({ player, value, currentEvent }) 
   useEffect(() => {
     if (!lottieRef.current || skin.assetUrl === 'placeholder') return;
     // Phase 5: map SkinEvent → Lottie segment frames here
-  }, [currentEvent, skin]);
+  }, [currentEvent, skin.assetUrl]);
 
   if (!value) return null;
 
@@ -45,7 +45,7 @@ const MarkerSkin: React.FC<MarkerSkinProps> = ({ player, value, currentEvent }) 
   return (
     <Lottie
       lottieRef={lottieRef}
-      animationData={skin.assetUrl}
+      path={skin.assetUrl}
       loop
       style={{ width: '100%', height: '100%' }}
     />

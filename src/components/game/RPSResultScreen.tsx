@@ -18,6 +18,7 @@ const RPSResultScreen: React.FC<RPSResultScreenProps> = ({
   const iWin = (result === 'p1' && isCreator) || (result === 'p2' && !isCreator);
   const outcomeText = result === 'draw' ? "It's a draw — re-picking..." : iWin ? 'You go first!' : 'Opponent goes first — your board will be shown!';
 
+  // Caller must pass a stable onContinue (useCallback or top-level fn) — an unstable reference resets the 3s timer on every parent render
   useEffect(() => {
     const t = setTimeout(onContinue, 3000);
     return () => clearTimeout(t);

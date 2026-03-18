@@ -17,7 +17,7 @@ const BoardSkin: React.FC<BoardSkinProps> = ({ currentEvent, children }) => {
   useEffect(() => {
     if (!lottieRef.current || skin.assetUrl === 'placeholder') return;
     // Phase 5: map SkinEvent → Lottie segment frames here
-  }, [currentEvent, skin]);
+  }, [currentEvent, skin.assetUrl]);
 
   if (skin.assetUrl === 'placeholder') {
     // Transparent wrapper — board renders as normal
@@ -29,7 +29,7 @@ const BoardSkin: React.FC<BoardSkinProps> = ({ currentEvent, children }) => {
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <Lottie
         lottieRef={lottieRef}
-        animationData={skin.assetUrl}
+        path={skin.assetUrl}
         loop
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       />

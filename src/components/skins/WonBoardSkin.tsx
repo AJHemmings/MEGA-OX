@@ -17,7 +17,7 @@ const WonBoardSkin: React.FC<WonBoardSkinProps> = ({ player, currentEvent }) => 
   useEffect(() => {
     if (!lottieRef.current || skin.assetUrl === 'placeholder') return;
     // Phase 5: map SkinEvent → Lottie segment frames here
-  }, [currentEvent, skin]);
+  }, [currentEvent, skin.assetUrl]);
 
   if (skin.assetUrl === 'placeholder') {
     return (
@@ -47,7 +47,7 @@ const WonBoardSkin: React.FC<WonBoardSkinProps> = ({ player, currentEvent }) => 
   return (
     <Lottie
       lottieRef={lottieRef}
-      animationData={skin.assetUrl}
+      path={skin.assetUrl}
       loop
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
     />
