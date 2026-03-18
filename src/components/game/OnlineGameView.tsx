@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Marker } from '../../models/Game';
 import MacroBoard from '../MacroBoard';
@@ -13,6 +13,9 @@ import {
   DEFAULT_WON_BOARD_O_SKIN,
 } from '../../skins/defaults';
 import { GameSkins } from '../../skins/types';
+import RPSScreen from './RPSScreen';
+import RPSResultScreen from './RPSResultScreen';
+import { resolveRPS, RPSPick, RPSResult } from '../../lib/rps';
 
 const defaultGameSkins: GameSkins = {
   boardSkin:      DEFAULT_BOARD_SKIN,
@@ -28,7 +31,54 @@ interface OnlineGameViewProps {
 
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
-  const { game, status, myMarker, winner, placeMarker } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator } = useOnlineGame(gameId);
+
+  const [showRPSResult, setShowRPSResult] = useState(false);
+
+  // Show result screen when both picks are in
+  useEffect(() => {
+    if (rpsCreatorPick && rpsJoinerPick && status === 'rps') {
+      setShowRPSResult(true);
+    }
+  }, [rpsCreatorPick, rpsJoinerPick, status]);
+
+  // Reset result screen if picks are cleared (draw re-pick)
+  useEffect(() => {
+    if (!rpsCreatorPick && !rpsJoinerPick && status === 'rps') {
+      setShowRPSResult(false);
+    }
+  }, [rpsCreatorPick, rpsJoinerPick, status]);
+
+  const handleRPSResolved = useCallback(() => setShowRPSResult(true), []);
+  const handleRPSContinue = useCallback(() => setShowRPSResult(false), []);
+
+  // RPS pick screen
+  if (status === 'rps' && !showRPSResult) {
+    return (
+      <RPSScreen
+        gameId={gameId}
+        isCreator={isCreator}
+        onResolved={handleRPSResolved}
+      />
+    );
+  }
+
+  // RPS result screen
+  if (status === 'rps' && showRPSResult && rpsCreatorPick && rpsJoinerPick) {
+    const result: RPSResult = resolveRPS(
+      rpsCreatorPick as RPSPick,
+      rpsJoinerPick as RPSPick
+    );
+    return (
+      <RPSResultScreen
+        creatorPick={rpsCreatorPick as RPSPick}
+        joinerPick={rpsJoinerPick as RPSPick}
+        isCreator={isCreator}
+        result={result}
+        onContinue={handleRPSContinue}
+      />
+    );
+  }
 
   if (status === 'loading' || !game) {
     return (

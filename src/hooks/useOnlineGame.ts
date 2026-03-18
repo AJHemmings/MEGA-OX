@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase';
 import { Game } from '../models/Game';
 import { deserializeGame, serializeGame } from '../lib/gameSerializer';
 import { useAuth } from '../contexts/AuthContext';
+import { resolveRPS, RPSPick } from '../lib/rps';
 
-export type OnlineGameStatus = 'loading' | 'waiting' | 'active' | 'complete';
+export type OnlineGameStatus = 'loading' | 'waiting' | 'rps' | 'active' | 'complete';
 
 export const useOnlineGame = (gameId: string) => {
   const { user } = useAuth();
@@ -12,6 +13,10 @@ export const useOnlineGame = (gameId: string) => {
   const [status, setStatus] = useState<OnlineGameStatus>('loading');
   const [myMarker, setMyMarker] = useState<'X' | 'O' | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
+  const [rpsCreatorPick, setRpsCreatorPick] = useState<string | null>(null);
+  const [rpsJoinerPick, setRpsJoinerPick] = useState<string | null>(null);
+  const [isCreator, setIsCreator] = useState(false);
+  const [joinerId, setJoinerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !gameId) return;
@@ -24,6 +29,10 @@ export const useOnlineGame = (gameId: string) => {
       setStatus(data.status as OnlineGameStatus);
       setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
       setWinner(data.winner);
+      setIsCreator(data.player_x_id === user.id);
+      setRpsCreatorPick(data.rps_creator_pick);
+      setRpsJoinerPick(data.rps_joiner_pick);
+      setJoinerId(data.player_o_id);
 
       if (data.state && Object.keys(data.state).length > 0) {
         setGame(deserializeGame(data.state as any));
@@ -46,6 +55,9 @@ export const useOnlineGame = (gameId: string) => {
         const updated = payload.new as any;
         setStatus(updated.status);
         setWinner(updated.winner);
+        setRpsCreatorPick(updated.rps_creator_pick);
+        setRpsJoinerPick(updated.rps_joiner_pick);
+        if (updated.player_o_id) setJoinerId(updated.player_o_id);
         if (updated.state && Object.keys(updated.state).length > 0) {
           setGame(deserializeGame(updated.state));
         }
@@ -54,6 +66,35 @@ export const useOnlineGame = (gameId: string) => {
 
     return () => { supabase.removeChannel(channel); };
   }, [gameId, user]);
+
+  // Only the creator resolves RPS to avoid a write race condition
+  useEffect(() => {
+    if (
+      status !== 'rps' ||
+      !rpsCreatorPick ||
+      !rpsJoinerPick ||
+      !isCreator ||
+      !user
+    ) return;
+
+    const result = resolveRPS(rpsCreatorPick as RPSPick, rpsJoinerPick as RPSPick);
+
+    if (result === 'draw') {
+      supabase.from('games').update({
+        rps_creator_pick: null,
+        rps_joiner_pick: null,
+      }).eq('id', gameId);
+      return;
+    }
+
+    const updatePayload: Record<string, any> = { status: 'active' };
+    if (result === 'p2') {
+      // Joiner wins RPS — swap so joiner becomes X (goes first)
+      updatePayload.player_x_id = joinerId;
+      updatePayload.player_o_id = user.id;
+    }
+    supabase.from('games').update(updatePayload).eq('id', gameId);
+  }, [status, rpsCreatorPick, rpsJoinerPick, isCreator, joinerId, gameId, user]);
 
   const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
     if (!game || !user || !myMarker || status !== 'active') return false;
@@ -94,5 +135,5 @@ export const useOnlineGame = (gameId: string) => {
     return true;
   }, [game, user, myMarker, status, gameId]);
 
-  return { game, status, myMarker, winner, placeMarker };
+  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator };
 };

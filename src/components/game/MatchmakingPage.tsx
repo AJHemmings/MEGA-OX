@@ -45,7 +45,7 @@ const MatchmakingPage: React.FC = () => {
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${data.id}`
       }, (payload) => {
-        if ((payload.new as any).status === 'active') {
+        if ((payload.new as any).status === 'rps' || (payload.new as any).status === 'active') {
           supabase.removeChannel(channel);
           navigate(`/game/${data.id}`);
         }
@@ -65,7 +65,7 @@ const MatchmakingPage: React.FC = () => {
 
     const { error } = await supabase.from('games').update({
       player_o_id: user.id,
-      status: 'active',
+      status: 'rps',
     }).eq('id', game.id);
 
     setLoading(false);
