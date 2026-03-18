@@ -19,3 +19,6 @@ build/
 # Documentation (implementation guides)
 SUPABASE_SETUP.md
 IMPLEMENTATION.md
+
+# Git worktrees
+.worktrees/
