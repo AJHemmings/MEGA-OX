@@ -4,23 +4,21 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Main is clean. Phase 1 (AI difficulty) is complete and merged.
+> "I've read the handover. Phase 2 (skin system) is complete on `feat/phase-2-skins` — not yet merged.
 >
-> We were mid-brainstorm on Phase 2 (skin system refactor). There is one open question
-> to answer before the brainstorm can continue — it is recorded below under
-> 'Where we left off'.
+> The branch is ready for review and merge, or we can move directly to Phase 3 planning.
 >
-> Ready to pick up the Phase 2 brainstorm, or would you like to review anything first?"
+> What would you like to do next?"
 
 ---
 
 ## Current state
 
-**Branch:** `main` — everything merged, Phase 1 complete.
-New feature work goes on a new `feat/` branch (create it before touching code).
+**Branch:** `feat/phase-2-skins` (worktree at `.worktrees/feat-phase-2-skins`) — Phase 2 complete, not yet merged.
+`main` is clean — Phase 1 merged, Phase 2 branch diverges from it.
 
 **Important:** Local `main` is ahead of `origin/main`. This is intentional.
-Do not push local main to origin/main without explicit instruction from the user.
+Do not push to origin/main without explicit instruction from the user.
 
 ---
 
@@ -50,7 +48,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | --- | --- | --- |
 | 0 | Infrastructure and cost planning | Brief written (`docs/plans/phase-0-infrastructure-brief.md`) — awaiting AI model responses |
 | 1 | AI improvement (Easy / Medium / Hard) | **Complete** |
-| 2 | Skin system code refactor (architecture only, no art) | Brainstorm in progress — see below |
+| 2 | Skin system code refactor (architecture only, no art) | **Complete** — on `feat/phase-2-skins`, awaiting merge |
 | 3 | Player progression + achievements + virtual currency | Not started |
 | 4 | Profile customisation + emoji communication | Not started |
 | 5 | Visual redesign (full pass once all screens exist) | Not started |
@@ -64,12 +62,60 @@ every screen and every system.
 
 ---
 
-## Where we left off — Phase 2 brainstorm
+## Where we left off — Phase 2 complete
 
-**Phase 2 brainstorm is complete.** Design doc written and committed:
-`docs/plans/2026-03-18-phase-2-skin-system-design.md`
+**Phase 2 implementation is complete.** The branch `feat/phase-2-skins` is ready to merge.
 
-Ready to move to implementation planning (writing-plans).
+Design doc: `docs/plans/2026-03-18-phase-2-skin-system-design.md`
+Implementation plan: `docs/plans/2026-03-18-phase-2-skin-system-implementation.md`
+
+### What Phase 2 built
+
+**Skin data layer** (`src/skins/`):
+- `types.ts` — `Skin`, `GameSkins`, `EquippedSkins`, `SkinType`, `SkinEvent`
+- `defaults.ts` — 5 default placeholder skins (board, marker_x, marker_o, won_board_x, won_board_o)
+- `registry.ts` — module-level Map, `getSkin(id, fallback)`, `registerSkin()` stub
+- `resolver.ts` — `resolveGameSkins(p1, p2)` — board always from p2 (loser of RPS)
+
+**Skin context** (`src/contexts/SkinContext.tsx`):
+- `SkinProvider` + `useSkins()` hook — wraps GameWrapper and OnlineGameView
+
+**Skin render components** (`src/components/skins/`):
+- `MarkerSkin.tsx` — renders X/O marker; placeholder = coloured span, Lottie = `path` prop
+- `WonBoardSkin.tsx` — absolutely-positioned overlay; placeholder = tinted bg + symbol
+- `BoardSkin.tsx` — wraps board children; placeholder = transparent, Lottie = behind via z-index
+
+**Game component wiring:**
+- `Cell.tsx` → `MarkerSkin`
+- `MicroBoard.tsx` → `WonBoardSkin` overlay (removed winner background colour)
+- `MacroBoard.tsx` → wrapped in `BoardSkin`
+- `GameWrapper.tsx` + `OnlineGameView.tsx` → wrapped in `SkinProvider`
+
+**RPS turn-order mechanic** (`src/lib/rps.ts`, tests, UI):
+- `resolveRPS()` + `randomRPSPick()` — pure functions, 8/8 tests green
+- `RPSScreen.tsx` — multiplayer pick screen, Supabase write + Realtime subscription
+- `RPSResultScreen.tsx` — shows both picks, outcome text, auto-advances after 3s
+- `LocalRPSScreen.tsx` — local 2-player: random pick for both, result shown, "Start Game" button
+
+**Online game flow:**
+- `MatchmakingPage.tsx` — joiner sets `status: 'rps'`; creator navigates on `'rps'` or `'active'`
+- `useOnlineGame.ts` — exposes `rpsCreatorPick`, `rpsJoinerPick`, `isCreator`; creator-only resolution effect handles draw re-pick and p2-wins swap
+- `OnlineGameView.tsx` — RPSScreen/RPSResultScreen branches before loading/waiting checks
+
+**Local game flow:**
+- `App.tsx` — `LocalGameRoute` gates `GameWrapper` behind `LocalRPSScreen`
+
+**Supabase migrations** (run manually in SQL editor):
+- `supabase/migrations/20260318000001_skins.sql` — `skins`, `user_skins`, `user_equipped_skins` tables + 5 default seeds
+- `supabase/migrations/20260318000002_games_rps.sql` — `rps_creator_pick`, `rps_joiner_pick` columns on `games`
+
+### Known Phase 2 limitations (by design)
+- All skins are `assetUrl: 'placeholder'` — real Lottie URLs drop in during Phase 5 with zero code changes
+- `p1GoesFirst` from local RPS is stored but not yet passed to `GameWrapper` — wired in Phase 6
+- `myMarker` in online game may briefly show old value after RPS swap until next game load — acceptable for Phase 2
+
+### Next step
+Merge `feat/phase-2-skins` into `main`, then begin Phase 3 (player progression + achievements + currency).
 
 ---
 
@@ -121,9 +167,16 @@ Ready to move to implementation planning (writing-plans).
 | `src/hooks/useGameLogic.ts` | React wrapper. Uses `{ ...game }` spread to trigger re-renders |
 | `src/App.tsx` | React Router v7. All routes defined here |
 | `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
-| `src/components/Cell.tsx` | Individual cell — renders plain string marker, no skin concept yet |
-| `src/components/MicroBoard.tsx` | 3×3 grid + won board state — background colour only, no overlay |
-| `src/components/MacroBoard.tsx` | 3×3 grid of MicroBoards |
+| `src/skins/` | Skin data layer — types, defaults, registry, resolver |
+| `src/contexts/SkinContext.tsx` | SkinProvider + useSkins() hook |
+| `src/components/skins/` | MarkerSkin, WonBoardSkin, BoardSkin render components |
+| `src/lib/rps.ts` | RPS pure logic — resolveRPS, randomRPSPick |
+| `src/components/game/RPSScreen.tsx` | Online RPS pick screen |
+| `src/components/game/RPSResultScreen.tsx` | Online RPS result screen |
+| `src/components/game/LocalRPSScreen.tsx` | Local 2-player RPS screen |
+| `src/components/Cell.tsx` | Renders MarkerSkin |
+| `src/components/MicroBoard.tsx` | 3×3 grid + WonBoardSkin overlay |
+| `src/components/MacroBoard.tsx` | 3×3 grid of MicroBoards, wrapped in BoardSkin |
 | `src/components/GuestLandingPage.tsx` | Guest landing page (unauthenticated `/`) |
 | `src/components/DemoGamePage.tsx` | Demo game - GameWrapper + Want More modal + post-game modal |
 | `src/components/GameWrapper.tsx` | Game board + AI + nav bar (accepts `navExtra` prop) |
