@@ -20,6 +20,21 @@ Read this file in full, then say:
 **Important:** Local `main` is ahead of `origin/main`. This is intentional.
 Do not push to origin/main without explicit instruction from the user.
 
+### ⚠️ Incident — files restored in last session
+
+During the Phase 2 test run, Claude temporarily copied new source files into the main project at `src/contexts/`, `src/lib/`, and `src/__tests__/`, then deleted those directories with `rm -rf` to clean up. This also deleted the existing tracked files:
+- `src/contexts/AuthContext.tsx`
+- `src/lib/supabase.ts`
+- `src/lib/database.types.ts`
+- `src/lib/gameSerializer.ts`
+- `src/__tests__/AuthContext.test.tsx`
+- `src/__tests__/gameSerializer.test.ts`
+- `src/__tests__/supabase.test.ts`
+
+All files were restored via `git restore`. The main project should compile correctly again. This incident is resolved — no data was lost. The fix was committed to `main`.
+
+**Lesson for future sessions:** Never use `rm -rf` on directories in the main project to clean up test copies. Copy individual files only, and delete them by name.
+
 ---
 
 ## What is built and working
