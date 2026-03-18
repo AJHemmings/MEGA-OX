@@ -1,5 +1,5 @@
 // src/components/game/RPSScreen.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { RPSPick } from '../../lib/rps';
 
