@@ -4,6 +4,23 @@ import { Marker } from '../../models/Game';
 import MacroBoard from '../MacroBoard';
 import PlayerIndicator from '../PlayerIndicator';
 import { useOnlineGame } from '../../hooks/useOnlineGame';
+import { SkinProvider } from '../../contexts/SkinContext';
+import {
+  DEFAULT_BOARD_SKIN,
+  DEFAULT_MARKER_X_SKIN,
+  DEFAULT_MARKER_O_SKIN,
+  DEFAULT_WON_BOARD_X_SKIN,
+  DEFAULT_WON_BOARD_O_SKIN,
+} from '../../skins/defaults';
+import { GameSkins } from '../../skins/types';
+
+const defaultGameSkins: GameSkins = {
+  boardSkin:      DEFAULT_BOARD_SKIN,
+  p1MarkerSkin:   DEFAULT_MARKER_X_SKIN,
+  p2MarkerSkin:   DEFAULT_MARKER_O_SKIN,
+  p1WonBoardSkin: DEFAULT_WON_BOARD_X_SKIN,
+  p2WonBoardSkin: DEFAULT_WON_BOARD_O_SKIN,
+};
 
 interface OnlineGameViewProps {
   gameId: string;
@@ -51,6 +68,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const macroWinner = game.macroBoard.winner === Marker.None ? '' : game.macroBoard.winner;
 
   return (
+    <SkinProvider skins={defaultGameSkins}>
     <div style={{ maxWidth: 480, margin: '20px auto', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', textAlign: 'center', userSelect: 'none', padding: '20px', minHeight: '100vh', background: '#1a2332', color: '#ffffff' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', backgroundColor: '#2a3441', padding: '15px 20px', borderRadius: '16px', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
@@ -103,6 +121,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         </div>
       )}
     </div>
+    </SkinProvider>
   );
 };
 

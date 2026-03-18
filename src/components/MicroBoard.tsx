@@ -1,6 +1,7 @@
 import React from "react";
 import Cell from "./Cell";
 import "./animations.css";
+import WonBoardSkin from "./skins/WonBoardSkin";
 
 type MicroBoardProps = {
   cells: string[];
@@ -28,8 +29,8 @@ const MicroBoard: React.FC<MicroBoardProps> = ({
     gap: "2px",
     padding: "2px",
     border: highlight ? "5px solid #3399ff" : "2px solid #999",
-    backgroundColor:
-      winner !== "" ? (winner === "X" ? "#a0d8f0" : "#f0a0a0") : "#fff",
+    backgroundColor: '#fff',
+    position: 'relative',
     borderRadius: "4px",
     width: "max-content",
     height: "max-content",
@@ -54,18 +55,8 @@ const MicroBoard: React.FC<MicroBoardProps> = ({
           playerMarker={recentlyPlacedCell === index ? currentPlayerMarker : ""}
         />
       ))}
-      {winner && (
-        <div
-          aria-live="polite"
-          style={{
-            position: "absolute",
-            fontWeight: "bold",
-            fontSize: "14px",
-            color: "red",
-          }}
-        >
-          Winner: {winner}
-        </div>
+      {winner !== '' && (
+        <WonBoardSkin player={winner === 'X' ? 1 : 2} />
       )}
     </div>
   );

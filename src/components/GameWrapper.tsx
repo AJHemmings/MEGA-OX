@@ -5,6 +5,23 @@ import MacroBoard from "./MacroBoard";
 import PlayerIndicator from "./PlayerIndicator";
 import { useGameLogic } from "../hooks/useGameLogic";
 import { Modal } from "./modal";
+import { SkinProvider } from '../contexts/SkinContext';
+import {
+  DEFAULT_BOARD_SKIN,
+  DEFAULT_MARKER_X_SKIN,
+  DEFAULT_MARKER_O_SKIN,
+  DEFAULT_WON_BOARD_X_SKIN,
+  DEFAULT_WON_BOARD_O_SKIN,
+} from '../skins/defaults';
+import { GameSkins } from '../skins/types';
+
+const defaultGameSkins: GameSkins = {
+  boardSkin:      DEFAULT_BOARD_SKIN,
+  p1MarkerSkin:   DEFAULT_MARKER_X_SKIN,
+  p2MarkerSkin:   DEFAULT_MARKER_O_SKIN,
+  p1WonBoardSkin: DEFAULT_WON_BOARD_X_SKIN,
+  p2WonBoardSkin: DEFAULT_WON_BOARD_O_SKIN,
+};
 
 interface GameWrapperProps {
   gameMode: "single" | "local";
@@ -87,6 +104,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   };
 
   return (
+    <SkinProvider skins={defaultGameSkins}>
     <div
       style={{
         maxWidth: 480,
@@ -372,6 +390,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
         🔄 New Game
       </button>
     </div>
+    </SkinProvider>
   );
 };
 
