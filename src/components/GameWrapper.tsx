@@ -32,10 +32,6 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     medium: { min: 1000, max: 2500 },
     hard:   { min: 1500, max: 3000 },
   };
-  const { min: MIN_DELAY_MS, max: MAX_DELAY_MS } = DELAY_RANGES[difficulty];
-  const AI_THINKING_DELAY_MS =
-    Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
-
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
     winner: mb.winner,
@@ -49,6 +45,8 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
       !gameOver
     ) {
       setIsAiTurn(true);
+      const { min: MIN_DELAY_MS, max: MAX_DELAY_MS } = DELAY_RANGES[difficulty];
+      const AI_THINKING_DELAY_MS = Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
       const aiMoveTimer = setTimeout(() => {
         const moveMap = { easy: easyMove, medium: mediumMove, hard: hardMove };
         const move = moveMap[difficulty](game);
@@ -58,7 +56,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
 
       return () => clearTimeout(aiMoveTimer);
     }
-  }, [game.currentPlayer, gameOver, gameMode]);
+  }, [game.currentPlayer, gameOver, gameMode, difficulty]);
 
   useEffect(() => {
     if (gameOver && onGameOver) {
