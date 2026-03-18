@@ -1,146 +1,102 @@
-# Mega OX - The Ultimate Naughts and Crosses Experience
+# Mega OX — Ultimate Naughts and Crosses
 
-## Overview
+A strategic twist on a classic game. Mega OX is a 3×3 grid of tic-tac-toe boards —
+winning a micro board claims that cell on the macro board. Win three macro cells in a row
+to win the game. Every move you make determines where your opponent must play next.
 
-Mega OX is a modern twist on the classic Naughts and Crosses game, featuring a sophisticated macro/micro board system that creates deep strategic gameplay. The game now includes a beautiful main menu system, multiple game modes, and AI opponents, with plans for online multiplayer.
-
-## 🎮 Game Features
-
-### Current Features
-- **🏠 Main Menu Splash Screen** - Beautiful gradient interface with game mode selection
-- **🤖 Single Player Mode** - Challenge an AI opponent with intelligent moves
-- **👥 Local Multiplayer** - Play with friends on the same device
-- **🎯 Smart Game Logic** - Advanced macro/micro board mechanics
-- **📊 Score Tracking** - Win/loss/draw statistics
-- **🎨 Modern UI** - Responsive design with smooth animations
-
-### Planned Features (Online Mode)
-- **🌐 Network Multiplayer** - Real-time online games
-- **🔗 Friend Invites** - Share game codes with friends
-- **🔍 Matchmaking** - Find random opponents
-- **💬 Chat System** - Communicate during games
-- **🏆 Rankings & Stats** - Player profiles with match history
-- **🎨 Themes & Avatars** - Customizable appearance
-
-## 🎯 Game Rules
-
-The game uses a **macro board** (3x3 grid) where each cell contains a **micro board** (also 3x3):
-
-1. **Starting:** First player can choose any cell on any micro board
-2. **Movement Constraint:** Your move determines which micro board your opponent must play in next
-3. **Winning Micro Boards:** Get 3 in a row within a micro board to win it
-4. **Winning the Game:** Win 3 micro boards in a row on the macro board
-5. **Special Rule:** If the required micro board is full, you can choose any available board
-6. **Draw Condition:** All micro boards filled without a macro winner = draw
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone [repository-url]
-   cd mega-ox-v3
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server:**
-   ```bash
-   npm start
-   ```
-
-4. **Open your browser:**
-   Navigate to `http://localhost:3000`
-
-## 🛠 Tech Stack
-
-### Core Technologies
-- **React** - Modern functional components with hooks
-- **TypeScript** - Type safety and better development experience
-- **React Router DOM** - Navigation between menu and game screens
-- **CSS-in-JS** - Styled components with modern design
-
-### Architecture Decisions
-
-#### Object-Oriented Game Logic
-The core game mechanics are built using TypeScript classes for better organization:
-
-**Pros:**
-- **Encapsulation:** Game state and logic grouped logically
-- **Scalability:** Easy to extend for network features
-- **Testability:** Independent testing of game mechanics
-- **Maintainability:** Clear separation of concerns
-
-**Classes:**
-- `Game` - Main game controller and state management
-- `MacroBoard` - Manages the 3x3 grid of micro boards
-- `MicroBoard` - Individual 3x3 game boards
-- `Cell` - Individual game cells with markers
-- **Clear abstraction:** Real-world game concepts are represented naturally in code.
-
-#### Cons:
-
-- React ecosystem generally favors functional programming patterns; mixing paradigms requires careful state management.
-- Mutable class state needs to be managed thoughtfully to ensure React re-renders correctly.
-- Slightly more initial complexity compared to purely functional approaches.
-
-### Final Design Decision
-
-The project uses a hybrid approach:
-
-- **Game logic** is handled via TypeScript classes following OOP principles.
-- **UI components** are functional React components using hooks for state and effects.
-- State updates from class instances trigger React updates by immutable state replacement.
-- This approach ensures clean separation between logic and presentation, maximizing maintainability and future scalability.
+**Status: Alpha** — core gameplay and network multiplayer are live and working.
+Active development is ongoing.
 
 ---
 
-## Folder Structure
+## What's in the game now
 
-```
-naughts-and-crosses/
-├── public/                # Static assets and HTML template
-├── src/                   # Application source code
-│   ├── components/        # React components (MacroBoard, MicroBoard, UI elements)
-│   ├── hooks/             # Custom React hooks (e.g., useGameLogic)
-│   ├── models/            # TypeScript classes for game logic (Board, Cell, Game)
-│   ├── styles/            # CSS files or styled components
-│   ├── App.tsx            # Main application component
-│   ├── index.tsx          # React app entry point
-│   └── types.ts           # TypeScript types and interfaces
-├── package.json           # Project metadata and dependencies
-├── tsconfig.json          # TypeScript config
-└── README.md              # Project documentation
+- **Guest access** — play the demo instantly, no account required
+- **Network multiplayer** — play against a real opponent online *(alpha)*
+- **Single player** — challenge an AI opponent
+- **Local multiplayer** — two players on the same device
+- **User accounts** — sign up, log in, persistent profile
+- **Leaderboard** — see how you rank against other players
+- **Stats tracking** — games played, wins, losses, draws
+- **Interactive tutorial** — Beginner and Intermediate walkthroughs
 
+---
+
+## What's coming
+
+The roadmap is broken into phases, each building on the last:
+
+**Phase 1 — AI difficulty**
+Selectable Easy / Medium / Hard opponents, replacing the current random-move AI.
+
+**Phase 2 — Cosmetics system**
+Architectural groundwork to support swappable marker skins and board overlays.
+
+**Phase 3 — Progression, achievements, and currency**
+Earn XP and level up by playing. Unlock achievements for skill-based and milestone goals.
+Earn in-game currency to spend on cosmetics.
+
+**Phase 4 — Profile customisation and emoji communication**
+Custom avatars, badges, and banners on your profile. An in-game emoji panel for
+expression during matches — no free-text chat, no moderation headaches.
+
+**Phase 5 — Visual redesign**
+A full visual pass across every screen once all systems are in place.
+
+**Phase 6 — Cash shop**
+Spend in-game currency on cosmetics. Real-money top-ups via Stripe for players who
+want to skip the grind.
+
+**Phase 7 — Admin tools and bug reporting**
+Internal content management and a player-facing bug report system.
+
+---
+
+## Game rules
+
+Mega OX uses a **macro board** (3×3) where each cell contains a **micro board** (also 3×3):
+
+1. **First move:** choose any cell on any micro board
+2. **Movement constraint:** the cell index you play determines which micro board your opponent must play in next
+3. **Win a micro board:** get three in a row within it
+4. **Win the game:** claim three micro boards in a row on the macro board
+5. **Free choice:** if the required micro board is already won or full, your opponent may play anywhere
+6. **Draw:** all micro boards filled with no macro winner
+
+---
+
+## Tech stack
+
+- **React + TypeScript** — component-based UI with full type safety
+- **Supabase** — authentication, database, real-time multiplayer
+- **React Router v7** — client-side routing
+- **Vercel** — hosting and deployment
+
+### Architecture
+
+Game logic lives in pure TypeScript classes (`src/models/Game.ts`) with no React dependency.
+A custom hook (`src/hooks/useGameLogic.ts`) wraps those classes in React state.
+This keeps game rules cleanly separated from rendering and makes the logic independently testable.
+
+---
+
+## Running locally
+
+```bash
+npm install
+npm start       # dev server at localhost:3000
+npm run build   # production build
 ```
 
----
-
-
-## Versioning
-
-- Version 1.3.3 - Base game with core mechanics, single player vs AI, and local device multiplayer game modes - implemented using React and TypeScript.
-- Future updates will add multi-player networking, user authentication, profiles, emoji chat, and theming.
+Requires a `.env.local` file with your Supabase project URL and anon key.
 
 ---
 
-## Future Improvements
+## Version history
 
-- Add user signup/login and persistent profiles.
-- Enable real-time network play using WebSockets or similar.
-- Implement avatar, marker, and board theme customization.
-- Include chat window with emoji wheel for in-game communication.
-- Improve responsive design and mobile support for smooth gameplay on all devices.
+- **v1.3.3** — Base game: core mechanics, single player vs AI, local multiplayer
+- **v2.0.0** *(current alpha)* — Network multiplayer, user auth, profiles, leaderboard, stat tracking
 
 ---
 
-Thank you for exploring this strategic twist on a classic game!  
-Enjoy playing Mega OX.
+Mega OX is built in public. Feedback and bug reports welcome.
