@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Game } from '../models/Game';
 import { deserializeGame, serializeGame } from '../lib/gameSerializer';
@@ -17,9 +17,12 @@ export const useOnlineGame = (gameId: string) => {
   const [rpsJoinerPick, setRpsJoinerPick] = useState<string | null>(null);
   const [isCreator, setIsCreator] = useState(false);
   const [joinerId, setJoinerId] = useState<string | null>(null);
+  // Prevents double-resolution if the effect fires again before Realtime returns status='active'
+  const rpsResolutionSentRef = useRef(false);
 
   useEffect(() => {
     if (!user || !gameId) return;
+    rpsResolutionSentRef.current = false; // reset for each new game
 
     // Load initial game state
     const loadGame = async () => {
@@ -55,6 +58,7 @@ export const useOnlineGame = (gameId: string) => {
         const updated = payload.new as any;
         setStatus(updated.status);
         setWinner(updated.winner);
+        setMyMarker(updated.player_x_id === user.id ? 'X' : 'O');
         setRpsCreatorPick(updated.rps_creator_pick);
         setRpsJoinerPick(updated.rps_joiner_pick);
         if (updated.player_o_id) setJoinerId(updated.player_o_id);
@@ -67,7 +71,9 @@ export const useOnlineGame = (gameId: string) => {
     return () => { supabase.removeChannel(channel); };
   }, [gameId, user]);
 
-  // Only the creator resolves RPS to avoid a write race condition
+  // Only the creator resolves RPS to avoid a write race condition.
+  // rpsResolutionSentRef guards against the effect re-firing (while Realtime hasn't
+  // returned status='active' yet) and accidentally overwriting the first resolution.
   useEffect(() => {
     if (
       status !== 'rps' ||
@@ -77,10 +83,14 @@ export const useOnlineGame = (gameId: string) => {
       !user
     ) return;
 
+    if (rpsResolutionSentRef.current) return;
+    rpsResolutionSentRef.current = true;
+
     const result = resolveRPS(rpsCreatorPick as RPSPick, rpsJoinerPick as RPSPick);
 
     const resolve = async () => {
       if (result === 'draw') {
+        rpsResolutionSentRef.current = false; // allow re-resolution after a draw
         const { error } = await supabase.from('games').update({
           rps_creator_pick: null,
           rps_joiner_pick: null,

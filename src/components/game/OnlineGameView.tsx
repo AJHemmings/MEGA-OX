@@ -33,49 +33,42 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
   const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator } = useOnlineGame(gameId);
 
-  const [showRPSResult, setShowRPSResult] = useState(false);
+  // Snapshot of picks captured when result screen opens — survives status change and draw clear
+  const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
 
-  // Show result screen when both picks are in
+  // Open result screen: capture picks snapshot so it stays visible regardless of subsequent state changes
   useEffect(() => {
     if (rpsCreatorPick && rpsJoinerPick && status === 'rps') {
-      setShowRPSResult(true);
+      setResultPicks({ creator: rpsCreatorPick as RPSPick, joiner: rpsJoinerPick as RPSPick });
     }
   }, [rpsCreatorPick, rpsJoinerPick, status]);
 
-  // Reset result screen if picks are cleared (draw re-pick)
-  useEffect(() => {
-    if (!rpsCreatorPick && !rpsJoinerPick && status === 'rps') {
-      setShowRPSResult(false);
-    }
-  }, [rpsCreatorPick, rpsJoinerPick, status]);
+  const handleRPSContinue = useCallback(() => setResultPicks(null), []);
+  // RPSScreen's onResolved is now unused (resultPicks drives the result screen),
+  // but the prop is required — pass a stable no-op
+  const noop = useCallback(() => {}, []);
 
-  const handleRPSResolved = useCallback(() => setShowRPSResult(true), []);
-  const handleRPSContinue = useCallback(() => setShowRPSResult(false), []);
-
-  // RPS pick screen
-  if (status === 'rps' && !showRPSResult) {
+  // RPS result screen — shown for the full 3s timer regardless of status/pick changes
+  if (resultPicks) {
+    const result: RPSResult = resolveRPS(resultPicks.creator, resultPicks.joiner);
     return (
-      <RPSScreen
-        gameId={gameId}
+      <RPSResultScreen
+        creatorPick={resultPicks.creator}
+        joinerPick={resultPicks.joiner}
         isCreator={isCreator}
-        onResolved={handleRPSResolved}
+        result={result}
+        onContinue={handleRPSContinue}
       />
     );
   }
 
-  // RPS result screen
-  if (status === 'rps' && showRPSResult && rpsCreatorPick && rpsJoinerPick) {
-    const result: RPSResult = resolveRPS(
-      rpsCreatorPick as RPSPick,
-      rpsJoinerPick as RPSPick
-    );
+  // RPS pick screen (no picks submitted yet, or draw re-pick)
+  if (status === 'rps') {
     return (
-      <RPSResultScreen
-        creatorPick={rpsCreatorPick as RPSPick}
-        joinerPick={rpsJoinerPick as RPSPick}
+      <RPSScreen
+        gameId={gameId}
         isCreator={isCreator}
-        result={result}
-        onContinue={handleRPSContinue}
+        onResolved={noop}
       />
     );
   }

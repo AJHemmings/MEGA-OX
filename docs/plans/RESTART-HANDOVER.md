@@ -4,23 +4,22 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Main is clean. Phase 1 (AI difficulty) is complete and merged.
+> "I've read the handover. Phase 2 (skin system + RPS turn-order) is **complete and working**.
+> The branch `feat/phase-2-skins` in the worktree is ready to merge.
 >
-> We were mid-brainstorm on Phase 2 (skin system refactor). There is one open question
-> to answer before the brainstorm can continue — it is recorded below under
-> 'Where we left off'.
+> The immediate next step is to merge into `main`.
 >
-> Ready to pick up the Phase 2 brainstorm, or would you like to review anything first?"
+> Ready when you are."
 
 ---
 
 ## Current state
 
-**Branch:** `main` — everything merged, Phase 1 complete.
-New feature work goes on a new `feat/` branch (create it before touching code).
+**Active branch:** `feat/phase-2-skins`
+**Worktree path:** `F:\Projects\MEGA-OX\.worktrees\feat-phase-2-skins`
+**Dev server:** `cd` into worktree, run `PORT=3002 npm start` (3000/3001 may be taken by main project)
 
-**Important:** Local `main` is ahead of `origin/main`. This is intentional.
-Do not push local main to origin/main without explicit instruction from the user.
+**`main` branch:** Clean. Do NOT push to `origin/main` without explicit user instruction.
 
 ---
 
@@ -29,16 +28,15 @@ Do not push local main to origin/main without explicit instruction from the user
 | Feature | Status |
 | --- | --- |
 | Guest landing page (`/`) | Done |
-| Demo game (`/demo`) - vs AI, Want More modal, post-game modal | Done |
-| Auth flow - login, signup, sign out, protected routes | Done |
-| Main menu (`/menu`) - authenticated users only | Done |
-| Tutorial - Beginner (7 steps) + Intermediate (14 steps) | Done |
-| Single player vs AI (Easy / Medium / Hard difficulty) | Done — Phase 1 complete |
+| Demo game (`/demo`) | Done |
+| Auth flow | Done |
+| Main menu (`/menu`) | Done |
+| Tutorial - Beginner + Intermediate | Done |
+| Single player vs AI (Easy / Medium / Hard) | Done — Phase 1 complete |
 | Local 2-player | Done |
-| Network multiplayer | Alpha - working locally across two browsers |
-| User profiles (initial) | Done |
-| Leaderboard | Done |
-| Stat tracking | Done |
+| Network multiplayer | Working — RPS turn-order fully debugged |
+| Skin system scaffolding (Phase 2) | Done — placeholder-first, Lottie hooks wired |
+| User profiles, leaderboard, stat tracking | Done |
 
 ---
 
@@ -48,9 +46,9 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
 | Phase | Area | Status |
 | --- | --- | --- |
-| 0 | Infrastructure and cost planning | Brief written (`docs/plans/phase-0-infrastructure-brief.md`) — awaiting AI model responses |
-| 1 | AI improvement (Easy / Medium / Hard) | **Complete** |
-| 2 | Skin system code refactor (architecture only, no art) | Brainstorm in progress — see below |
+| 0 | Infrastructure and cost planning | Brief written — awaiting AI model responses |
+| 1 | AI improvement (Easy / Medium / Hard) | **Complete and merged** |
+| 2 | Skin system code refactor | **Complete — ready to merge** |
 | 3 | Player progression + achievements + virtual currency | Not started |
 | 4 | Profile customisation + emoji communication | Not started |
 | 5 | Visual redesign (full pass once all screens exist) | Not started |
@@ -58,58 +56,99 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 7 | Admin dashboard | Not started |
 | 8 | Bug report system | Not started |
 
-**Why this order:** All backend systems are built before any visual redesign.
-The visual redesign happens last so it can be designed with full knowledge of
-every screen and every system.
+---
+
+## Where we left off
+
+### Phase 2 is complete — merge to main
+
+Everything on `feat/phase-2-skins` is working. To merge:
+
+```bash
+cd F:/Projects/MEGA-OX   # main project directory (not worktree)
+git merge feat/phase-2-skins
+```
+
+Then clean up the worktree:
+```bash
+git worktree remove .worktrees/feat-phase-2-skins
+git branch -d feat/phase-2-skins
+```
 
 ---
 
-## Where we left off — Phase 2 brainstorm
+## What Phase 2 built
 
-**Phase 2 brainstorm is complete.** Design doc written and committed:
-`docs/plans/2026-03-18-phase-2-skin-system-design.md`
+### Skin system scaffolding
 
-Ready to move to implementation planning (writing-plans).
+**New files:**
+| File | Purpose |
+| --- | --- |
+| `src/skins/types.ts` | `SkinAsset`, `GameSkins`, `SkinEvent` types |
+| `src/skins/defaults.ts` | 5 default placeholder skins |
+| `src/contexts/SkinContext.tsx` | React context — provides `GameSkins` to board tree |
+| `src/components/skins/MarkerSkin.tsx` | Renders X/O marker (placeholder = styled span; Phase 5 = Lottie) |
+| `src/components/skins/WonBoardSkin.tsx` | Renders won-board overlay (placeholder = tinted div) |
+| `src/components/skins/BoardSkin.tsx` | Renders board background (placeholder = transparent wrapper) |
+
+**Modified files:**
+- `src/components/Cell.tsx` — uses `MarkerSkin` instead of raw string
+- `src/components/MicroBoard.tsx` — uses `WonBoardSkin` overlay
+- `src/components/MacroBoard.tsx` — uses `BoardSkin` wrapper
+
+All skin components use `assetUrl: 'placeholder'` in Phase 2. The Lottie branch is wired but dead code until Phase 5.
+
+### RPS turn-order (online multiplayer)
+
+**New files:**
+| File | Purpose |
+| --- | --- |
+| `src/lib/rps.ts` | `resolveRPS`, `randomRPSPick` — pure functions |
+| `src/components/game/RPSScreen.tsx` | Online RPS pick UI — writes pick to Supabase |
+| `src/components/game/RPSResultScreen.tsx` | Shows both picks + outcome for 3s, then auto-dismisses |
+| `src/components/game/LocalRPSScreen.tsx` | Local 2-player RPS (random picks, re-picks on draw) |
+
+**Modified files:**
+- `src/hooks/useOnlineGame.ts` — manages RPS state, creator-only resolution, `rpsResolutionSentRef` guard
+- `src/components/game/OnlineGameView.tsx` — RPS screen routing, `resultPicks` snapshot
+- `src/components/game/MatchmakingPage.tsx` — `joinGame` sets `status: 'rps'`
+- `src/App.tsx` — `LocalGameRoute` gates `GameWrapper` behind `LocalRPSScreen`
+- `src/lib/database.types.ts` — added `rps_creator_pick`, `rps_joiner_pick` fields
+
+**New Supabase migrations (applied to remote):**
+| File | Purpose |
+| --- | --- |
+| `supabase/migrations/20260318000001_skins.sql` | Creates `skins`, `user_skins`, `user_equipped_skins` tables + 5 seed rows |
+| `supabase/migrations/20260318000002_games_rps.sql` | Adds `rps_creator_pick TEXT`, `rps_joiner_pick TEXT` columns to `games` |
+| `supabase/migrations/20260318000003_games_rps_status.sql` | Adds `'rps'` to `games.status` CHECK constraint |
+
+### How RPS works (online)
+
+1. Joiner sets `status: 'rps'` when they join the game.
+2. Both players see `RPSScreen` — each writes their pick to `rps_creator_pick` / `rps_joiner_pick`.
+3. `OnlineGameView` watches for both picks via `rpsCreatorPick` + `rpsJoinerPick` in state. When both arrive, `resultPicks` snapshot is captured → `RPSResultScreen` shows for 3s.
+4. In `useOnlineGame`, only the creator (`isCreator=true`) resolves. A `rpsResolutionSentRef` prevents double-resolution (the key bug that was fixed).
+5. If p2 wins: creator swaps `player_x_id` ↔ `player_o_id` so joiner becomes X (goes first). `myMarker` is updated from Realtime.
+6. If draw: creator clears both picks (ref reset to allow re-pick), both players pick again.
+
+---
+
+## Known issues / next-session notes
+
+- **`p1GoesFirst` from `LocalRPSScreen` is stored in `App.tsx` state** but NOT yet passed to `GameWrapper`. Phase 6 will wire this — the comment `// Phase 6 will wire p1GoesFirst` is in `App.tsx`.
+- **`myMarker` after RPS swap**: now updated from Realtime in `useOnlineGame.ts` (fixed this session), but not tested after a p2-wins outcome. Worth a smoke test.
+- **Skins tables in Supabase have no RLS policies yet** — the `20260318000001_skins.sql` creates the tables but doesn't add policies. This is fine for Phase 2 (no client reads/writes). Needs policies in Phase 3 when the shop is built.
 
 ---
 
 ## Key design decisions already made
 
-- **Visual redesign is Phase 5, not Phase 0.** Designing the shop window before knowing
-  what is in the shop leads to rework. All systems are built first.
-- **Skin system is split:** the code refactor (markers become components) is Phase 2;
-  the visual art direction is Phase 5.
-- **Progression, achievements, and currency are one phase** (Phase 3) because they form
-  a single reward economy and must be balanced together.
-- **AI improvement (Phase 1) comes before progression** because achievements and XP rewards
-  will reference AI difficulty levels.
-- **Hand-coded AI only** (no external AI API) — minimax with alpha-beta pruning for Hard.
-- **AI difficulty variables** (strength constants 0–100 per rule) are hardcoded in Phase 1
-  and exposed via admin dashboard in Phase 7.
-
----
-
-## Phase 1 AI — key files
-
-| File | Purpose |
-| --- | --- |
-| `src/ai/aiPlayer.ts` | Pure TS AI module. easyMove, mediumMove, hardMove + strength constants |
-| `src/components/GameWrapper.tsx` | Accepts `difficulty` prop, calls aiPlayer, delay ranges keyed by difficulty |
-| `src/App.tsx` | TrainingRoute reads `?difficulty` query param and passes to GameWrapper |
-
----
-
-## Open questions (resolve at each phase's detail design)
-
-- Currency name and branding
-- EXP values and level curve shape
-- Art direction for visual redesign (dark/neon vs clean/minimal vs other)
-- Which profile items are free progression unlocks vs paid vs both
-- Achievement trigger method (DB trigger vs edge function vs client + server validation)
-- Admin access control: private API vs direct Supabase RLS
-- Single admin or role-based admin permissions
-- Bug reports: email notifications to admin on new submission?
-- Bug reports: should resolved reports be visible to the filing player?
+- Visual redesign is Phase 5, not earlier.
+- Skin system split: code refactor (Phase 2) vs visual art (Phase 5).
+- Progression, achievements, currency are one phase (Phase 3).
+- Hand-coded AI only (minimax + alpha-beta pruning for Hard).
+- Creator-only RPS resolution to prevent write race conditions.
+- `assetUrl: 'placeholder'` string is the sentinel for "use fallback render" in all skin components.
 
 ---
 
@@ -117,28 +156,25 @@ Ready to move to implementation planning (writing-plans).
 
 | File | Purpose |
 | --- | --- |
-| `src/models/Game.ts` | Core game logic - OOP, no React |
-| `src/hooks/useGameLogic.ts` | React wrapper. Uses `{ ...game }` spread to trigger re-renders |
-| `src/App.tsx` | React Router v7. All routes defined here |
+| `src/models/Game.ts` | Core game logic — OOP, no React |
+| `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
+| `src/hooks/useOnlineGame.ts` | Online game state — Realtime, RPS resolution |
+| `src/App.tsx` | React Router v7. All routes. LocalRPSScreen gate. |
 | `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
-| `src/components/Cell.tsx` | Individual cell — renders plain string marker, no skin concept yet |
-| `src/components/MicroBoard.tsx` | 3×3 grid + won board state — background colour only, no overlay |
-| `src/components/MacroBoard.tsx` | 3×3 grid of MicroBoards |
-| `src/components/GuestLandingPage.tsx` | Guest landing page (unauthenticated `/`) |
-| `src/components/DemoGamePage.tsx` | Demo game - GameWrapper + Want More modal + post-game modal |
-| `src/components/GameWrapper.tsx` | Game board + AI + nav bar (accepts `navExtra` prop) |
-| `src/components/MainMenu.tsx` | Lobby-style main menu (authenticated users only) |
-| `src/contexts/AuthContext.tsx` | Auth state - `user`, `loading`, `signOut` |
+| `src/contexts/SkinContext.tsx` | Skin context (Phase 2) |
+| `src/skins/types.ts` | Skin type definitions |
+| `src/skins/defaults.ts` | Default placeholder skins |
+| `src/contexts/AuthContext.tsx` | Auth state |
+| `src/lib/rps.ts` | RPS logic — pure functions |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap |
-| `docs/plans/phase-0-infrastructure-brief.md` | Phase 0 cost modelling brief for AI models |
-| `docs/plans/2026-03-18-phase-1-ai-difficulty-design.md` | Phase 1 design doc |
-| `docs/plans/game-theory-evaluation-notes.md` | UTTT game theory notes + simulation harness ideas |
+| `docs/plans/2026-03-18-phase-2-skin-system-design.md` | Phase 2 design doc |
+| `docs/plans/2026-03-18-phase-2-skin-system-implementation.md` | Phase 2 implementation plan |
 
 ---
 
 ## Credentials
 
-`.env.local` and `.env.test.local` are gitignored. They contain:
+`.env.local` is gitignored. It contains:
 
 - `REACT_APP_SUPABASE_URL=https://qioxtkcjtvvkzcoupdfk.supabase.co`
 - `REACT_APP_SUPABASE_ANON_KEY=...` (full key in file)
