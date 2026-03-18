@@ -79,21 +79,27 @@ export const useOnlineGame = (gameId: string) => {
 
     const result = resolveRPS(rpsCreatorPick as RPSPick, rpsJoinerPick as RPSPick);
 
-    if (result === 'draw') {
-      supabase.from('games').update({
-        rps_creator_pick: null,
-        rps_joiner_pick: null,
-      }).eq('id', gameId);
-      return;
-    }
+    const resolve = async () => {
+      if (result === 'draw') {
+        const { error } = await supabase.from('games').update({
+          rps_creator_pick: null,
+          rps_joiner_pick: null,
+        }).eq('id', gameId);
+        if (error) console.error('RPS draw clear failed:', error.message);
+        return;
+      }
 
-    const updatePayload: Record<string, any> = { status: 'active' };
-    if (result === 'p2') {
-      // Joiner wins RPS — swap so joiner becomes X (goes first)
-      updatePayload.player_x_id = joinerId;
-      updatePayload.player_o_id = user.id;
-    }
-    supabase.from('games').update(updatePayload).eq('id', gameId);
+      const updatePayload: Record<string, any> = { status: 'active' };
+      if (result === 'p2') {
+        // Joiner wins RPS — swap so joiner becomes X (goes first)
+        updatePayload.player_x_id = joinerId;
+        updatePayload.player_o_id = user.id;
+      }
+      const { error } = await supabase.from('games').update(updatePayload).eq('id', gameId);
+      if (error) console.error('RPS resolution failed:', error.message);
+    };
+
+    resolve();
   }, [status, rpsCreatorPick, rpsJoinerPick, isCreator, joinerId, gameId, user]);
 
   const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
