@@ -164,6 +164,8 @@ export type Database = {
           next_player: string
           player_o_id: string | null
           player_x_id: string | null
+          rps_creator_pick: string | null
+          rps_joiner_pick: string | null
           season_id: string | null
           state: Json
           status: string
@@ -180,6 +182,8 @@ export type Database = {
           next_player?: string
           player_o_id?: string | null
           player_x_id?: string | null
+          rps_creator_pick?: string | null
+          rps_joiner_pick?: string | null
           season_id?: string | null
           state?: Json
           status?: string
@@ -196,6 +200,8 @@ export type Database = {
           next_player?: string
           player_o_id?: string | null
           player_x_id?: string | null
+          rps_creator_pick?: string | null
+          rps_joiner_pick?: string | null
           season_id?: string | null
           state?: Json
           status?: string
