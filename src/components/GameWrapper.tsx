@@ -9,12 +9,14 @@ interface GameWrapperProps {
   gameMode: "single" | "local";
   onBackToMenu: () => void;
   onGameOver?: (winner: string) => void;
+  navExtra?: React.ReactNode;
 }
 
 const GameWrapper: React.FC<GameWrapperProps> = ({
   gameMode,
   onBackToMenu,
   onGameOver,
+  navExtra,
 }) => {
   const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } =
     useGameLogic();
@@ -52,9 +54,9 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
 
   useEffect(() => {
     if (gameOver && onGameOver) {
-      onGameOver(winner === Marker.None ? 'draw' : winner);
+      onGameOver(winner === Marker.None ? "draw" : winner);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameOver]); // intentionally omit winner/onGameOver: winner is stable when gameOver flips, and including onGameOver would cause double-firing as DemoGamePage re-renders
 
   const makeAiMove = () => {
@@ -132,31 +134,50 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
         color: "#ffffff",
       }}
     >
-      {/* Header with back button */}
+      {/* Title above nav */}
+      <h1
+        style={{
+          margin: "0 0 12px 0",
+          fontSize: "2.2em",
+          fontWeight: "800",
+          letterSpacing: "0.06em",
+          background: "linear-gradient(135deg, #ffffff 0%, #00d4aa 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+        }}
+      >
+        MEGA OX
+      </h1>
+
+      {/* Nav bar */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "center",
+          gap: "12px",
           marginBottom: "20px",
           backgroundColor: "#2a3441",
-          padding: "15px 20px",
+          padding: "12px 16px",
           borderRadius: "16px",
           boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
+          borderTop: "2px solid #ffffff10",
         }}
       >
+        {/* Left: back button */}
         <button
           onClick={onBackToMenu}
           style={{
-            padding: "10px 16px",
-            fontSize: "14px",
+            padding: "8px 14px",
+            fontSize: "13px",
             cursor: "pointer",
-            borderRadius: 12,
-            border: "2px solid #ff6b35",
+            borderRadius: 10,
+            border: "1.5px solid #ff6b35",
             backgroundColor: "transparent",
             color: "#ff6b35",
-            fontWeight: "bold",
-            transition: "all 0.3s ease",
+            fontWeight: "600",
+            transition: "all 0.2s ease",
+            letterSpacing: "0.02em",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = "#ff6b35";
@@ -167,25 +188,23 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
             e.currentTarget.style.color = "#ff6b35";
           }}
         >
-          ← Menu
+          Menu
         </button>
 
-        <h1 style={{ margin: 0, fontSize: "2em", color: "#ffffff" }}>
-          Mega OX
-        </h1>
-
+        {navExtra}
         <button
           onClick={() => setShowRules(true)}
           style={{
-            padding: "10px 16px",
-            fontSize: "14px",
+            padding: "8px 14px",
+            fontSize: "13px",
             cursor: "pointer",
-            borderRadius: 12,
-            border: "2px solid #4299e1",
+            borderRadius: 10,
+            border: "1.5px solid #4299e1",
             backgroundColor: "transparent",
             color: "#4299e1",
-            fontWeight: "bold",
-            transition: "all 0.3s ease",
+            fontWeight: "600",
+            transition: "all 0.2s ease",
+            letterSpacing: "0.02em",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = "#4299e1";
@@ -322,7 +341,10 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
 
       <MacroBoard
         microBoards={microBoardsData}
-        onPlaceMarker={onPlaceMarker}
+        onPlaceMarker={(micro, cell) => {
+          if (gameMode === "single" && isAiTurn) return;
+          onPlaceMarker(micro, cell);
+        }}
         nextMicroBoardIndex={game.nextMicroBoardIndex}
         macroWinner={winner === Marker.None ? "" : winner}
         lastMove={lastMove}
@@ -341,15 +363,15 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
               winner === Marker.X
                 ? "#00d4aa"
                 : winner === Marker.O
-                ? "#ff6b35"
-                : "#718096"
+                  ? "#ff6b35"
+                  : "#718096"
             }`,
             color:
               winner === Marker.X
                 ? "#00d4aa"
                 : winner === Marker.O
-                ? "#ff6b35"
-                : "#ffffff",
+                  ? "#ff6b35"
+                  : "#ffffff",
             boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
           }}
         >
