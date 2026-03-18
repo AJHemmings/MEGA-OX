@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Marker } from "../models/Game";
+import { easyMove, mediumMove, hardMove } from '../ai/aiPlayer';
 import MacroBoard from "./MacroBoard";
 import PlayerIndicator from "./PlayerIndicator";
 import { useGameLogic } from "../hooks/useGameLogic";
@@ -10,6 +11,7 @@ interface GameWrapperProps {
   onBackToMenu: () => void;
   onGameOver?: (winner: string) => void;
   navExtra?: React.ReactNode;
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 const GameWrapper: React.FC<GameWrapperProps> = ({
@@ -17,6 +19,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   onBackToMenu,
   onGameOver,
   navExtra,
+  difficulty = 'easy',
 }) => {
   const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } =
     useGameLogic();
@@ -24,11 +27,14 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   const [isAiTurn, setIsAiTurn] = useState(false);
 
   // UX: Adjust delay and animation timing here:
-  const MIN_DELAY_MS = 2000;
-  const MAX_DELAY_MS = 6000;
+  const DELAY_RANGES = {
+    easy:   { min: 500,  max: 1500 },
+    medium: { min: 1000, max: 2500 },
+    hard:   { min: 1500, max: 3000 },
+  };
+  const { min: MIN_DELAY_MS, max: MAX_DELAY_MS } = DELAY_RANGES[difficulty];
   const AI_THINKING_DELAY_MS =
-    Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) +
-    MIN_DELAY_MS;
+    Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
 
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
@@ -44,7 +50,9 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     ) {
       setIsAiTurn(true);
       const aiMoveTimer = setTimeout(() => {
-        makeAiMove();
+        const moveMap = { easy: easyMove, medium: mediumMove, hard: hardMove };
+        const move = moveMap[difficulty](game);
+        onPlaceMarker(move.microIndex, move.cellIndex);
         setIsAiTurn(false);
       }, AI_THINKING_DELAY_MS); // Use configurable delay
 
@@ -58,46 +66,6 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameOver]); // intentionally omit winner/onGameOver: winner is stable when gameOver flips, and including onGameOver would cause double-firing as DemoGamePage re-renders
-
-  const makeAiMove = () => {
-    // Simple AI: find the best available move
-    const availableMoves: { microIndex: number; cellIndex: number }[] = [];
-
-    // If nextMicroBoardIndex is set and that board is available
-    if (game.nextMicroBoardIndex !== null) {
-      const microBoard = game.macroBoard.microBoards[game.nextMicroBoardIndex];
-      if (microBoard.winner === Marker.None) {
-        microBoard.cells.forEach((cell, cellIndex) => {
-          if (cell.isEmpty()) {
-            availableMoves.push({
-              microIndex: game.nextMicroBoardIndex!,
-              cellIndex,
-            });
-          }
-        });
-      }
-    }
-
-    // If no moves in the required board, find all available moves
-    if (availableMoves.length === 0) {
-      game.macroBoard.microBoards.forEach((microBoard, microIndex) => {
-        if (microBoard.winner === Marker.None) {
-          microBoard.cells.forEach((cell, cellIndex) => {
-            if (cell.isEmpty()) {
-              availableMoves.push({ microIndex, cellIndex });
-            }
-          });
-        }
-      });
-    }
-
-    // Make a random move (can be improved with better AI logic)
-    if (availableMoves.length > 0) {
-      const randomMove =
-        availableMoves[Math.floor(Math.random() * availableMoves.length)];
-      onPlaceMarker(randomMove.microIndex, randomMove.cellIndex);
-    }
-  };
 
   const handleRestart = () => {
     resetGame();

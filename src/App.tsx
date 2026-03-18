@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import MainMenu from './components/MainMenu';
 import MultiplayerMenu from './components/MultiplayerMenu';
 import LoginPage from './components/auth/LoginPage';
@@ -22,7 +22,9 @@ import DemoGamePage from './components/DemoGamePage';
 // Thin wrappers so GameWrapper gets a real navigate callback from the router
 const TrainingRoute: React.FC = () => {
   const navigate = useNavigate();
-  return <GameWrapper gameMode="single" onBackToMenu={() => navigate('/menu')} />;
+  const [searchParams] = useSearchParams();
+  const difficulty = (searchParams.get('difficulty') ?? 'easy') as 'easy' | 'medium' | 'hard';
+  return <GameWrapper gameMode="single" difficulty={difficulty} onBackToMenu={() => navigate('/menu')} />;
 };
 
 const LocalGameRoute: React.FC = () => {
