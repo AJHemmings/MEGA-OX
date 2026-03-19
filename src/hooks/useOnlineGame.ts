@@ -7,6 +7,11 @@ import { resolveRPS, RPSPick } from '../lib/rps';
 
 export type OnlineGameStatus = 'loading' | 'waiting' | 'rps' | 'active' | 'complete';
 
+const countMoves = (state: SerializedState | null | undefined): number => {
+  if (!state?.boards) return 0;
+  return state.boards.flat().filter((m: string) => m !== '').length;
+};
+
 export const useOnlineGame = (gameId: string) => {
   const { user } = useAuth();
   const [game, setGame] = useState<Game | null>(null);
@@ -26,11 +31,6 @@ export const useOnlineGame = (gameId: string) => {
   const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-
-  const countMoves = (state: any): number => {
-    if (!state?.boards) return 0;
-    return state.boards.flat().filter((m: string) => m !== '').length;
-  };
 
   useEffect(() => {
     if (!user || !gameId) return;
