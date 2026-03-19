@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,6 +18,13 @@ import { GameSkins } from '../../skins/types';
 import RPSScreen from './RPSScreen';
 import RPSResultScreen from './RPSResultScreen';
 import { resolveRPS, RPSPick, RPSResult } from '../../lib/rps';
+import {
+  playMarkerPlaced,
+  playYourTurn,
+  playMicroBoardWon,
+  playGameWon,
+  playGameLost,
+} from '../../lib/sounds';
 
 const defaultGameSkins: GameSkins = {
   boardSkin:      DEFAULT_BOARD_SKIN,
@@ -40,6 +47,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
   const [wonByForfeit, setWonByForfeit] = useState(false);
   const [showForfeitModal, setShowForfeitModal] = useState(false);
+
+  const prevMicroWinnersRef = useRef<string[]>([]);
+  const prevIsMyTurnRef = useRef<boolean>(false);
+  const prevStatusRef = useRef<string>('loading');
 
   // Open result screen: capture picks snapshot so it stays visible regardless of subsequent state changes
   useEffect(() => {
@@ -85,6 +96,44 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [status]);
+
+  useEffect(() => {
+    if (!game || !myMarker) return;
+
+    // Marker placed — fires for both players on any state change during active game
+    if (status === 'active' && prevStatusRef.current === 'active') {
+      playMarkerPlaced();
+    }
+
+    // Micro board won — check if any new winners appeared
+    const currentWinners = game.macroBoard.microBoards.map(mb => mb.winner);
+    currentWinners.forEach((w, i) => {
+      if (w && w !== '' && w !== prevMicroWinnersRef.current[i]) {
+        playMicroBoardWon();
+      }
+    });
+    prevMicroWinnersRef.current = currentWinners;
+
+    // Your turn
+    const currentIsMyTurn =
+      (myMarker === 'X' && game.currentPlayerIndex === 0) ||
+      (myMarker === 'O' && game.currentPlayerIndex === 1);
+    if (currentIsMyTurn && !prevIsMyTurnRef.current && status === 'active') {
+      playYourTurn();
+    }
+    prevIsMyTurnRef.current = currentIsMyTurn;
+
+    // Game over
+    if (status === 'complete' && prevStatusRef.current !== 'complete') {
+      if (winner === myMarker) {
+        playGameWon();
+      } else if (winner && winner !== 'draw') {
+        playGameLost();
+      }
+    }
+
+    prevStatusRef.current = status;
+  }, [game, status, myMarker, winner]);
 
   const handleRPSContinue = useCallback(() => setResultPicks(null), []);
   // RPSScreen's onResolved is now unused (resultPicks drives the result screen),

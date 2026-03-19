@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Marker } from "../models/Game";
 import { easyMove, mediumMove, hardMove } from '../ai/aiPlayer';
 import MacroBoard from "./MacroBoard";
@@ -14,6 +14,7 @@ import {
   DEFAULT_WON_BOARD_O_SKIN,
 } from '../skins/defaults';
 import { GameSkins } from '../skins/types';
+import { playMarkerPlaced, playMicroBoardWon, playGameWon } from '../lib/sounds';
 
 const defaultGameSkins: GameSkins = {
   boardSkin:      DEFAULT_BOARD_SKIN,
@@ -42,6 +43,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     useGameLogic();
   const [showRules, setShowRules] = useState(false);
   const [isAiTurn, setIsAiTurn] = useState(false);
+  const prevMicroWinnersRef = useRef<string[]>([]);
 
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
@@ -67,7 +69,8 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
       const aiMoveTimer = setTimeout(() => {
         const moveMap = { easy: easyMove, medium: mediumMove, hard: hardMove };
         const move = moveMap[difficulty](game);
-        onPlaceMarker(move.microIndex, move.cellIndex);
+        const aiSuccess = onPlaceMarker(move.microIndex, move.cellIndex);
+        if (aiSuccess) playMarkerPlaced();
         setIsAiTurn(false);
       }, AI_THINKING_DELAY_MS); // Use configurable delay
 
@@ -82,6 +85,21 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameOver]); // intentionally omit winner/onGameOver: winner is stable when gameOver flips, and including onGameOver would cause double-firing as DemoGamePage re-renders
+
+  useEffect(() => {
+    if (!game) return;
+    const currentWinners = game.macroBoard.microBoards.map(mb => mb.winner);
+    currentWinners.forEach((w, i) => {
+      if (w && w !== '' && w !== prevMicroWinnersRef.current[i]) {
+        playMicroBoardWon();
+      }
+    });
+    prevMicroWinnersRef.current = currentWinners;
+
+    if (game.macroBoard.winner && game.macroBoard.winner !== '') {
+      playGameWon();
+    }
+  }, [game]);
 
   const handleRestart = () => {
     resetGame();
@@ -328,7 +346,8 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
         microBoards={microBoardsData}
         onPlaceMarker={(micro, cell) => {
           if (gameMode === "single" && isAiTurn) return;
-          onPlaceMarker(micro, cell);
+          const success = onPlaceMarker(micro, cell);
+          if (success) playMarkerPlaced();
         }}
         nextMicroBoardIndex={game.nextMicroBoardIndex}
         macroWinner={winner === Marker.None ? "" : winner}
