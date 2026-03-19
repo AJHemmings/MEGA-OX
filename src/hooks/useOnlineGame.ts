@@ -17,8 +17,13 @@ export const useOnlineGame = (gameId: string) => {
   const [rpsJoinerPick, setRpsJoinerPick] = useState<string | null>(null);
   const [isCreator, setIsCreator] = useState(false);
   const [joinerId, setJoinerId] = useState<string | null>(null);
+  const [opponentConnected, setOpponentConnected] = useState(true);
+  const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
+  const [opponentId, setOpponentId] = useState<string | null>(null);
   // Prevents double-resolution if the effect fires again before Realtime returns status='active'
   const rpsResolutionSentRef = useRef(false);
+  const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!user || !gameId) return;
@@ -36,6 +41,7 @@ export const useOnlineGame = (gameId: string) => {
       setRpsCreatorPick(data.rps_creator_pick);
       setRpsJoinerPick(data.rps_joiner_pick);
       setJoinerId(data.player_o_id);
+      setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
 
       if (data.state && Object.keys(data.state).length > 0) {
         setGame(deserializeGame(data.state as any));
@@ -66,9 +72,48 @@ export const useOnlineGame = (gameId: string) => {
           setGame(deserializeGame(updated.state));
         }
       })
-      .subscribe();
+      .on('presence', { event: 'join' }, ({ newPresences }: { newPresences: any[] }) => {
+        const opponentJoined = newPresences.some((p: any) => p.user_id !== user.id);
+        if (opponentJoined) {
+          setOpponentConnected(true);
+          if (disconnectTimerRef.current) {
+            clearTimeout(disconnectTimerRef.current);
+            disconnectTimerRef.current = null;
+          }
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setDisconnectCountdown(null);
+        }
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: any[] }) => {
+        const opponentLeft = leftPresences.some((p: any) => p.user_id !== user.id);
+        if (opponentLeft) {
+          setOpponentConnected(false);
+          let remaining = 90;
+          setDisconnectCountdown(remaining);
+          countdownIntervalRef.current = setInterval(() => {
+            remaining -= 1;
+            setDisconnectCountdown(remaining);
+            if (remaining <= 0 && countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+          }, 1000);
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ user_id: user.id });
+        }
+      });
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+      if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
   }, [gameId, user]);
 
   // Only the creator resolves RPS to avoid a write race condition.
@@ -112,6 +157,20 @@ export const useOnlineGame = (gameId: string) => {
     resolve();
   }, [status, rpsCreatorPick, rpsJoinerPick, isCreator, joinerId, gameId, user]);
 
+  useEffect(() => {
+    if (disconnectCountdown !== 0 || !myMarker || !opponentId || status !== 'active') return;
+
+    const writeForfeit = async () => {
+      await supabase.from('games').update({
+        status: 'complete',
+        winner: myMarker,
+        forfeit_player_id: opponentId,
+      }).eq('id', gameId);
+    };
+
+    writeForfeit();
+  }, [disconnectCountdown, myMarker, opponentId, status, gameId]);
+
   const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
     if (!game || !user || !myMarker || status !== 'active') return false;
 
@@ -151,5 +210,5 @@ export const useOnlineGame = (gameId: string) => {
     return true;
   }, [game, user, myMarker, status, gameId]);
 
-  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator };
+  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, opponentId };
 };
