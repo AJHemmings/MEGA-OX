@@ -24,6 +24,7 @@ export const useOnlineGame = (gameId: string) => {
   const rpsResolutionSentRef = useRef(false);
   const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!user || !gameId) return;
@@ -109,8 +110,11 @@ export const useOnlineGame = (gameId: string) => {
         }
       });
 
+    channelRef.current = channel;
+
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
       if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
