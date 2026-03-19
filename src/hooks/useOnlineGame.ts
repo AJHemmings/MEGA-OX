@@ -49,7 +49,7 @@ export const useOnlineGame = (gameId: string) => {
     if (data.state && Object.keys(data.state).length > 0) {
       const g = deserializeGame(data.state as any);
       setGame(g);
-      localMoveCountRef.current = countMoves(data.state as SerializedState);
+      localMoveCountRef.current = countMoves(data.state as unknown as SerializedState);
     } else {
       setGame(new Game());
       localMoveCountRef.current = 0;
@@ -119,12 +119,12 @@ export const useOnlineGame = (gameId: string) => {
           }, 1000);
         }
       })
-      .on('broadcast', { event: 'move' }, (payload: { payload?: { state: SerializedState } }) => {
+      .on<{ state: SerializedState }>('broadcast', { event: 'move' }, (payload) => {
         if (payload.payload?.state) {
           setGame(deserializeGame(payload.payload.state));
         }
       })
-      .on('broadcast', { event: 'rematch' }, (payload: { payload?: { gameId: string } }) => {
+      .on<{ gameId: string }>('broadcast', { event: 'rematch' }, (payload) => {
         if (payload.payload?.gameId) {
           setRematchGameId(payload.payload.gameId);
         }

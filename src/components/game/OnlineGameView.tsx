@@ -131,7 +131,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     // Micro board won — check if any new winners appeared
     const currentWinners = game.macroBoard.microBoards.map(mb => mb.winner);
     currentWinners.forEach((w, i) => {
-      if (w && w !== '' && w !== prevMicroWinnersRef.current[i]) {
+      if (w && w !== prevMicroWinnersRef.current[i]) {
         playMicroBoardWon();
       }
     });

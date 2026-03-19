@@ -91,13 +91,13 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     if (!game) return;
     const currentWinners = game.macroBoard.microBoards.map(mb => mb.winner);
     currentWinners.forEach((w, i) => {
-      if (w && w !== '' && w !== prevMicroWinnersRef.current[i]) {
+      if (w && w !== prevMicroWinnersRef.current[i]) {
         playMicroBoardWon();
       }
     });
     prevMicroWinnersRef.current = currentWinners;
 
-    if (game.macroBoard.winner && game.macroBoard.winner !== '' && !gameWonFiredRef.current) {
+    if (game.macroBoard.winner && !gameWonFiredRef.current) {
       gameWonFiredRef.current = true;
       playGameWon();
     }
