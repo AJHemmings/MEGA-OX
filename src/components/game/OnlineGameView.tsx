@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useBlocker } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Marker } from '../../models/Game';
 import MacroBoard from '../MacroBoard';
 import PlayerIndicator from '../PlayerIndicator';
@@ -31,11 +33,13 @@ interface OnlineGameViewProps {
 
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown } = useOnlineGame(gameId);
 
   // Snapshot of picks captured when result screen opens — survives status change and draw clear
   const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
   const [wonByForfeit, setWonByForfeit] = useState(false);
+  const [showForfeitModal, setShowForfeitModal] = useState(false);
 
   // Open result screen: capture picks snapshot so it stays visible regardless of subsequent state changes
   useEffect(() => {
@@ -49,6 +53,37 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       setWonByForfeit(true);
     }
   }, [status, opponentConnected]);
+
+  const handleForfeit = useCallback(async () => {
+    if (!myMarker || !user) return;
+    await supabase.from('games').update({
+      status: 'complete',
+      winner: myMarker === 'X' ? 'O' : 'X',
+      forfeit_player_id: user.id,
+    }).eq('id', gameId);
+    navigate('/menu');
+  }, [myMarker, user, gameId, navigate]);
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      status === 'active' && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setShowForfeitModal(true);
+    }
+  }, [blocker.state]);
+
+  useEffect(() => {
+    if (status !== 'active') return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [status]);
 
   const handleRPSContinue = useCallback(() => setResultPicks(null), []);
   // RPSScreen's onResolved is now unused (resultPicks drives the result screen),
@@ -120,10 +155,47 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   return (
     <SkinProvider skins={defaultGameSkins}>
     <div style={{ maxWidth: 480, margin: '20px auto', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', textAlign: 'center', userSelect: 'none', padding: '20px', minHeight: '100vh', background: '#1a2332', color: '#ffffff' }}>
+      {showForfeitModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+          <div style={{ background: '#2a3441', borderRadius: '16px', padding: '32px', maxWidth: '320px', textAlign: 'center', border: '1px solid #ff6b35' }}>
+            <h3 style={{ color: '#fff', margin: '0 0 12px' }}>Leave game?</h3>
+            <p style={{ color: '#a0aec0', margin: '0 0 24px', fontSize: '14px' }}>
+              Leaving this game will forfeit it. Your opponent wins.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  if (blocker.state === 'blocked') blocker.reset?.();
+                  setShowForfeitModal(false);
+                }}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #3a4a5a', background: 'transparent', color: '#a0aec0', cursor: 'pointer' }}
+              >
+                Stay
+              </button>
+              <button
+                onClick={async () => {
+                  if (blocker.state === 'blocked') blocker.proceed?.();
+                  await handleForfeit();
+                }}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#ff6b35', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Forfeit & Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', backgroundColor: '#2a3441', padding: '15px 20px', borderRadius: '16px', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
         <button
-          onClick={() => navigate('/menu')}
+          onClick={() => {
+            if (status === 'active') {
+              setShowForfeitModal(true);
+            } else {
+              navigate('/menu');
+            }
+          }}
           style={{ padding: '10px 16px', fontSize: '14px', cursor: 'pointer', borderRadius: 12, border: '2px solid #ff6b35', backgroundColor: 'transparent', color: '#ff6b35', fontWeight: 'bold' }}
         >
           ← Menu
