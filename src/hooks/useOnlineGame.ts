@@ -32,35 +32,33 @@ export const useOnlineGame = (gameId: string) => {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  const fetchGameState = useCallback(async () => {
+    if (!user || !gameId) return;
+    const { data } = await supabase.from('games').select('*').eq('id', gameId).single();
+    if (!data) return;
+    setStatus(data.status as OnlineGameStatus);
+    setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
+    setWinner(data.winner);
+    setIsCreator(data.player_x_id === user.id);
+    setRpsCreatorPick(data.rps_creator_pick);
+    setRpsJoinerPick(data.rps_joiner_pick);
+    setJoinerId(data.player_o_id);
+    setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
+    if (data.state && Object.keys(data.state).length > 0) {
+      const g = deserializeGame(data.state as any);
+      setGame(g);
+      localMoveCountRef.current = countMoves(data.state as SerializedState);
+    } else {
+      setGame(new Game());
+      localMoveCountRef.current = 0;
+    }
+  }, [user, gameId]);
+
   useEffect(() => {
     if (!user || !gameId) return;
     rpsResolutionSentRef.current = false; // reset for each new game
 
-    // Load initial game state
-    const loadGame = async () => {
-      const { data } = await supabase.from('games').select('*').eq('id', gameId).single();
-      if (!data) return;
-
-      setStatus(data.status as OnlineGameStatus);
-      setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
-      setWinner(data.winner);
-      setIsCreator(data.player_x_id === user.id);
-      setRpsCreatorPick(data.rps_creator_pick);
-      setRpsJoinerPick(data.rps_joiner_pick);
-      setJoinerId(data.player_o_id);
-      setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
-
-      if (data.state && Object.keys(data.state).length > 0) {
-        const g = deserializeGame(data.state as any);
-        setGame(g);
-        localMoveCountRef.current = countMoves(data.state);
-      } else {
-        setGame(new Game());
-        localMoveCountRef.current = 0;
-      }
-    };
-
-    loadGame();
+    fetchGameState();
 
     // Subscribe to realtime changes on this game row
     const channel = supabase
@@ -100,6 +98,7 @@ export const useOnlineGame = (gameId: string) => {
             countdownIntervalRef.current = null;
           }
           setDisconnectCountdown(null);
+          fetchGameState();
         }
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: any[] }) => {
@@ -137,7 +136,7 @@ export const useOnlineGame = (gameId: string) => {
       if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
-  }, [gameId, user]);
+  }, [gameId, user, fetchGameState]);
 
   // Only the creator resolves RPS to avoid a write race condition.
   // rpsResolutionSentRef guards against the effect re-firing (while Realtime hasn't
