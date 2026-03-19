@@ -31,10 +31,11 @@ interface OnlineGameViewProps {
 
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
-  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown } = useOnlineGame(gameId);
 
   // Snapshot of picks captured when result screen opens — survives status change and draw clear
   const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
+  const [wonByForfeit, setWonByForfeit] = useState(false);
 
   // Open result screen: capture picks snapshot so it stays visible regardless of subsequent state changes
   useEffect(() => {
@@ -42,6 +43,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       setResultPicks({ creator: rpsCreatorPick as RPSPick, joiner: rpsJoinerPick as RPSPick });
     }
   }, [rpsCreatorPick, rpsJoinerPick, status]);
+
+  useEffect(() => {
+    if (status === 'complete' && !opponentConnected) {
+      setWonByForfeit(true);
+    }
+  }, [status, opponentConnected]);
 
   const handleRPSContinue = useCallback(() => setResultPicks(null), []);
   // RPSScreen's onResolved is now unused (resultPicks drives the result screen),
@@ -136,6 +143,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         </strong>
       </div>
 
+      {!opponentConnected && disconnectCountdown !== null && status === 'active' && (
+        <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#ff6b3520', border: '1px solid #ff6b35', borderRadius: '10px', color: '#ff6b35', fontSize: '14px' }}>
+          Opponent disconnected — forfeiting in {disconnectCountdown}s
+        </div>
+      )}
+
       <PlayerIndicator
         currentPlayer={isMyTurn ? `You (${myMarker})` : `Opponent (${myMarker === 'X' ? 'O' : 'X'})`}
         playerScores={{ X: game.winCounts[Marker.X], O: game.winCounts[Marker.O] }}
@@ -152,7 +165,9 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
       {status === 'complete' && (
         <div style={{ marginTop: 20, fontWeight: 'bold', fontSize: '20px', padding: '25px', backgroundColor: '#2a3441', borderRadius: '16px', border: '3px solid #00d4aa', color: '#00d4aa', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
-          {getWinnerText()}
+          {wonByForfeit && winner === myMarker
+            ? 'Your opponent disconnected. You win!'
+            : getWinnerText()}
           <div>
             <button
               onClick={() => navigate('/menu')}
