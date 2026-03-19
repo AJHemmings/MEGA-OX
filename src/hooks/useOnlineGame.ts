@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Game } from '../models/Game';
-import { deserializeGame, serializeGame } from '../lib/gameSerializer';
+import { deserializeGame, serializeGame, SerializedState } from '../lib/gameSerializer';
 import { useAuth } from '../contexts/AuthContext';
 import { resolveRPS, RPSPick } from '../lib/rps';
 
@@ -104,7 +104,7 @@ export const useOnlineGame = (gameId: string) => {
           }, 1000);
         }
       })
-      .on('broadcast', { event: 'move' }, (payload: { payload: { state: any } }) => {
+      .on('broadcast', { event: 'move' }, (payload: { payload?: { state: SerializedState } }) => {
         if (payload.payload?.state) {
           setGame(deserializeGame(payload.payload.state));
         }
