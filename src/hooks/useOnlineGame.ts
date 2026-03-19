@@ -22,9 +22,15 @@ export const useOnlineGame = (gameId: string) => {
   const [opponentId, setOpponentId] = useState<string | null>(null);
   // Prevents double-resolution if the effect fires again before Realtime returns status='active'
   const rpsResolutionSentRef = useRef(false);
+  const localMoveCountRef = useRef(0);
   const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const countMoves = (state: any): number => {
+    if (!state?.boards) return 0;
+    return state.boards.flat().filter((m: string) => m !== '').length;
+  };
 
   useEffect(() => {
     if (!user || !gameId) return;
@@ -45,9 +51,12 @@ export const useOnlineGame = (gameId: string) => {
       setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
 
       if (data.state && Object.keys(data.state).length > 0) {
-        setGame(deserializeGame(data.state as any));
+        const g = deserializeGame(data.state as any);
+        setGame(g);
+        localMoveCountRef.current = countMoves(data.state);
       } else {
         setGame(new Game());
+        localMoveCountRef.current = 0;
       }
     };
 
@@ -70,7 +79,12 @@ export const useOnlineGame = (gameId: string) => {
         setRpsJoinerPick(updated.rps_joiner_pick);
         if (updated.player_o_id) setJoinerId(updated.player_o_id);
         if (updated.state && Object.keys(updated.state).length > 0) {
-          setGame(deserializeGame(updated.state));
+          // Only apply if the DB state is at least as current as our local state
+          const dbMoveCount = countMoves(updated.state);
+          if (dbMoveCount >= localMoveCountRef.current) {
+            setGame(deserializeGame(updated.state));
+            localMoveCountRef.current = dbMoveCount;
+          }
         }
       })
       .on('presence', { event: 'join' }, ({ newPresences }: { newPresences: any[] }) => {
@@ -190,6 +204,8 @@ export const useOnlineGame = (gameId: string) => {
     const gameCopy = deserializeGame(serializeGame(game));
     const placed = gameCopy.placeMarker(microBoardIndex, cellIndex);
     if (!placed) return false;
+
+    localMoveCountRef.current += 1;
 
     const newState = serializeGame(gameCopy);
     const isOver = gameCopy.isGameOver();
