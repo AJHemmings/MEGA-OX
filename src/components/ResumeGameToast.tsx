@@ -1,13 +1,29 @@
-import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveGame } from '../hooks/useActiveGame';
 
 const ResumeGameToast: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams<{ id?: string }>();
   const { activeGameId, forfeitedGameId } = useActiveGame(user?.id ?? null);
+
+  const [showForfeitToast, setShowForfeitToast] = useState(false);
+
+  // Show forfeit toast when forfeitedGameId appears, auto-dismiss after 5s
+  useEffect(() => {
+    if (!forfeitedGameId) return;
+    setShowForfeitToast(true);
+    const timer = setTimeout(() => setShowForfeitToast(false), 5000);
+    return () => clearTimeout(timer);
+  }, [forfeitedGameId]);
+
+  // Dismiss forfeit toast on route change
+  useEffect(() => {
+    setShowForfeitToast(false);
+  }, [location.pathname]);
 
   // Don't show resume toast if already on that game's screen
   const isOnActiveGame = params.id && params.id === activeGameId;
@@ -42,7 +58,7 @@ const ResumeGameToast: React.FC = () => {
     );
   }
 
-  if (forfeitedGameId) {
+  if (showForfeitToast) {
     return (
       <div style={{ ...toastStyle, border: '1px solid #ff6b35' }}>
         <p style={{ margin: 0, fontSize: '14px', color: '#a0aec0' }}>

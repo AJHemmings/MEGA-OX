@@ -47,5 +47,26 @@ export const useActiveGame = (userId: string | null): ActiveGameResult => {
     check();
   }, [userId]);
 
+  // If we have an active game, subscribe to it and clear when it completes
+  useEffect(() => {
+    if (!activeGameId) return;
+
+    const channel = supabase
+      .channel(`active-game-watch:${activeGameId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'games',
+        filter: `id=eq.${activeGameId}`,
+      }, (payload) => {
+        if ((payload.new as any).status === 'complete') {
+          setActiveGameId(null);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeGameId]);
+
   return { activeGameId, forfeitedGameId };
 };
