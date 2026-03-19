@@ -4,11 +4,11 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Disconnect handling is **implemented and in live testing** on the private Vercel deployment.
+> "I've read the handover. Broadcast sync, audio notifications, and Play Again are **implemented and awaiting live testing** on the private Vercel deployment.
 >
-> The branch `feat/disconnect-handling` is in the worktree. Tasks 1–6 are complete. Task 7 (this doc) is done.
+> The branch `feat/disconnect-handling` is in the worktree. All implementation tasks are complete and the build passes.
 >
-> The immediate next step depends on testing results — fix any bugs reported, then merge.
+> The immediate next step is live testing — see `docs/plans/2026-03-19-testing-benchmarks.md`. Fix any bugs reported, then merge.
 >
 > Ready when you are."
 
@@ -29,6 +29,8 @@ Read this file in full, then say:
 
 **`main` branch:** Do NOT push to `origin/main` without explicit instruction.
 
+**Build status:** ✅ Passing — `npm run build` clean as of commit `40fe5b3`.
+
 ---
 
 ## What is built and working
@@ -45,11 +47,38 @@ Read this file in full, then say:
 | Network multiplayer | Working — RPS turn-order fully debugged |
 | Skin system scaffolding (Phase 2) | Done |
 | User profiles, leaderboard, stat tracking | Done |
-| Disconnect handling (Phase 3 prereq) | **Implemented — in live testing** |
+| Disconnect handling | Done — Presence + grace period + forfeit |
+| Broadcast move sync | **Implemented — awaiting live testing** |
+| Audio notifications | **Implemented — awaiting live testing** |
+| Play Again (online) | **Implemented — awaiting live testing** |
 
 ---
 
-## Disconnect handling — what was built
+## Broadcast sync, audio & Play Again — what was built (this session)
+
+### Broadcast sync (`useOnlineGame.ts`)
+- `channelRef` stores the Realtime channel so `placeMarker` can broadcast from outside the `useEffect`
+- Channel created with `{ config: { broadcast: { self: false } } }` — prevents echo back to sender
+- `.on('broadcast', { event: 'move' }, ...)` handler applies opponent moves instantly via `setGame`
+- `placeMarker` now: (1) updates local state immediately, (2) broadcasts full game state, (3) writes to DB fire-and-forget
+- `localMoveCountRef` + `countMoves()` guard prevents stale `postgres_changes` events from overwriting newer broadcast state
+- `fetchGameState` useCallback (replaces inline `loadGame`) re-fetches from DB on mount and on Presence join (reconnect)
+
+### Audio notifications (`src/lib/sounds.ts`, `OnlineGameView.tsx`, `GameWrapper.tsx`)
+- Web Audio API — no audio files. `AudioContext` lazily created on first sound call
+- Sounds: short click (marker placed), two-note chime (your turn), three-note fanfare (micro board won), four-note arpeggio (game won), descending tone (game lost)
+- Online: cell-count diff triggers marker sound (not raw state change, avoids reconnect noise). Turn chime gated by `hasGameStartedRef` so it doesn't fire on mount
+- Local/AI: `playMarkerPlaced` on confirmed move, `gameWonFiredRef` prevents win sound replaying after restart
+
+### Play Again (`useOnlineGame.ts`, `OnlineGameView.tsx`)
+- `requestRematch` creates a new game in DB (status: 'rps', players swapped by `myMarker`), broadcasts new game ID
+- Both players navigate automatically via `useEffect` watching `rematchGameId`
+- Play Again button hidden when `wonByForfeit` (opponent disconnected — no one to receive broadcast)
+- No DB schema changes required
+
+---
+
+## Disconnect handling — what was built (previous session)
 
 ### DB change
 - `forfeit_player_id uuid REFERENCES auth.users(id)` added to `games` table
@@ -109,6 +138,9 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 - **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` state but not yet passed to `GameWrapper`. Phase 6 will wire this.
 - **Skins tables in Supabase have no RLS policies** — fine for Phase 2, needed in Phase 3.
 - **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active` indefinitely. Acceptable for this phase; cleanup job planned for Phase 7.
+- **`isCreator` in `useOnlineGame`** — this variable actually means "is currently player X" (set from `player_x_id === user.id`), not "was the original game creator". Renaming to `isPlayerX` would make the codebase honest. Low priority, no user-facing impact.
+- **Play Again — both players click simultaneously** — creates two new game rows, each player navigates to the game they created. Acceptable edge case for now.
+- **`game_moves` table `move_number` is always 0** — full move history tracking deferred.
 
 ---
 
@@ -127,16 +159,22 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | --- | --- |
 | `src/models/Game.ts` | Core game logic — OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
-| `src/hooks/useOnlineGame.ts` | Online game state — Realtime, RPS, Presence, disconnect |
+| `src/models/Game.ts` | Core game logic — OOP, no React |
+| `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
+| `src/hooks/useOnlineGame.ts` | Online game state — Realtime broadcast, RPS, Presence, disconnect, Play Again |
 | `src/hooks/useActiveGame.ts` | Active/forfeited game detection — re-queries on navigation |
+| `src/lib/sounds.ts` | Web Audio API sound effects — all 5 game sounds |
+| `src/lib/gameSerializer.ts` | `serializeGame` / `deserializeGame` + `SerializedState` type |
 | `src/components/ResumeGameToast.tsx` | Resume + forfeit toast component |
-| `src/components/game/OnlineGameView.tsx` | Online game UI — disconnect banner, forfeit modal |
+| `src/components/game/OnlineGameView.tsx` | Online game UI — disconnect banner, forfeit modal, Play Again, audio |
+| `src/components/GameWrapper.tsx` | Local/AI game UI — audio wired here |
 | `src/App.tsx` | React Router v7. All routes. |
 | `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
 | `src/contexts/SkinContext.tsx` | Skin context (Phase 2) |
 | `src/contexts/AuthContext.tsx` | Auth state |
 | `src/lib/rps.ts` | RPS logic — pure functions |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap |
+| `docs/plans/2026-03-19-testing-benchmarks.md` | Live testing checklist — run before merge |
 
 ---
 
