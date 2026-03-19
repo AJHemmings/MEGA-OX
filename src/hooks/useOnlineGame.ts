@@ -55,7 +55,7 @@ export const useOnlineGame = (gameId: string) => {
 
     // Subscribe to realtime changes on this game row
     const channel = supabase
-      .channel(`game:${gameId}`)
+      .channel(`game:${gameId}`, { config: { broadcast: { self: false } } })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
@@ -183,7 +183,6 @@ export const useOnlineGame = (gameId: string) => {
   const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
     if (!game || !user || !myMarker || status !== 'active') return false;
 
-    // Validate it's our turn
     const isMyTurn = (myMarker === 'X' && game.currentPlayerIndex === 0) ||
                      (myMarker === 'O' && game.currentPlayerIndex === 1);
     if (!isMyTurn) return false;
@@ -194,27 +193,38 @@ export const useOnlineGame = (gameId: string) => {
 
     const newState = serializeGame(gameCopy);
     const isOver = gameCopy.isGameOver();
-    const winnerValue = isOver
-      ? gameCopy.macroBoard.winner || 'draw'
-      : null;
+    const winnerValue = isOver ? gameCopy.macroBoard.winner || 'draw' : null;
 
-    // Write new state to DB — Realtime will push it to opponent
-    await supabase.from('games').update({
+    // 1. Update local state immediately — no waiting for DB round-trip
+    setGame(gameCopy);
+
+    // 2. Broadcast to opponent via channel (fast path)
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'move',
+      payload: { state: newState },
+    });
+
+    // 3. Write to DB async — authoritative checkpoint, not the sync mechanism
+    supabase.from('games').update({
       state: newState as any,
       next_player: gameCopy.currentPlayer.marker,
       next_micro_board: gameCopy.nextMicroBoardIndex,
       status: isOver ? 'complete' : 'active',
       winner: winnerValue,
-    }).eq('id', gameId);
-
-    // Append to move log
-    await supabase.from('game_moves').insert({
-      game_id: gameId,
-      player_id: user.id,
-      micro_board_index: microBoardIndex,
-      cell_index: cellIndex,
-      move_number: 0, // TODO: track move number
+    }).eq('id', gameId).then(({ error }) => {
+      if (error) console.error('Move DB write failed:', error.message);
     });
+
+    if (isOver) {
+      await supabase.from('game_moves').insert({
+        game_id: gameId,
+        player_id: user.id,
+        micro_board_index: microBoardIndex,
+        cell_index: cellIndex,
+        move_number: 0,
+      });
+    }
 
     return true;
   }, [game, user, myMarker, status, gameId]);
