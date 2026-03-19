@@ -51,6 +51,8 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const prevMicroWinnersRef = useRef<string[]>([]);
   const prevIsMyTurnRef = useRef<boolean>(false);
   const prevStatusRef = useRef<string>('loading');
+  const prevCellCountRef = useRef<number>(0);
+  const hasGameStartedRef = useRef<boolean>(false);
 
   // Open result screen: capture picks snapshot so it stays visible regardless of subsequent state changes
   useEffect(() => {
@@ -100,10 +102,25 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   useEffect(() => {
     if (!game || !myMarker) return;
 
-    // Marker placed — fires for both players on any state change during active game
-    if (status === 'active' && prevStatusRef.current === 'active') {
+    // Seed initial state on first active render so sounds don't fire on mount
+    const currentIsMyTurn =
+      (myMarker === 'X' && game.currentPlayerIndex === 0) ||
+      (myMarker === 'O' && game.currentPlayerIndex === 1);
+
+    if (status === 'active' && !hasGameStartedRef.current) {
+      hasGameStartedRef.current = true;
+      prevIsMyTurnRef.current = currentIsMyTurn; // seed so first turn doesn't fire
+      prevCellCountRef.current = game.macroBoard.microBoards
+        .reduce((total, mb) => total + mb.cells.filter(c => c.marker !== Marker.None).length, 0);
+    }
+
+    // Marker placed — only fire when total filled cells increases by exactly 1
+    const currentCellCount = game.macroBoard.microBoards
+      .reduce((total, mb) => total + mb.cells.filter(c => c.marker !== Marker.None).length, 0);
+    if (status === 'active' && currentCellCount === prevCellCountRef.current + 1) {
       playMarkerPlaced();
     }
+    prevCellCountRef.current = currentCellCount;
 
     // Micro board won — check if any new winners appeared
     const currentWinners = game.macroBoard.microBoards.map(mb => mb.winner);
@@ -114,11 +131,8 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     });
     prevMicroWinnersRef.current = currentWinners;
 
-    // Your turn
-    const currentIsMyTurn =
-      (myMarker === 'X' && game.currentPlayerIndex === 0) ||
-      (myMarker === 'O' && game.currentPlayerIndex === 1);
-    if (currentIsMyTurn && !prevIsMyTurnRef.current && status === 'active') {
+    // Your turn — only fire after game has started (not on mount)
+    if (hasGameStartedRef.current && currentIsMyTurn && !prevIsMyTurnRef.current && status === 'active') {
       playYourTurn();
     }
     prevIsMyTurnRef.current = currentIsMyTurn;

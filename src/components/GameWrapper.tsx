@@ -104,6 +104,8 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   }, [game]);
 
   const handleRestart = () => {
+    gameWonFiredRef.current = false;
+    prevMicroWinnersRef.current = [];
     resetGame();
   };
 
