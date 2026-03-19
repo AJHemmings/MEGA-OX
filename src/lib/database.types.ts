@@ -176,6 +176,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          forfeit_player_id?: string | null
           game_code?: string | null
           id?: string
           match_type?: string
