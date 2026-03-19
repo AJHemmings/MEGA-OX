@@ -49,6 +49,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   }));
 
   // AI logic for single player mode
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (
       gameMode === "single" &&

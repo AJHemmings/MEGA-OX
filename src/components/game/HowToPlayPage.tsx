@@ -189,6 +189,7 @@ const HowToPlayPage: React.FC = () => {
       arrowRef.current?.remove();
       introRef.current?.exit(true);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentional: runs once — `steps` is stable because `mode` comes from
           // a URL param and cannot change without unmounting this component.
 
