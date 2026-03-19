@@ -157,6 +157,7 @@ export type Database = {
       games: {
         Row: {
           created_at: string | null
+          forfeit_player_id: string | null
           game_code: string | null
           id: string
           match_type: string
@@ -193,6 +194,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          forfeit_player_id?: string | null
           game_code?: string | null
           id?: string
           match_type?: string
