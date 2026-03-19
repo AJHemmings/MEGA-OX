@@ -3,27 +3,32 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveGame } from '../hooks/useActiveGame';
 
+// Tracks forfeit game IDs already shown this session so refresh doesn't re-show them
+const SHOWN_FORFEIT_KEY = 'shownForfeitGameId';
+
 const ResumeGameToast: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams<{ id?: string }>();
-  const { activeGameId, forfeitedGameId } = useActiveGame(user?.id ?? null);
+  const { activeGameId, forfeitedGameId } = useActiveGame(user?.id ?? null, location.pathname);
 
   const [showForfeitToast, setShowForfeitToast] = useState(false);
 
-  // Show forfeit toast when forfeitedGameId appears, auto-dismiss after 5s
+  // Only show forfeit notification on the main menu, once per game ID
   useEffect(() => {
-    if (!forfeitedGameId) return;
+    if (!forfeitedGameId || location.pathname !== '/menu') {
+      setShowForfeitToast(false);
+      return;
+    }
+    const alreadyShown = sessionStorage.getItem(SHOWN_FORFEIT_KEY) === forfeitedGameId;
+    if (alreadyShown) return;
+
     setShowForfeitToast(true);
+    sessionStorage.setItem(SHOWN_FORFEIT_KEY, forfeitedGameId);
     const timer = setTimeout(() => setShowForfeitToast(false), 5000);
     return () => clearTimeout(timer);
-  }, [forfeitedGameId]);
-
-  // Dismiss forfeit toast on route change
-  useEffect(() => {
-    setShowForfeitToast(false);
-  }, [location.pathname]);
+  }, [forfeitedGameId, location.pathname]);
 
   // Don't show resume toast if already on that game's screen
   const isOnActiveGame = params.id && params.id === activeGameId;

@@ -6,10 +6,11 @@ export interface ActiveGameResult {
   forfeitedGameId: string | null;
 }
 
-export const useActiveGame = (userId: string | null): ActiveGameResult => {
+export const useActiveGame = (userId: string | null, pathname: string): ActiveGameResult => {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [forfeitedGameId, setForfeitedGameId] = useState<string | null>(null);
 
+  // Re-query on every navigation so forfeit/active state is always fresh
   useEffect(() => {
     if (!userId) return;
 
@@ -23,8 +24,10 @@ export const useActiveGame = (userId: string | null): ActiveGameResult => {
         .limit(1)
         .maybeSingle();
 
+      setActiveGameId(active ? active.id : null);
+
       if (active) {
-        setActiveGameId(active.id);
+        setForfeitedGameId(null);
         return;
       }
 
@@ -39,13 +42,11 @@ export const useActiveGame = (userId: string | null): ActiveGameResult => {
         .limit(1)
         .maybeSingle();
 
-      if (forfeited) {
-        setForfeitedGameId(forfeited.id);
-      }
+      setForfeitedGameId(forfeited ? forfeited.id : null);
     };
 
     check();
-  }, [userId]);
+  }, [userId, pathname]);
 
   // If we have an active game, subscribe to it and clear when it completes
   useEffect(() => {
