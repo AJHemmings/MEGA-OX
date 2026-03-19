@@ -256,15 +256,14 @@ export const useOnlineGame = (gameId: string) => {
   const requestRematch = useCallback(async () => {
     if (!user || !opponentId) return;
 
-    // Swap who goes first — creator becomes joiner in the next game
-    const newPlayerX = isCreator ? opponentId : user.id;
-    const newPlayerO = isCreator ? user.id : opponentId;
+    // Swap who goes first — whoever was X becomes O in the next game
+    const newPlayerX = myMarker === 'X' ? opponentId : user.id;
+    const newPlayerO = myMarker === 'X' ? user.id : opponentId;
 
     const { data, error } = await supabase.from('games').insert({
       player_x_id: newPlayerX,
       player_o_id: newPlayerO,
       status: 'rps',
-      created_by: user.id,
     }).select('id').single();
 
     if (error || !data) {
@@ -280,7 +279,7 @@ export const useOnlineGame = (gameId: string) => {
     });
 
     setRematchGameId(data.id);
-  }, [user, opponentId, isCreator]);
+  }, [user, opponentId, myMarker]);
 
   return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, opponentId, rematchGameId, requestRematch };
 };

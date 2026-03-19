@@ -305,12 +305,14 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
             ? 'Your opponent disconnected. You win!'
             : getWinnerText()}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={requestRematch}
-              style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: '#00d4aa', fontWeight: 'bold' }}
-            >
-              Play Again
-            </button>
+            {!wonByForfeit && (
+              <button
+                onClick={requestRematch}
+                style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: '#00d4aa', fontWeight: 'bold' }}
+              >
+                Play Again
+              </button>
+            )}
             <button
               onClick={() => navigate('/menu')}
               style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
