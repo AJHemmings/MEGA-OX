@@ -104,6 +104,11 @@ export const useOnlineGame = (gameId: string) => {
           }, 1000);
         }
       })
+      .on('broadcast', { event: 'move' }, (payload: { payload: { state: any } }) => {
+        if (payload.payload?.state) {
+          setGame(deserializeGame(payload.payload.state));
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ user_id: user.id });
