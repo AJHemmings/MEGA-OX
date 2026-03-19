@@ -4,10 +4,11 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Phase 2 (skin system + RPS turn-order) is **complete and working**.
-> The branch `feat/phase-2-skins` in the worktree is ready to merge.
+> "I've read the handover. Disconnect handling is **implemented and in live testing** on the private Vercel deployment.
 >
-> The immediate next step is to merge into `main`.
+> The branch `feat/disconnect-handling` is in the worktree. Tasks 1–6 are complete. Task 7 (this doc) is done.
+>
+> The immediate next step depends on testing results — fix any bugs reported, then merge.
 >
 > Ready when you are."
 
@@ -15,11 +16,18 @@ Read this file in full, then say:
 
 ## Current state
 
-**Active branch:** `feat/phase-2-skins`
-**Worktree path:** `F:\Projects\MEGA-OX\.worktrees\feat-phase-2-skins`
-**Dev server:** `cd` into worktree, run `PORT=3002 npm start` (3000/3001 may be taken by main project)
+**Active branch:** `feat/disconnect-handling`
+**Worktree path:** `F:\Projects\MEGA-OX\.worktrees\feat-disconnect-handling`
+**Parent branch:** `feat/phase-2-skins` (Phase 2 complete, not yet merged to local `main`)
 
-**`main` branch:** Clean. Do NOT push to `origin/main` without explicit user instruction.
+**Private Vercel (testing):** `mega-ox-dev-git-feat-disconnect-8ee57f-adams-projects-ff804fb2.vercel.app`
+— Project: `mega-ox-dev` (prj_ax0KSF6QTW1EMnAdtDa9HesZWCub), Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
+— Deployment protection: **disabled** (turned off for testing)
+— Connected to: `AJHemmings/MEGA-OX-private`, branch `feat/disconnect-handling`
+
+**Public Vercel (`mega-ox`):** Portfolio/CV version. Leave alone.
+
+**`main` branch:** Do NOT push to `origin/main` without explicit instruction.
 
 ---
 
@@ -35,8 +43,45 @@ Read this file in full, then say:
 | Single player vs AI (Easy / Medium / Hard) | Done — Phase 1 complete |
 | Local 2-player | Done |
 | Network multiplayer | Working — RPS turn-order fully debugged |
-| Skin system scaffolding (Phase 2) | Done — placeholder-first, Lottie hooks wired |
+| Skin system scaffolding (Phase 2) | Done |
 | User profiles, leaderboard, stat tracking | Done |
+| Disconnect handling (Phase 3 prereq) | **Implemented — in live testing** |
+
+---
+
+## Disconnect handling — what was built
+
+### DB change
+- `forfeit_player_id uuid REFERENCES auth.users(id)` added to `games` table
+- Migration applied to Supabase (`supabase/migrations/20260319000001_disconnect_forfeit.sql`)
+- `src/lib/database.types.ts` updated with `forfeit_player_id: string | null`
+
+### New files
+| File | Purpose |
+| --- | --- |
+| `src/hooks/useActiveGame.ts` | Queries for active/forfeited games on every navigation. Re-queries on pathname change so state is always fresh. |
+| `src/components/ResumeGameToast.tsx` | Fixed-position toast — "Resume Game" for active games (all protected routes), forfeit notification only on `/menu`. |
+
+### Modified files
+| File | Change |
+| --- | --- |
+| `src/hooks/useOnlineGame.ts` | Added Supabase Presence tracking, 90s countdown, forfeit write on expiry. Exposes `opponentConnected`, `disconnectCountdown`, `opponentId`. |
+| `src/components/game/OnlineGameView.tsx` | Disconnect banner, forfeit win modal, forfeit confirmation modal, `popstate` browser-back interception, `beforeunload` handler. |
+| `src/components/layout/ProtectedRoute.tsx` | Renders `<ResumeGameToast />` alongside `<Outlet />`. |
+
+### How it works
+- **Presence:** Both players track via Supabase Realtime Presence on the same `game:${gameId}` channel. Leave event starts 90s countdown. Join event cancels it.
+- **Auto-forfeit:** Waiting player's client writes forfeit on countdown expiry (`status: complete`, `winner: myMarker`, `forfeit_player_id: opponentId`).
+- **Intentional exit:** `← Menu` button + browser back (`popstate`) both show a confirmation modal. Confirmed → immediate forfeit write + navigate.
+- **Tab close:** `beforeunload` shows native browser prompt. If closed, Presence handles it (90s timer on opponent's side).
+- **Resume toast:** `useActiveGame` queries on every navigation. Active game → "Resume Game" toast on all protected screens. Dismissed when user is already on that game screen.
+- **Forfeit notification:** Shows once on `/menu` per forfeit game ID (tracked in `sessionStorage`). Auto-dismisses after 5s.
+- **Winner's toast clears:** `useActiveGame` subscribes to the active game via Realtime. When forfeit flips status to `complete`, `activeGameId` is cleared immediately.
+
+### Key decisions
+- `useBlocker` (React Router) is NOT used — app uses `<BrowserRouter>`, not a data router. `popstate` used instead.
+- Forfeit is written by the **waiting player's client**, not a server function.
+- Forfeit notification uses `sessionStorage` (not DB) to track "shown" state — no extra writes.
 
 ---
 
@@ -46,109 +91,33 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
 | Phase | Area | Status |
 | --- | --- | --- |
-| 0 | Infrastructure and cost planning | Brief written — awaiting AI model responses |
+| 0 | Infrastructure and cost planning | Brief written |
 | 1 | AI improvement (Easy / Medium / Hard) | **Complete and merged** |
-| 2 | Skin system code refactor | **Complete — ready to merge** |
+| 2 | Skin system code refactor | **Complete — awaiting merge** |
 | 3 | Player progression + achievements + virtual currency | Not started |
 | 4 | Profile customisation + emoji communication | Not started |
-| 5 | Visual redesign (full pass once all screens exist) | Not started |
+| 5 | Visual redesign | Not started |
 | 6 | Cash shop | Not started |
 | 7 | Admin dashboard | Not started |
 | 8 | Bug report system | Not started |
 
 ---
 
-## Where we left off
+## Known issues / pending
 
-### Phase 2 is complete — merge to main
-
-Everything on `feat/phase-2-skins` is working. To merge:
-
-```bash
-cd F:/Projects/MEGA-OX   # main project directory (not worktree)
-git merge feat/phase-2-skins
-```
-
-Then clean up the worktree:
-```bash
-git worktree remove .worktrees/feat-phase-2-skins
-git branch -d feat/phase-2-skins
-```
+- **`useLoginStreak.ts` line 31** — swap `.single()` to `.maybeSingle()` to silence 406 errors when no reward exists for streak day. Low priority, deferred.
+- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` state but not yet passed to `GameWrapper`. Phase 6 will wire this.
+- **Skins tables in Supabase have no RLS policies** — fine for Phase 2, needed in Phase 3.
+- **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active` indefinitely. Acceptable for this phase; cleanup job planned for Phase 7.
 
 ---
 
-## What Phase 2 built
+## Merge order (when testing is done)
 
-### Skin system scaffolding
-
-**New files:**
-| File | Purpose |
-| --- | --- |
-| `src/skins/types.ts` | `SkinAsset`, `GameSkins`, `SkinEvent` types |
-| `src/skins/defaults.ts` | 5 default placeholder skins |
-| `src/contexts/SkinContext.tsx` | React context — provides `GameSkins` to board tree |
-| `src/components/skins/MarkerSkin.tsx` | Renders X/O marker (placeholder = styled span; Phase 5 = Lottie) |
-| `src/components/skins/WonBoardSkin.tsx` | Renders won-board overlay (placeholder = tinted div) |
-| `src/components/skins/BoardSkin.tsx` | Renders board background (placeholder = transparent wrapper) |
-
-**Modified files:**
-- `src/components/Cell.tsx` — uses `MarkerSkin` instead of raw string
-- `src/components/MicroBoard.tsx` — uses `WonBoardSkin` overlay
-- `src/components/MacroBoard.tsx` — uses `BoardSkin` wrapper
-
-All skin components use `assetUrl: 'placeholder'` in Phase 2. The Lottie branch is wired but dead code until Phase 5.
-
-### RPS turn-order (online multiplayer)
-
-**New files:**
-| File | Purpose |
-| --- | --- |
-| `src/lib/rps.ts` | `resolveRPS`, `randomRPSPick` — pure functions |
-| `src/components/game/RPSScreen.tsx` | Online RPS pick UI — writes pick to Supabase |
-| `src/components/game/RPSResultScreen.tsx` | Shows both picks + outcome for 3s, then auto-dismisses |
-| `src/components/game/LocalRPSScreen.tsx` | Local 2-player RPS (random picks, re-picks on draw) |
-
-**Modified files:**
-- `src/hooks/useOnlineGame.ts` — manages RPS state, creator-only resolution, `rpsResolutionSentRef` guard
-- `src/components/game/OnlineGameView.tsx` — RPS screen routing, `resultPicks` snapshot
-- `src/components/game/MatchmakingPage.tsx` — `joinGame` sets `status: 'rps'`
-- `src/App.tsx` — `LocalGameRoute` gates `GameWrapper` behind `LocalRPSScreen`
-- `src/lib/database.types.ts` — added `rps_creator_pick`, `rps_joiner_pick` fields
-
-**New Supabase migrations (applied to remote):**
-| File | Purpose |
-| --- | --- |
-| `supabase/migrations/20260318000001_skins.sql` | Creates `skins`, `user_skins`, `user_equipped_skins` tables + 5 seed rows |
-| `supabase/migrations/20260318000002_games_rps.sql` | Adds `rps_creator_pick TEXT`, `rps_joiner_pick TEXT` columns to `games` |
-| `supabase/migrations/20260318000003_games_rps_status.sql` | Adds `'rps'` to `games.status` CHECK constraint |
-
-### How RPS works (online)
-
-1. Joiner sets `status: 'rps'` when they join the game.
-2. Both players see `RPSScreen` — each writes their pick to `rps_creator_pick` / `rps_joiner_pick`.
-3. `OnlineGameView` watches for both picks via `rpsCreatorPick` + `rpsJoinerPick` in state. When both arrive, `resultPicks` snapshot is captured → `RPSResultScreen` shows for 3s.
-4. In `useOnlineGame`, only the creator (`isCreator=true`) resolves. A `rpsResolutionSentRef` prevents double-resolution (the key bug that was fixed).
-5. If p2 wins: creator swaps `player_x_id` ↔ `player_o_id` so joiner becomes X (goes first). `myMarker` is updated from Realtime.
-6. If draw: creator clears both picks (ref reset to allow re-pick), both players pick again.
-
----
-
-## Known issues / next-session notes
-
-- **`p1GoesFirst` from `LocalRPSScreen` is stored in `App.tsx` state** but NOT yet passed to `GameWrapper`. Phase 6 will wire this — the comment `// Phase 6 will wire p1GoesFirst` is in `App.tsx`.
-- **`myMarker` after RPS swap**: now updated from Realtime in `useOnlineGame.ts` (fixed this session), but not tested after a p2-wins outcome. Worth a smoke test.
-- **Skins tables in Supabase have no RLS policies yet** — the `20260318000001_skins.sql` creates the tables but doesn't add policies. This is fine for Phase 2 (no client reads/writes). Needs policies in Phase 3 when the shop is built.
-
----
-
-## Key design decisions already made
-
-- Visual redesign is Phase 5, not earlier.
-- Skin system split: code refactor (Phase 2) vs visual art (Phase 5).
-- Progression, achievements, currency are one phase (Phase 3).
-- Hand-coded AI only (minimax + alpha-beta pruning for Hard).
-- Creator-only RPS resolution to prevent write race conditions.
-- `assetUrl: 'placeholder'` string is the sentinel for "use fallback render" in all skin components.
+1. Merge `feat/disconnect-handling` → `feat/phase-2-skins` (it branched from there)
+2. Merge `feat/phase-2-skins` → local `main`
+3. Push local `main` → `private/main` (triggers production Vercel build)
+4. Optionally push to `origin/main` (public portfolio) — user decides
 
 ---
 
@@ -158,17 +127,16 @@ All skin components use `assetUrl: 'placeholder'` in Phase 2. The Lottie branch 
 | --- | --- |
 | `src/models/Game.ts` | Core game logic — OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
-| `src/hooks/useOnlineGame.ts` | Online game state — Realtime, RPS resolution |
-| `src/App.tsx` | React Router v7. All routes. LocalRPSScreen gate. |
+| `src/hooks/useOnlineGame.ts` | Online game state — Realtime, RPS, Presence, disconnect |
+| `src/hooks/useActiveGame.ts` | Active/forfeited game detection — re-queries on navigation |
+| `src/components/ResumeGameToast.tsx` | Resume + forfeit toast component |
+| `src/components/game/OnlineGameView.tsx` | Online game UI — disconnect banner, forfeit modal |
+| `src/App.tsx` | React Router v7. All routes. |
 | `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
 | `src/contexts/SkinContext.tsx` | Skin context (Phase 2) |
-| `src/skins/types.ts` | Skin type definitions |
-| `src/skins/defaults.ts` | Default placeholder skins |
 | `src/contexts/AuthContext.tsx` | Auth state |
 | `src/lib/rps.ts` | RPS logic — pure functions |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap |
-| `docs/plans/2026-03-18-phase-2-skin-system-design.md` | Phase 2 design doc |
-| `docs/plans/2026-03-18-phase-2-skin-system-implementation.md` | Phase 2 implementation plan |
 
 ---
 
