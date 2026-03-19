@@ -25,6 +25,7 @@ export const useOnlineGame = (gameId: string) => {
   const [opponentConnected, setOpponentConnected] = useState(true);
   const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
   const [opponentId, setOpponentId] = useState<string | null>(null);
+  const [rematchGameId, setRematchGameId] = useState<string | null>(null);
   // Prevents double-resolution if the effect fires again before Realtime returns status='active'
   const rpsResolutionSentRef = useRef(false);
   const localMoveCountRef = useRef(0);
@@ -121,6 +122,11 @@ export const useOnlineGame = (gameId: string) => {
       .on('broadcast', { event: 'move' }, (payload: { payload?: { state: SerializedState } }) => {
         if (payload.payload?.state) {
           setGame(deserializeGame(payload.payload.state));
+        }
+      })
+      .on('broadcast', { event: 'rematch' }, (payload: { payload?: { gameId: string } }) => {
+        if (payload.payload?.gameId) {
+          setRematchGameId(payload.payload.gameId);
         }
       })
       .subscribe(async (status) => {
@@ -247,5 +253,34 @@ export const useOnlineGame = (gameId: string) => {
     return true;
   }, [game, user, myMarker, status, gameId]);
 
-  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, opponentId };
+  const requestRematch = useCallback(async () => {
+    if (!user || !opponentId) return;
+
+    // Swap who goes first — creator becomes joiner in the next game
+    const newPlayerX = isCreator ? opponentId : user.id;
+    const newPlayerO = isCreator ? user.id : opponentId;
+
+    const { data, error } = await supabase.from('games').insert({
+      player_x_id: newPlayerX,
+      player_o_id: newPlayerO,
+      status: 'rps',
+      created_by: user.id,
+    }).select('id').single();
+
+    if (error || !data) {
+      console.error('Rematch game creation failed:', error?.message);
+      return;
+    }
+
+    // Broadcast new game ID to opponent
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'rematch',
+      payload: { gameId: data.id },
+    });
+
+    setRematchGameId(data.id);
+  }, [user, opponentId, isCreator]);
+
+  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, opponentId, rematchGameId, requestRematch };
 };

@@ -41,7 +41,7 @@ interface OnlineGameViewProps {
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, requestRematch } = useOnlineGame(gameId);
 
   // Snapshot of picks captured when result screen opens — survives status change and draw clear
   const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
@@ -66,6 +66,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       setWonByForfeit(true);
     }
   }, [status, opponentConnected]);
+
+  useEffect(() => {
+    if (rematchGameId) {
+      navigate(`/game/${rematchGameId}`);
+    }
+  }, [rematchGameId, navigate]);
 
   const handleForfeit = useCallback(async () => {
     if (!myMarker || !user) return;
@@ -298,7 +304,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
           {wonByForfeit && winner === myMarker
             ? 'Your opponent disconnected. You win!'
             : getWinnerText()}
-          <div>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={requestRematch}
+              style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: '#00d4aa', fontWeight: 'bold' }}
+            >
+              Play Again
+            </button>
             <button
               onClick={() => navigate('/menu')}
               style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
