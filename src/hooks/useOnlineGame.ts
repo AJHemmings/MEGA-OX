@@ -217,12 +217,14 @@ export const useOnlineGame = (gameId: string) => {
     });
 
     if (isOver) {
-      await supabase.from('game_moves').insert({
+      supabase.from('game_moves').insert({
         game_id: gameId,
         player_id: user.id,
         micro_board_index: microBoardIndex,
         cell_index: cellIndex,
         move_number: 0,
+      }).then(({ error }) => {
+        if (error) console.error('game_moves insert failed:', error.message);
       });
     }
 
