@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Marker } from '../../models/Game';
@@ -64,16 +64,17 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     navigate('/menu');
   }, [myMarker, user, gameId, navigate]);
 
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      status === 'active' && currentLocation.pathname !== nextLocation.pathname
-  );
-
+  // Intercept browser back button — push a dummy state so popstate fires instead of navigating away
   useEffect(() => {
-    if (blocker.state === 'blocked') {
+    if (status !== 'active') return;
+    window.history.pushState(null, '', window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
       setShowForfeitModal(true);
-    }
-  }, [blocker.state]);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [status]);
 
   useEffect(() => {
     if (status !== 'active') return;
@@ -164,19 +165,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button
-                onClick={() => {
-                  if (blocker.state === 'blocked') blocker.reset?.();
-                  setShowForfeitModal(false);
-                }}
+                onClick={() => setShowForfeitModal(false)}
                 style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #3a4a5a', background: 'transparent', color: '#a0aec0', cursor: 'pointer' }}
               >
                 Stay
               </button>
               <button
-                onClick={async () => {
-                  if (blocker.state === 'blocked') blocker.proceed?.();
-                  await handleForfeit();
-                }}
+                onClick={handleForfeit}
                 style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#ff6b35', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 Forfeit & Leave
