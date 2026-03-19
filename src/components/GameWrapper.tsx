@@ -44,6 +44,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   const [showRules, setShowRules] = useState(false);
   const [isAiTurn, setIsAiTurn] = useState(false);
   const prevMicroWinnersRef = useRef<string[]>([]);
+  const gameWonFiredRef = useRef(false);
 
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
@@ -96,7 +97,8 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     });
     prevMicroWinnersRef.current = currentWinners;
 
-    if (game.macroBoard.winner && game.macroBoard.winner !== '') {
+    if (game.macroBoard.winner && game.macroBoard.winner !== '' && !gameWonFiredRef.current) {
+      gameWonFiredRef.current = true;
       playGameWon();
     }
   }, [game]);
