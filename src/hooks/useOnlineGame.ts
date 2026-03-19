@@ -34,7 +34,8 @@ export const useOnlineGame = (gameId: string) => {
 
   const fetchGameState = useCallback(async () => {
     if (!user || !gameId) return;
-    const { data } = await supabase.from('games').select('*').eq('id', gameId).single();
+    const { data, error } = await supabase.from('games').select('*').eq('id', gameId).single();
+    if (error) console.error('fetchGameState failed:', error.message);
     if (!data) return;
     setStatus(data.status as OnlineGameStatus);
     setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
