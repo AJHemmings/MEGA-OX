@@ -49,7 +49,21 @@ const MatchmakingPage: React.FC = () => {
           supabase.removeChannel(channel);
           navigate(`/game/${data.id}`);
         }
-      }).subscribe();
+      }).subscribe(async (subStatus) => {
+        if (subStatus === 'SUBSCRIBED') {
+          // Fallback: if the joiner arrived before our subscription was confirmed, the
+          // postgres_changes event would have been missed. Check DB status now.
+          const { data: current } = await supabase
+            .from('games')
+            .select('status')
+            .eq('id', data.id)
+            .single();
+          if (current && (current.status === 'rps' || current.status === 'active')) {
+            supabase.removeChannel(channel);
+            navigate(`/game/${data.id}`);
+          }
+        }
+      });
   };
 
   const joinGame = async () => {

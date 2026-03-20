@@ -110,8 +110,8 @@ export const useOnlineGame = (gameId: string) => {
         }
       })
       .on('presence', { event: 'join' }, ({ newPresences }: { newPresences: any[] }) => {
-        const opponentJoined = newPresences.some((p: any) => p.user_id !== user.id);
-        if (opponentJoined) {
+        const opponentPresence = newPresences.find((p: any) => p.user_id !== user.id);
+        if (opponentPresence) {
           setOpponentConnected(true);
           if (disconnectTimerRef.current) {
             clearTimeout(disconnectTimerRef.current);
@@ -122,6 +122,10 @@ export const useOnlineGame = (gameId: string) => {
             countdownIntervalRef.current = null;
           }
           setDisconnectCountdown(null);
+          // Pick up any Play Again intent the opponent already signalled
+          if (opponentPresence.rematch_intent) {
+            setOpponentRematchIntent(opponentPresence.rematch_intent as RematchIntent);
+          }
           // Broadcast current game state to the reconnecting player — more reliable than a
           // DB fetch since async move writes may not have landed yet
           if (gameRef.current) {
@@ -137,6 +141,15 @@ export const useOnlineGame = (gameId: string) => {
               },
             });
           }
+        }
+      })
+      .on('presence', { event: 'sync' }, () => {
+        // Called whenever any presence changes (including track() updates from other clients).
+        // Use this to pick up Play Again intent that arrived while we weren't watching a join.
+        const presences = Object.values(channel.presenceState()).flat() as any[];
+        const opponentPresence = presences.find((p: any) => p.user_id !== user.id);
+        if (opponentPresence?.rematch_intent) {
+          setOpponentRematchIntent(opponentPresence.rematch_intent as RematchIntent);
         }
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: any[] }) => {
@@ -348,12 +361,16 @@ export const useOnlineGame = (gameId: string) => {
 
   const signalRematchIntent = useCallback((intent: RematchIntent) => {
     setMyRematchIntent(intent);
+    // Update presence so the intent survives reconnects and is visible via sync events.
+    // This is the reliable path — broadcast below is the fast path.
+    channelRef.current?.track({ user_id: user?.id, rematch_intent: intent });
+    // Fast path: broadcast for immediate delivery
     channelRef.current?.send({
       type: 'broadcast',
       event: 'rematch_intent',
       payload: { intent },
     });
-  }, []);
+  }, [user]);
 
   return {
     game, status, myMarker, winner, placeMarker,
