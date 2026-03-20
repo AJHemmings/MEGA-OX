@@ -210,6 +210,15 @@ export const useOnlineGame = (gameId: string) => {
           setOpponentRematchIntent(payload.payload.intent);
         }
       })
+      .on('broadcast', { event: 'rps_resolved' }, (payload: { payload: { playerXId: string; playerOId: string } }) => {
+        // Fast-path delivery of RPS resolution — supplements postgres_changes which can be missed.
+        // Joiner receives this and advances to 'active' without waiting for a postgres_changes event.
+        const { playerXId, playerOId } = payload.payload ?? {};
+        if (!playerXId || !playerOId) return;
+        setStatus(prev => advanceStatus(prev, 'active'));
+        setMyMarker(playerXId === user.id ? 'X' : 'O');
+        setIsCreator(playerXId === user.id);
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ user_id: user.id });
@@ -254,14 +263,34 @@ export const useOnlineGame = (gameId: string) => {
         return;
       }
 
+      // Compute final player assignment before the write so we can broadcast it
+      const newPlayerXId = result === 'p2' ? joinerId! : user.id;
+      const newPlayerOId = result === 'p2' ? user.id : joinerId!;
+
       const updatePayload: Record<string, any> = { status: 'active' };
       if (result === 'p2') {
         // Joiner wins RPS — swap so joiner becomes X (goes first)
-        updatePayload.player_x_id = joinerId;
-        updatePayload.player_o_id = user.id;
+        updatePayload.player_x_id = newPlayerXId;
+        updatePayload.player_o_id = newPlayerOId;
       }
       const { error } = await supabase.from('games').update(updatePayload).eq('id', gameId);
-      if (error) console.error('RPS resolution failed:', error.message);
+      if (error) {
+        console.error('RPS resolution failed:', error.message);
+        rpsResolutionSentRef.current = false; // allow retry on failure
+        return;
+      }
+
+      // Advance creator's own state immediately — broadcast self=false won't deliver to us
+      setStatus(prev => advanceStatus(prev, 'active'));
+      setMyMarker(newPlayerXId === user.id ? 'X' : 'O');
+      setIsCreator(newPlayerXId === user.id);
+
+      // Broadcast to joiner — fast path so they advance without depending on postgres_changes
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'rps_resolved',
+        payload: { playerXId: newPlayerXId, playerOId: newPlayerOId },
+      });
     };
 
     resolve();
