@@ -213,11 +213,11 @@ export const useOnlineGame = (gameId: string) => {
       .on('broadcast', { event: 'rps_resolved' }, (payload: { payload: { playerXId: string; playerOId: string } }) => {
         // Fast-path delivery of RPS resolution — supplements postgres_changes which can be missed.
         // Joiner receives this and advances to 'active' without waiting for a postgres_changes event.
-        // isCreator is intentionally NOT set here — it is set once in fetchGameState and is stable.
         const { playerXId, playerOId } = payload.payload ?? {};
         if (!playerXId || !playerOId) return;
         setStatus(prev => advanceStatus(prev, 'active'));
         setMyMarker(playerXId === user.id ? 'X' : 'O');
+        setIsCreator(playerXId === user.id);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -283,9 +283,7 @@ export const useOnlineGame = (gameId: string) => {
       // Advance creator's own state immediately — broadcast self=false won't deliver to us
       setStatus(prev => advanceStatus(prev, 'active'));
       setMyMarker(newPlayerXId === user.id ? 'X' : 'O');
-      // Note: isCreator is intentionally NOT updated here. It is set once in fetchGameState
-      // and stays constant for the game lifetime. Play Again uses it to decide who creates
-      // the rematch — always the original creator, regardless of who won RPS.
+      setIsCreator(newPlayerXId === user.id);
 
       // Broadcast to joiner — fast path so they advance without depending on postgres_changes
       channelRef.current?.send({
@@ -312,11 +310,13 @@ export const useOnlineGame = (gameId: string) => {
     writeForfeit();
   }, [disconnectCountdown, myMarker, opponentId, status, gameId]);
 
-  // When both players signal play_again, the creator creates the rematch game
+  // When both players signal play_again, the player who is currently X creates the rematch.
+  // Using myMarker rather than isCreator because isCreator reflects post-RPS player assignment
+  // and may differ from the original creator after an RPS swap.
   useEffect(() => {
     if (myRematchIntent !== 'play_again' || opponentRematchIntent !== 'play_again') return;
     if (!user || !opponentId || rematchCreatedRef.current) return;
-    if (!isCreator) return; // Only creator creates — joiner navigates via rematch broadcast
+    if (myMarker !== 'X') return; // Only player X creates — player O navigates via rematch broadcast
 
     rematchCreatedRef.current = true;
 
