@@ -42,7 +42,7 @@ interface OnlineGameViewProps {
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent, submitRPSPick } = useOnlineGame(gameId);
 
   // Snapshot of picks captured when result screen opens — survives status change and draw clear
   const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
@@ -190,10 +190,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // during the brief gap before status advances from 'rps' to 'active'.
   if (status === 'rps' && !rpsResultShownRef.current) {
     return (
-      <RPSScreen
-        gameId={gameId}
-        isCreator={isCreator}
-      />
+      <RPSScreen onSubmitPick={submitRPSPick} />
     );
   }
 

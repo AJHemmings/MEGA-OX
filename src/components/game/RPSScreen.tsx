@@ -1,17 +1,16 @@
 // src/components/game/RPSScreen.tsx
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
 import { RPSPick } from '../../lib/rps';
 
 interface RPSScreenProps {
-  gameId: string;
-  isCreator: boolean;  // true if this player is player_x_id (game creator)
+  // Called when the player picks. Returns true on success, false on failure.
+  onSubmitPick: (pick: RPSPick) => Promise<boolean>;
 }
 
 const PICKS: RPSPick[] = ['rock', 'paper', 'scissors'];
 const EMOJI: Record<RPSPick, string> = { rock: '🪨', paper: '📄', scissors: '✂️' };
 
-const RPSScreen: React.FC<RPSScreenProps> = ({ gameId, isCreator }) => {
+const RPSScreen: React.FC<RPSScreenProps> = ({ onSubmitPick }) => {
   const [myPick, setMyPick] = useState<RPSPick | null>(null);
   const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState('');
@@ -19,9 +18,8 @@ const RPSScreen: React.FC<RPSScreenProps> = ({ gameId, isCreator }) => {
   const submitPick = async (pick: RPSPick) => {
     setMyPick(pick);
     setWaiting(true);
-    const column = isCreator ? 'rps_creator_pick' : 'rps_joiner_pick';
-    const { error: writeError } = await supabase.from('games').update({ [column]: pick }).eq('id', gameId);
-    if (writeError) {
+    const ok = await onSubmitPick(pick);
+    if (!ok) {
       setError('Failed to submit pick. Please try again.');
       setMyPick(null);
       setWaiting(false);

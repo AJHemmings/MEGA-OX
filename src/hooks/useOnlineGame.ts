@@ -198,6 +198,13 @@ export const useOnlineGame = (gameId: string) => {
           setRematchGameId(payload.payload.gameId);
         }
       })
+      .on('broadcast', { event: 'rps_pick' }, (payload: { payload: { column: string; pick: string } }) => {
+        // Fast-path delivery of RPS picks — supplements postgres_changes which can be missed.
+        // Both paths set the same state so whichever arrives first wins; the second is a no-op.
+        const { column, pick } = payload.payload ?? {};
+        if (column === 'rps_creator_pick' && pick) setRpsCreatorPick(pick);
+        else if (column === 'rps_joiner_pick' && pick) setRpsJoinerPick(pick);
+      })
       .on('broadcast', { event: 'rematch_intent' }, (payload: { payload: { intent: RematchIntent } }) => {
         if (payload.payload?.intent) {
           setOpponentRematchIntent(payload.payload.intent);
@@ -369,6 +376,22 @@ export const useOnlineGame = (gameId: string) => {
     return true;
   }, [game, user, myMarker, status, gameId]);
 
+  // Write the player's RPS pick to DB and broadcast it immediately.
+  // Broadcast ensures the opponent receives the pick without depending on postgres_changes
+  // delivery, which can be missed when the Realtime connection is briefly degraded.
+  const submitRPSPick = useCallback(async (pick: RPSPick): Promise<boolean> => {
+    if (!user || !gameId) return false;
+    const column = isCreator ? 'rps_creator_pick' : 'rps_joiner_pick';
+    const { error } = await supabase.from('games').update({ [column]: pick }).eq('id', gameId);
+    if (error) return false;
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'rps_pick',
+      payload: { column, pick },
+    });
+    return true;
+  }, [user, gameId, isCreator]);
+
   const signalRematchIntent = useCallback((intent: RematchIntent) => {
     setMyRematchIntent(intent);
     // Update presence so the intent survives reconnects and is visible via sync events.
@@ -388,5 +411,6 @@ export const useOnlineGame = (gameId: string) => {
     opponentConnected, disconnectCountdown, opponentId,
     rematchGameId, forfeitPlayerId,
     myRematchIntent, opponentRematchIntent, signalRematchIntent,
+    submitRPSPick,
   };
 };
