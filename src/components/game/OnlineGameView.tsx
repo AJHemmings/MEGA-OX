@@ -42,7 +42,7 @@ interface OnlineGameViewProps {
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, requestRematch, forfeitPlayerId } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent } = useOnlineGame(gameId);
 
   // Snapshot of picks captured when result screen opens — survives status change and draw clear
   const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
@@ -57,13 +57,18 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const prevStatusRef = useRef<string>('loading');
   const prevCellCountRef = useRef<number>(0);
   const hasGameStartedRef = useRef<boolean>(false);
+  const prevHadBothPicksRef = useRef(false);
 
-  // Open result screen: capture picks snapshot so it stays visible regardless of subsequent state changes
+  // Open result screen when both picks first become available — no status check needed.
+  // The creator resolves RPS so quickly that the joiner may receive status='active' before
+  // both picks are set locally, so requiring status==='rps' causes the result screen to be missed.
   useEffect(() => {
-    if (rpsCreatorPick && rpsJoinerPick && status === 'rps') {
+    const hasBothPicks = !!(rpsCreatorPick && rpsJoinerPick);
+    if (hasBothPicks && !prevHadBothPicksRef.current) {
       setResultPicks({ creator: rpsCreatorPick as RPSPick, joiner: rpsJoinerPick as RPSPick });
     }
-  }, [rpsCreatorPick, rpsJoinerPick, status]);
+    prevHadBothPicksRef.current = hasBothPicks;
+  }, [rpsCreatorPick, rpsJoinerPick]);
 
   useEffect(() => {
     if (rematchGameId) {
@@ -154,9 +159,6 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   }, [game, status, myMarker, winner]);
 
   const handleRPSContinue = useCallback(() => setResultPicks(null), []);
-  // RPSScreen's onResolved is now unused (resultPicks drives the result screen),
-  // but the prop is required — pass a stable no-op
-  const noop = useCallback(() => {}, []);
 
   // RPS result screen — shown for the full 3s timer regardless of status/pick changes
   if (resultPicks) {
@@ -178,7 +180,6 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       <RPSScreen
         gameId={gameId}
         isCreator={isCreator}
-        onResolved={noop}
       />
     );
   }
@@ -302,22 +303,39 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
           {opponentForfeited
             ? 'Your opponent disconnected. You win!'
             : getWinnerText()}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {!wonByForfeit && (
+          {wonByForfeit ? (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
               <button
-                onClick={requestRematch}
-                style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: '#00d4aa', fontWeight: 'bold' }}
+                onClick={() => navigate('/menu')}
+                style={{ padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
               >
-                Play Again
+                Back to Menu
               </button>
-            )}
-            <button
-              onClick={() => navigate('/menu')}
-              style={{ marginTop: '16px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
-            >
-              Back to Menu
-            </button>
-          </div>
+            </div>
+          ) : (
+            <>
+              {/* Readiness dots — green = play again, red = leaving, grey = undecided */}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '14px 0 6px' }}>
+                <span title="You" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: myRematchIntent === 'play_again' ? '#00d4aa' : myRematchIntent === 'back_to_menu' ? '#ff6b35' : '#3a4a5a' }} />
+                <span title="Opponent" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: opponentRematchIntent === 'play_again' ? '#00d4aa' : opponentRematchIntent === 'back_to_menu' ? '#ff6b35' : '#3a4a5a' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => signalRematchIntent('play_again')}
+                  disabled={myRematchIntent !== null}
+                  style={{ marginTop: '10px', padding: '12px 24px', fontSize: '15px', cursor: myRematchIntent !== null ? 'default' : 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa', fontWeight: 'bold', borderColor: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa' }}
+                >
+                  {myRematchIntent === 'play_again' ? 'Waiting...' : 'Play Again'}
+                </button>
+                <button
+                  onClick={() => { signalRematchIntent('back_to_menu'); navigate('/menu'); }}
+                  style={{ marginTop: '10px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
+                >
+                  Back to Menu
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

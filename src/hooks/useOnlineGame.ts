@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { resolveRPS, RPSPick } from '../lib/rps';
 
 export type OnlineGameStatus = 'loading' | 'waiting' | 'rps' | 'active' | 'complete';
+export type RematchIntent = 'play_again' | 'back_to_menu';
 
 const countMoves = (state: SerializedState | null | undefined): number => {
   if (!state?.boards) return 0;
@@ -27,6 +28,9 @@ export const useOnlineGame = (gameId: string) => {
   const [opponentId, setOpponentId] = useState<string | null>(null);
   const [rematchGameId, setRematchGameId] = useState<string | null>(null);
   const [forfeitPlayerId, setForfeitPlayerId] = useState<string | null>(null);
+  const [myRematchIntent, setMyRematchIntent] = useState<RematchIntent | null>(null);
+  const [opponentRematchIntent, setOpponentRematchIntent] = useState<RematchIntent | null>(null);
+
   // Prevents double-resolution if the effect fires again before Realtime returns status='active'
   const rpsResolutionSentRef = useRef(false);
   const localMoveCountRef = useRef(0);
@@ -34,6 +38,7 @@ export const useOnlineGame = (gameId: string) => {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const gameRef = useRef<Game | null>(null);
+  const rematchCreatedRef = useRef(false);
 
   // Keep gameRef in sync so event handlers can read latest game state without stale closure
   useEffect(() => {
@@ -72,6 +77,7 @@ export const useOnlineGame = (gameId: string) => {
   useEffect(() => {
     if (!user || !gameId) return;
     rpsResolutionSentRef.current = false; // reset for each new game
+    rematchCreatedRef.current = false;
 
     fetchGameState();
 
@@ -91,6 +97,8 @@ export const useOnlineGame = (gameId: string) => {
         setRpsCreatorPick(updated.rps_creator_pick);
         setRpsJoinerPick(updated.rps_joiner_pick);
         setForfeitPlayerId(updated.forfeit_player_id ?? null);
+        // opponentId must be updated here too — creator has null until joiner joins
+        setOpponentId(updated.player_x_id === user.id ? updated.player_o_id : updated.player_x_id);
         if (updated.player_o_id) setJoinerId(updated.player_o_id);
         if (updated.state && Object.keys(updated.state).length > 0) {
           // Only apply if the DB state is at least as current as our local state
@@ -117,10 +125,16 @@ export const useOnlineGame = (gameId: string) => {
           // Broadcast current game state to the reconnecting player — more reliable than a
           // DB fetch since async move writes may not have landed yet
           if (gameRef.current) {
+            const g = gameRef.current;
+            const isGameOver = g.isGameOver();
             channel.send({
               type: 'broadcast',
               event: 'move',
-              payload: { state: serializeGame(gameRef.current) },
+              payload: {
+                state: serializeGame(g),
+                isOver: isGameOver,
+                winner: isGameOver ? (g.macroBoard.winner || 'draw') : null,
+              },
             });
           }
         }
@@ -145,14 +159,25 @@ export const useOnlineGame = (gameId: string) => {
           }
         }, 1000);
       })
-      .on<{ state: SerializedState }>('broadcast', { event: 'move' }, (payload) => {
+      .on('broadcast', { event: 'move' }, (payload: { payload: { state: SerializedState; isOver?: boolean; winner?: string | null } }) => {
         if (payload.payload?.state) {
           setGame(deserializeGame(payload.payload.state));
+          // Update status/winner immediately from broadcast — don't wait for postgres_changes
+          // so both players see the complete screen at the same time
+          if (payload.payload.isOver) {
+            setStatus('complete');
+            if (payload.payload.winner !== undefined) setWinner(payload.payload.winner);
+          }
         }
       })
-      .on<{ gameId: string }>('broadcast', { event: 'rematch' }, (payload) => {
+      .on('broadcast', { event: 'rematch' }, (payload: { payload: { gameId: string } }) => {
         if (payload.payload?.gameId) {
           setRematchGameId(payload.payload.gameId);
+        }
+      })
+      .on('broadcast', { event: 'rematch_intent' }, (payload: { payload: { intent: RematchIntent } }) => {
+        if (payload.payload?.intent) {
+          setOpponentRematchIntent(payload.payload.intent);
         }
       })
       .subscribe(async (status) => {
@@ -226,6 +251,43 @@ export const useOnlineGame = (gameId: string) => {
     writeForfeit();
   }, [disconnectCountdown, myMarker, opponentId, status, gameId]);
 
+  // When both players signal play_again, the creator creates the rematch game
+  useEffect(() => {
+    if (myRematchIntent !== 'play_again' || opponentRematchIntent !== 'play_again') return;
+    if (!user || !opponentId || rematchCreatedRef.current) return;
+    if (!isCreator) return; // Only creator creates — joiner navigates via rematch broadcast
+
+    rematchCreatedRef.current = true;
+
+    const createRematch = async () => {
+      // Swap who goes first — whoever was X becomes O in the next game
+      const newPlayerX = myMarker === 'X' ? opponentId : user.id;
+      const newPlayerO = myMarker === 'X' ? user.id : opponentId;
+
+      const { data, error } = await supabase.from('games').insert({
+        player_x_id: newPlayerX,
+        player_o_id: newPlayerO,
+        status: 'rps',
+      }).select('id').single();
+
+      if (error || !data) {
+        console.error('Rematch game creation failed:', error?.message);
+        rematchCreatedRef.current = false;
+        return;
+      }
+
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'rematch',
+        payload: { gameId: data.id },
+      });
+
+      setRematchGameId(data.id);
+    };
+
+    createRematch();
+  }, [myRematchIntent, opponentRematchIntent, user, opponentId, myMarker, isCreator]);
+
   const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
     if (!game || !user || !myMarker || status !== 'active') return false;
 
@@ -245,12 +307,17 @@ export const useOnlineGame = (gameId: string) => {
 
     // 1. Update local state immediately — no waiting for DB round-trip
     setGame(gameCopy);
+    if (isOver) {
+      setStatus('complete');
+      setWinner(winnerValue);
+    }
 
-    // 2. Broadcast to opponent via channel (fast path)
+    // 2. Broadcast to opponent via channel (fast path) — include isOver/winner so
+    //    the opponent's status updates immediately without waiting for postgres_changes
     channelRef.current?.send({
       type: 'broadcast',
       event: 'move',
-      payload: { state: newState },
+      payload: { state: newState, isOver, winner: winnerValue },
     });
 
     // 3. Write to DB async — authoritative checkpoint, not the sync mechanism
@@ -279,33 +346,20 @@ export const useOnlineGame = (gameId: string) => {
     return true;
   }, [game, user, myMarker, status, gameId]);
 
-  const requestRematch = useCallback(async () => {
-    if (!user || !opponentId) return;
-
-    // Swap who goes first — whoever was X becomes O in the next game
-    const newPlayerX = myMarker === 'X' ? opponentId : user.id;
-    const newPlayerO = myMarker === 'X' ? user.id : opponentId;
-
-    const { data, error } = await supabase.from('games').insert({
-      player_x_id: newPlayerX,
-      player_o_id: newPlayerO,
-      status: 'rps',
-    }).select('id').single();
-
-    if (error || !data) {
-      console.error('Rematch game creation failed:', error?.message);
-      return;
-    }
-
-    // Broadcast new game ID to opponent
+  const signalRematchIntent = useCallback((intent: RematchIntent) => {
+    setMyRematchIntent(intent);
     channelRef.current?.send({
       type: 'broadcast',
-      event: 'rematch',
-      payload: { gameId: data.id },
+      event: 'rematch_intent',
+      payload: { intent },
     });
+  }, []);
 
-    setRematchGameId(data.id);
-  }, [user, opponentId, myMarker]);
-
-  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, opponentId, rematchGameId, requestRematch, forfeitPlayerId };
+  return {
+    game, status, myMarker, winner, placeMarker,
+    rpsCreatorPick, rpsJoinerPick, isCreator,
+    opponentConnected, disconnectCountdown, opponentId,
+    rematchGameId, forfeitPlayerId,
+    myRematchIntent, opponentRematchIntent, signalRematchIntent,
+  };
 };
