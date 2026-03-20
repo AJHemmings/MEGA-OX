@@ -213,11 +213,11 @@ export const useOnlineGame = (gameId: string) => {
       .on('broadcast', { event: 'rps_resolved' }, (payload: { payload: { playerXId: string; playerOId: string } }) => {
         // Fast-path delivery of RPS resolution — supplements postgres_changes which can be missed.
         // Joiner receives this and advances to 'active' without waiting for a postgres_changes event.
+        // isCreator is intentionally NOT set here — it is set once in fetchGameState and is stable.
         const { playerXId, playerOId } = payload.payload ?? {};
         if (!playerXId || !playerOId) return;
         setStatus(prev => advanceStatus(prev, 'active'));
         setMyMarker(playerXId === user.id ? 'X' : 'O');
-        setIsCreator(playerXId === user.id);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -283,7 +283,9 @@ export const useOnlineGame = (gameId: string) => {
       // Advance creator's own state immediately — broadcast self=false won't deliver to us
       setStatus(prev => advanceStatus(prev, 'active'));
       setMyMarker(newPlayerXId === user.id ? 'X' : 'O');
-      setIsCreator(newPlayerXId === user.id);
+      // Note: isCreator is intentionally NOT updated here. It is set once in fetchGameState
+      // and stays constant for the game lifetime. Play Again uses it to decide who creates
+      // the rematch — always the original creator, regardless of who won RPS.
 
       // Broadcast to joiner — fast path so they advance without depending on postgres_changes
       channelRef.current?.send({
