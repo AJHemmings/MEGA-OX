@@ -24,6 +24,7 @@ import {
   playMicroBoardWon,
   playGameWon,
   playGameLost,
+  resumeAudio,
 } from '../../lib/sounds';
 
 const defaultGameSkins: GameSkins = {
@@ -41,12 +42,15 @@ interface OnlineGameViewProps {
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, requestRematch } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, requestRematch, forfeitPlayerId } = useOnlineGame(gameId);
 
   // Snapshot of picks captured when result screen opens — survives status change and draw clear
   const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
-  const [wonByForfeit, setWonByForfeit] = useState(false);
   const [showForfeitModal, setShowForfeitModal] = useState(false);
+
+  // Derived from DB — not from presence, so no race condition when opponent navigates away after game ends
+  const wonByForfeit = forfeitPlayerId !== null;
+  const opponentForfeited = forfeitPlayerId !== null && forfeitPlayerId !== user?.id;
 
   const prevMicroWinnersRef = useRef<string[]>([]);
   const prevIsMyTurnRef = useRef<boolean>(false);
@@ -60,12 +64,6 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       setResultPicks({ creator: rpsCreatorPick as RPSPick, joiner: rpsJoinerPick as RPSPick });
     }
   }, [rpsCreatorPick, rpsJoinerPick, status]);
-
-  useEffect(() => {
-    if (status === 'complete' && !opponentConnected) {
-      setWonByForfeit(true);
-    }
-  }, [status, opponentConnected]);
 
   useEffect(() => {
     if (rematchGameId) {
@@ -224,7 +222,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   return (
     <SkinProvider skins={defaultGameSkins}>
-    <div style={{ maxWidth: 480, margin: '20px auto', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', textAlign: 'center', userSelect: 'none', padding: '20px', minHeight: '100vh', background: '#1a2332', color: '#ffffff' }}>
+    <div onClick={resumeAudio} style={{ maxWidth: 480, margin: '20px auto', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', textAlign: 'center', userSelect: 'none', padding: '20px', minHeight: '100vh', background: '#1a2332', color: '#ffffff' }}>
       {showForfeitModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#2a3441', borderRadius: '16px', padding: '32px', maxWidth: '320px', textAlign: 'center', border: '1px solid #ff6b35' }}>
@@ -301,7 +299,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
       {status === 'complete' && (
         <div style={{ marginTop: 20, fontWeight: 'bold', fontSize: '20px', padding: '25px', backgroundColor: '#2a3441', borderRadius: '16px', border: '3px solid #00d4aa', color: '#00d4aa', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
-          {wonByForfeit && winner === myMarker
+          {opponentForfeited
             ? 'Your opponent disconnected. You win!'
             : getWinnerText()}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>

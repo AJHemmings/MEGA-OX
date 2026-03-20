@@ -26,6 +26,7 @@ export const useOnlineGame = (gameId: string) => {
   const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
   const [opponentId, setOpponentId] = useState<string | null>(null);
   const [rematchGameId, setRematchGameId] = useState<string | null>(null);
+  const [forfeitPlayerId, setForfeitPlayerId] = useState<string | null>(null);
   // Prevents double-resolution if the effect fires again before Realtime returns status='active'
   const rpsResolutionSentRef = useRef(false);
   const localMoveCountRef = useRef(0);
@@ -46,6 +47,7 @@ export const useOnlineGame = (gameId: string) => {
     setRpsJoinerPick(data.rps_joiner_pick);
     setJoinerId(data.player_o_id);
     setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
+    setForfeitPlayerId(data.forfeit_player_id ?? null);
     if (data.state && Object.keys(data.state).length > 0) {
       const g = deserializeGame(data.state as any);
       setGame(g);
@@ -77,6 +79,7 @@ export const useOnlineGame = (gameId: string) => {
         setMyMarker(updated.player_x_id === user.id ? 'X' : 'O');
         setRpsCreatorPick(updated.rps_creator_pick);
         setRpsJoinerPick(updated.rps_joiner_pick);
+        setForfeitPlayerId(updated.forfeit_player_id ?? null);
         if (updated.player_o_id) setJoinerId(updated.player_o_id);
         if (updated.state && Object.keys(updated.state).length > 0) {
           // Only apply if the DB state is at least as current as our local state
@@ -281,5 +284,5 @@ export const useOnlineGame = (gameId: string) => {
     setRematchGameId(data.id);
   }, [user, opponentId, myMarker]);
 
-  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, opponentId, rematchGameId, requestRematch };
+  return { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, opponentId, rematchGameId, requestRematch, forfeitPlayerId };
 };

@@ -62,3 +62,9 @@ export const playGameLost = () => {
   playTone(392, 0.2, 'sine', 0.25);
   playTone(330, 0.3, 'sine', 0.25, 0.22);
 };
+
+// Unlock AudioContext after a user gesture — call this on first click
+export const resumeAudio = (): void => {
+  const audioCtx = getCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+};
