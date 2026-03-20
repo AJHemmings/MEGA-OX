@@ -6,9 +6,9 @@ Read this file in full, then say:
 
 > "I've read the handover. We are in **live testing** on `feat/disconnect-handling`.
 >
-> Audio is confirmed working. Several bugs were found and fixed this session. The latest build is deployed to private Vercel. The branch is ahead of remote `private/main`.
+> Three new bugs were fixed this session (lobby join fallback, Play Again reliability, RPS screen flash-back, and RPS pick delivery). The latest build is deployed to private Vercel at commit `f982c6c`.
 >
-> The immediate next step is re-testing RPS sync and Play Again with the latest fixes. See the open test items below.
+> The user was mid-testing when this session ended. The immediate next step is continuing live testing — check the test status table below to see what is confirmed vs pending.
 >
 > Ready when you are."
 
@@ -29,86 +29,75 @@ Read this file in full, then say:
 
 **`main` branch:** Do NOT push to `origin/main` without explicit instruction.
 
-**Build status:** ✅ Passing — clean as of commit `c077252`.
+**Build status:** ✅ Passing — clean as of commit `f982c6c`.
 
 ---
 
-## Testing status — what has been confirmed vs. what still needs testing
+## Testing status
 
-### ✅ Confirmed working this session
+### ✅ Confirmed working (prior session)
 - Move sync (1.1–1.5) — moves instant, boards in sync, constraints, micro/macro wins
 - Intentional exit (3.1–3.3) — forfeit confirm/cancel modal works
 - Auto-forfeit on disconnect (disconnect → 90s countdown → forfeit fires → both screens update correctly)
 - Countdown cancels when disconnected player reconnects (full close + reopen, not refresh)
 - Resume toast appears correctly
-- **Audio (4.1–4.8) — all sounds confirmed working** ✅
+- Audio (4.1–4.8) — all sounds confirmed working ✅
+- First game (join with code) played cleanly ✅
 
-### ⚠️ Needs re-testing with latest fixes (deployed, not yet tested)
-| # | What to check | Fix that was applied |
+### ⚠️ Needs testing — fixes applied this session, not yet confirmed
+| # | What to check | Fix applied |
 |---|---|---|
-| RPS | Both browsers reach RPS screen when joining (creator no longer stuck on "Waiting for opponent") | `opponentId` now set via `postgres_changes`; result screen trigger no longer requires `status==='rps'`; dead `rps:gameId` channel removed |
-| RPS | Result screen (rock/paper/scissors reveal) shows on both screens before game starts | `prevHadBothPicksRef` transition trigger instead of `status === 'rps'` |
-| Complete screen | Both winner AND loser see the complete block simultaneously | `isOver`/`winner` now included in move broadcast; `placeMarker` sets status locally; no more waiting for `postgres_changes` |
-| Play Again dots | Two dots appear under Play Again. Grey → green on click. Green + green → new game loads. | New `signalRematchIntent` / `rematch_intent` broadcast system |
-| Play Again | Clicking Play Again actually does something (previously silently blocked) | `opponentId` was null for creator; now set correctly |
-| Reconnect sync | After refresh, board state is correct without needing a second refresh | Broadcast on join (not DB fetch); `fetchGameState` move-count guard; leave handler checks `presenceState` before starting countdown |
-
-### ⏭️ Regression tests (section 6) — not yet run
-Run these after the above pass.
+| RPS | Both browsers complete RPS and enter game without one getting stuck on "Waiting for opponent" | Picks now broadcast via `rps_pick` event in addition to postgres_changes; `submitRPSPick` in `useOnlineGame` handles both paths |
+| RPS | Result screen shows on both browsers before game starts | `rpsResultShownRef` prevents RPSScreen flash-back during `rps → active` gap |
+| RPS | No browser goes back to pick selection after game is won | `advanceStatus()` — status is now monotonic, cannot go backwards from late postgres_changes |
+| Join | Creator navigates to game correctly even if joiner arrived before lobby subscription confirmed | SUBSCRIBED callback now checks DB status as fallback |
+| Play Again | Both players click Play Again → new game loads | Intent now stored in presence (`channel.track`) as reliable fallback; broadcast is fast path |
+| Play Again | Clicking "Back to Menu" from complete screen navigates cleanly | No change — was working |
+| Regression | All section 6 regression tests (see testing benchmarks doc) | Not yet run |
 
 ---
 
-## Bugs found and fixed this session
+## Bugs found and fixed this session (new — on top of prior 9 fixes)
 
-### Fix 1 — Audio: AudioContext never started
-`AudioContext` created without a user gesture starts in `suspended` state in modern browsers.
-`playTone` never called `.resume()`, so no sound played.
+### Fix 10 — Creator stuck on "Waiting for opponent" (lobby subscription race)
+If the joiner entered the code before the creator's `lobby:${id}` postgres_changes subscription was confirmed by Supabase, the status-change event was missed and the creator never navigated to the game.
 
-**Fix:** Added `resumeAudio()` export to `sounds.ts`. Called on the game container's `onClick` in `OnlineGameView`. First click unlocks audio for the session.
+**Fix:** The lobby channel's `.subscribe()` callback now runs a DB status check immediately on SUBSCRIBED. If the game is already `rps` or `active`, it navigates straight to the game.
 
-### Fix 2 — Play Again hidden by race condition (`wonByForfeit`)
-`wonByForfeit` was derived from `opponentConnected`. When a normal game ends, the opponent eventually navigates away — their presence leaves the channel, `opponentConnected` flips to `false`, and the effect `status === 'complete' && !opponentConnected` set `wonByForfeit = true`, hiding the Play Again button for the waiting player.
+### Fix 11 — Play Again: both stuck at "Waiting..." forever
+`rematch_intent` was signalled only via ephemeral broadcast. If the channel was in a degraded state after game completion, both broadcasts were dropped silently and neither player saw the other's intent.
 
-**Fix:** `wonByForfeit` now derived from `forfeitPlayerId !== null` (a DB field, not presence). `forfeitPlayerId` is set via `fetchGameState` and `postgres_changes`. No race condition.
+**Fix:** `signalRematchIntent` now also calls `channel.track({ user_id, rematch_intent: intent })`, storing the intent in presence state. Presence persists for the connection lifetime. A `presence sync` handler and updated `presence join` handler pick up the intent from presence. Broadcast is kept as the fast path; presence is the reliable fallback.
 
-### Fix 3 — Countdown not cancelling on quick reconnect (presence_ref race)
-Supabase Presence tracks connections by a unique `presence_ref` per browser session. On refresh:
-1. New session joins → A sees `join` for new B → countdown not started ✓
-2. Old session times out and leaves → A sees `leave` for old B → **countdown starts even though new B is present** ✗
+### Fix 12 — RPS screen flashing back after game ends / after result screen
+Two root causes:
+1. **Out-of-order postgres_changes:** A late `status: 'rps'` event arriving after `status: 'complete'` would reset the game to the RPS pick screen.
+2. **Result screen timer race:** `RPSResultScreen` auto-continues after 3s. If `status: 'active'` postgres_changes hadn't arrived yet, `resultPicks` cleared → `status === 'rps'` → RPSScreen showed.
 
-**Fix:** In the `leave` handler, call `channel.presenceState()` before starting the countdown. If the opponent still has any active presence entries (quick reconnect), skip the countdown entirely.
+**Fix 1:** Status is now monotonic. `advanceStatus()` only applies a status update if it's a forward transition (`loading → waiting → rps → active → complete`). Late/out-of-order events are ignored.
 
-### Fix 4 — Board state unsynced on join (join handler called stale DB)
-The `join` handler was calling `fetchGameState()` — a DB fetch. Moves are written to DB fire-and-forget, so the DB can be one move behind the local broadcast state. Player A was overwriting their own correct local state with a potentially stale DB snapshot.
+**Fix 2:** `rpsResultShownRef` is set when the result screen is dismissed. While true, the `status === 'rps'` RPSScreen render is blocked. Resets to false only when picks are cleared (draw re-pick).
 
-**Fix:** The `join` handler now broadcasts `serializeGame(gameRef.current)` to the channel instead of fetching from DB. The reconnecting player receives the broadcast via the existing `move` handler and updates their state. `gameRef` (a ref synced via `useEffect`) gives the handler access to current game state without stale closure.
+### Fix 13 — Creator stuck on "Waiting for opponent" during RPS (postgres_changes missed)
+The creator (browser one) would submit their RPS pick and wait, while the joiner (browser two) submitted theirs. If the joiner's `rps_joiner_pick` postgres_changes event was missed on the creator's client, `rpsJoinerPick` stayed null. The creator never detected both picks → no result screen → RPS resolution effect never fired → status stayed `rps` permanently. Joiner, who DID receive both picks, showed the result screen and bypassed to the game board via `rpsResultShownRef` — but couldn't move because status was still `rps`. Refresh fixed it by pulling both picks from DB.
 
-Also: `fetchGameState` now has a move-count guard — it won't overwrite a more recent broadcast state that landed before the fetch resolved.
+**Fix:** RPS pick submission moved into `useOnlineGame` as `submitRPSPick`. After writing to DB, it also broadcasts an `rps_pick` event with `{ column, pick }`. A new broadcast listener applies the pick immediately on the other client. postgres_changes is still the authoritative path; broadcast is the fast/reliable fallback. `RPSScreen` now accepts an `onSubmitPick` callback prop instead of writing to Supabase directly.
 
-### Fix 5 — `opponentId` null for creator (Play Again did nothing)
-`opponentId` was only set in `fetchGameState`. The creator's initial `fetchGameState` runs when `player_o_id` is null (game is in `waiting` status). When the joiner joins and `player_o_id` is set in the DB, `postgres_changes` fired on the creator's client — but `opponentId` was NOT being updated there, only in `fetchGameState`. So `opponentId` stayed null for the creator's entire session, silently blocking `requestRematch`.
+---
 
-**Fix:** Added `setOpponentId(updated.player_x_id === user.id ? updated.player_o_id : updated.player_x_id)` to the `postgres_changes` handler.
+## Prior bugs fixed (previous session — for reference)
 
-### Fix 6 — Loser doesn't see complete screen (status not updated via broadcast)
-The move broadcast only sent game state. The loser's `status` stayed `'active'` until a separate `postgres_changes` event arrived with `status: 'complete'`. If that event lagged, the `{status === 'complete' && ...}` block (containing Play Again) never showed on the loser's screen.
-
-**Fix:** Move broadcast payload now includes `{ state, isOver, winner }`. Broadcast receiver updates `status` and `winner` immediately if `isOver`. `placeMarker` also sets status/winner locally for the winner — no waiting for postgres_changes.
-
-### Fix 7 — RPS sync: joiner stuck on "Waiting for opponent"
-The `resultPicks` effect required `status === 'rps'`. The creator resolves RPS (writes `status: 'active'`) almost immediately after both picks arrive. The joiner could receive the `status: 'active'` postgres_changes event before both picks were set locally — so `status === 'rps'` was already false when the trigger condition was evaluated. Result screen never showed; joiner stuck on RPSScreen "Waiting for opponent..." forever.
-
-**Fix:** Replaced the `status === 'rps'` check with a `prevHadBothPicksRef` transition. `resultPicks` now fires when both picks **first become available** (transition from not-both-set → both-set), regardless of current status.
-
-### Fix 8 — RPSScreen had a dead channel
-`RPSScreen` had its own `rps:${gameId}` postgres_changes channel that called `onResolved()`. `onResolved` was already a noop (the comment even said so). The channel was creating a duplicate subscription and was never cleaned up on RPS resolution (only on draw).
-
-**Fix:** Removed the channel and `useEffect` from `RPSScreen`. Removed `onResolved` prop entirely. State transitions are handled entirely by `useOnlineGame`'s `game:${gameId}` channel.
-
-### Fix 9 — Play Again redesigned with readiness dots
-Old design: first player to click "Play Again" immediately created a new game and broadcast the ID. If `opponentId` was null (fix 5), nothing happened at all.
-
-**New design:** Both players signal intent via broadcast (`rematch_intent` event). Two dots show state: grey = undecided, green = play_again, red = back_to_menu. When both are green, the creator creates the game and broadcasts the game ID. Back to Menu signals `back_to_menu` intent then navigates. Play Again button shows "Waiting..." after click and disables.
+| # | Summary |
+|---|---|
+| 1 | AudioContext never started — added `resumeAudio()`, called on first click |
+| 2 | `wonByForfeit` race condition — derived from `forfeit_player_id` (DB), not presence |
+| 3 | Countdown not cancelling on quick reconnect — check `presenceState()` before starting |
+| 4 | Board state unsynced on join — broadcast current state on join instead of DB fetch |
+| 5 | `opponentId` null for creator — set in `postgres_changes` handler, not just `fetchGameState` |
+| 6 | Loser doesn't see complete screen — `isOver`/`winner` included in move broadcast payload |
+| 7 | Joiner stuck on "Waiting for opponent" during RPS — `prevHadBothPicksRef` trigger instead of `status === 'rps'` check |
+| 8 | RPSScreen had a dead channel — removed; state handled entirely by `useOnlineGame` |
+| 9 | Play Again redesigned with readiness dots — `rematch_intent` broadcast, two-dot UI |
 
 ---
 
@@ -129,8 +118,8 @@ Old design: first player to click "Play Again" immediately created a new game an
 | Disconnect handling | Done — Presence + grace period + forfeit |
 | Broadcast move sync | Done |
 | Audio notifications | Done — confirmed working |
-| Play Again (readiness dots) | Implemented — awaiting live test |
-| RPS sync fixes | Implemented — awaiting live test |
+| Play Again (readiness dots) | Implemented — fixes applied, awaiting re-test |
+| RPS sync | Implemented — fixes applied, awaiting re-test |
 
 ---
 
@@ -169,10 +158,10 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 - **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` state but not yet passed to `GameWrapper`. Phase 6 will wire this.
 - **Skins tables in Supabase have no RLS policies** — fine for Phase 2, needed in Phase 3.
 - **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active` indefinitely. Acceptable for this phase; cleanup job planned for Phase 7.
-- **`isCreator` in `useOnlineGame`** — this variable actually means "is currently player X" (set from `player_x_id === user.id`), not "was the original game creator". Renaming to `isPlayerX` would make the codebase honest. Low priority, no user-facing impact.
-- **Play Again — both players click simultaneously** — both clients are the `isCreator`, both try to create a game, results in two game rows. The `rematchCreatedRef` guard prevents double-creation on a single client, but two simultaneous clients can still race. Acceptable edge case for now.
+- **`isCreator` in `useOnlineGame`** — actually means "is currently player X" (set from `player_x_id === user.id`), not "was the original game creator". Renaming to `isPlayerX` would make the codebase honest. Low priority, no user-facing impact.
+- **Play Again — both players click simultaneously** — both clients may try to create a game. `rematchCreatedRef` prevents double-creation on a single client but two simultaneous clients can still race. Acceptable edge case for now.
 - **`game_moves` table `move_number` is always 0** — full move history tracking deferred.
-- **Play Again not shown on tournament/league games** — by design (not yet built). When tournaments are implemented, filter `!wonByForfeit && matchType === 'friendly'` in `OnlineGameView`.
+- **Play Again not shown on forfeit games** — by design. `wonByForfeit` hides it and shows "Back to Menu" only.
 
 ---
 
@@ -191,13 +180,14 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | --- | --- |
 | `src/models/Game.ts` | Core game logic — OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
-| `src/hooks/useOnlineGame.ts` | Online game state — broadcast sync, RPS, Presence, disconnect, Play Again readiness |
+| `src/hooks/useOnlineGame.ts` | Online game state — broadcast sync, RPS (inc. `submitRPSPick`), Presence, disconnect, Play Again readiness |
 | `src/hooks/useActiveGame.ts` | Active/forfeited game detection — re-queries on navigation |
 | `src/lib/sounds.ts` | Web Audio API sound effects — `resumeAudio()` must be called on first user gesture |
 | `src/lib/gameSerializer.ts` | `serializeGame` / `deserializeGame` + `SerializedState` type |
 | `src/components/ResumeGameToast.tsx` | Resume + forfeit toast component |
 | `src/components/game/OnlineGameView.tsx` | Online game UI — disconnect banner, forfeit modal, Play Again dots, audio |
-| `src/components/game/RPSScreen.tsx` | RPS pick UI — no channel, no onResolved. State transitions handled by useOnlineGame |
+| `src/components/game/RPSScreen.tsx` | RPS pick UI — accepts `onSubmitPick` callback; no direct Supabase writes |
+| `src/components/game/MatchmakingPage.tsx` | Create/join game with code — lobby channel + SUBSCRIBED fallback |
 | `src/components/GameWrapper.tsx` | Local/AI game UI — audio wired here |
 | `src/App.tsx` | React Router v7. All routes. |
 | `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
@@ -206,8 +196,6 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | `src/lib/rps.ts` | RPS logic — pure functions |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap |
 | `docs/plans/2026-03-19-testing-benchmarks.md` | Live testing checklist — run before merge |
-| `docs/plans/2026-03-19-broadcast-sync-audio-rematch.md` | Implementation plan (completed) |
-| `docs/plans/2026-03-19-disconnect-handling.md` | Disconnect handling implementation plan (completed) |
 
 ---
 
