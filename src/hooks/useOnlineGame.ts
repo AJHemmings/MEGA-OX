@@ -13,6 +13,16 @@ const countMoves = (state: SerializedState | null | undefined): number => {
   return state.boards.flat().filter((m: string) => m !== '').length;
 };
 
+// Status can only move forward. Prevents a late/out-of-order postgres_changes event
+// (e.g. status='rps' arriving after status='complete') from rewinding the game state.
+const STATUS_ORDER: Record<OnlineGameStatus, number> = {
+  loading: 0, waiting: 1, rps: 2, active: 3, complete: 4,
+};
+const advanceStatus = (prev: OnlineGameStatus, next: string): OnlineGameStatus => {
+  const nextTyped = next as OnlineGameStatus;
+  return STATUS_ORDER[nextTyped] > STATUS_ORDER[prev] ? nextTyped : prev;
+};
+
 export const useOnlineGame = (gameId: string) => {
   const { user } = useAuth();
   const [game, setGame] = useState<Game | null>(null);
@@ -91,7 +101,7 @@ export const useOnlineGame = (gameId: string) => {
         filter: `id=eq.${gameId}`
       }, (payload) => {
         const updated = payload.new as any;
-        setStatus(updated.status);
+        setStatus(prev => advanceStatus(prev, updated.status));
         setWinner(updated.winner);
         setMyMarker(updated.player_x_id === user.id ? 'X' : 'O');
         setRpsCreatorPick(updated.rps_creator_pick);

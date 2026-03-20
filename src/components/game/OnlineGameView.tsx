@@ -58,6 +58,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const prevCellCountRef = useRef<number>(0);
   const hasGameStartedRef = useRef<boolean>(false);
   const prevHadBothPicksRef = useRef(false);
+  // Set to true once the result screen has been shown and dismissed for a non-draw round.
+  // Prevents RPSScreen flashing back during the 'rps'→'active' status gap (race condition
+  // where the result screen auto-continues before postgres_changes delivers status='active').
+  const rpsResultShownRef = useRef(false);
 
   // Open result screen when both picks first become available — no status check needed.
   // The creator resolves RPS so quickly that the joiner may receive status='active' before
@@ -66,6 +70,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     const hasBothPicks = !!(rpsCreatorPick && rpsJoinerPick);
     if (hasBothPicks && !prevHadBothPicksRef.current) {
       setResultPicks({ creator: rpsCreatorPick as RPSPick, joiner: rpsJoinerPick as RPSPick });
+    }
+    // On draw the creator clears both picks — reset the guard so re-pick works correctly
+    if (!hasBothPicks) {
+      rpsResultShownRef.current = false;
     }
     prevHadBothPicksRef.current = hasBothPicks;
   }, [rpsCreatorPick, rpsJoinerPick]);
@@ -158,7 +166,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     prevStatusRef.current = status;
   }, [game, status, myMarker, winner]);
 
-  const handleRPSContinue = useCallback(() => setResultPicks(null), []);
+  const handleRPSContinue = useCallback(() => {
+    rpsResultShownRef.current = true;
+    setResultPicks(null);
+  }, []);
 
   // RPS result screen — shown for the full 3s timer regardless of status/pick changes
   if (resultPicks) {
@@ -174,8 +185,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     );
   }
 
-  // RPS pick screen (no picks submitted yet, or draw re-pick)
-  if (status === 'rps') {
+  // RPS pick screen (no picks submitted yet, or draw re-pick).
+  // Guard: if the result screen was already shown and dismissed, don't flash RPSScreen
+  // during the brief gap before status advances from 'rps' to 'active'.
+  if (status === 'rps' && !rpsResultShownRef.current) {
     return (
       <RPSScreen
         gameId={gameId}
