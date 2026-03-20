@@ -33,6 +33,12 @@ export const useOnlineGame = (gameId: string) => {
   const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const gameRef = useRef<Game | null>(null);
+
+  // Keep gameRef in sync so event handlers can read latest game state without stale closure
+  useEffect(() => {
+    gameRef.current = game;
+  }, [game]);
 
   const fetchGameState = useCallback(async () => {
     if (!user || !gameId) return;
@@ -49,9 +55,14 @@ export const useOnlineGame = (gameId: string) => {
     setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
     setForfeitPlayerId(data.forfeit_player_id ?? null);
     if (data.state && Object.keys(data.state).length > 0) {
-      const g = deserializeGame(data.state as any);
-      setGame(g);
-      localMoveCountRef.current = countMoves(data.state as unknown as SerializedState);
+      const dbMoveCount = countMoves(data.state as unknown as SerializedState);
+      // Only apply DB state if it's at least as current as local — prevents overwriting a
+      // more recent broadcast state that landed before this fetch resolved
+      if (dbMoveCount >= localMoveCountRef.current) {
+        const g = deserializeGame(data.state as any);
+        setGame(g);
+        localMoveCountRef.current = dbMoveCount;
+      }
     } else {
       setGame(new Game());
       localMoveCountRef.current = 0;
@@ -103,24 +114,36 @@ export const useOnlineGame = (gameId: string) => {
             countdownIntervalRef.current = null;
           }
           setDisconnectCountdown(null);
-          fetchGameState();
+          // Broadcast current game state to the reconnecting player — more reliable than a
+          // DB fetch since async move writes may not have landed yet
+          if (gameRef.current) {
+            channel.send({
+              type: 'broadcast',
+              event: 'move',
+              payload: { state: serializeGame(gameRef.current) },
+            });
+          }
         }
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: any[] }) => {
         const opponentLeft = leftPresences.some((p: any) => p.user_id !== user.id);
-        if (opponentLeft) {
-          setOpponentConnected(false);
-          let remaining = 90;
+        if (!opponentLeft) return;
+        // Check if opponent still has any active presence entries (quick reconnect case).
+        // Supabase fires leave for the old session ref even if a new session already joined.
+        const currentPresences = Object.values(channel.presenceState()).flat() as any[];
+        const opponentStillPresent = currentPresences.some((p: any) => p.user_id !== user.id);
+        if (opponentStillPresent) return;
+        setOpponentConnected(false);
+        let remaining = 90;
+        setDisconnectCountdown(remaining);
+        countdownIntervalRef.current = setInterval(() => {
+          remaining -= 1;
           setDisconnectCountdown(remaining);
-          countdownIntervalRef.current = setInterval(() => {
-            remaining -= 1;
-            setDisconnectCountdown(remaining);
-            if (remaining <= 0 && countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current);
-              countdownIntervalRef.current = null;
-            }
-          }, 1000);
-        }
+          if (remaining <= 0 && countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+        }, 1000);
       })
       .on<{ state: SerializedState }>('broadcast', { event: 'move' }, (payload) => {
         if (payload.payload?.state) {
