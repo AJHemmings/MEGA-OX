@@ -167,9 +167,16 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   }, [game, status, myMarker, winner]);
 
   const handleRPSContinue = useCallback(() => {
-    rpsResultShownRef.current = true;
+    if (resultPicks) {
+      const result = resolveRPS(resultPicks.creator, resultPicks.joiner);
+      // Only set the guard on a decisive result. For draws, the re-pick screen must show
+      // again, so we leave rpsResultShownRef as-is (already reset when picks were cleared).
+      if (result !== 'draw') {
+        rpsResultShownRef.current = true;
+      }
+    }
     setResultPicks(null);
-  }, []);
+  }, [resultPicks]);
 
   // RPS result screen — shown for the full 3s timer regardless of status/pick changes
   if (resultPicks) {
