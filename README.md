@@ -31,13 +31,13 @@ to win the game. Every move you make determines where your opponent must play ne
 
 The roadmap is broken into phases, each building on the last:
 
-**Phase 1 - AI difficulty**
+**✅ Phase 1 - AI difficulty**
 Selectable Easy, Medium, and Hard opponents, replacing the current random-move AI.
 
-**Phase 2 - Cosmetics system**
+**✅ Phase 2 - Cosmetics system**
 Architectural groundwork to support swappable marker skins and board overlays.
 
-**Phase 3 - Progression, achievements, and currency**
+**⏳ Phase 3 - Progression, achievements, and currency**
 Earn XP and level up by playing. Unlock achievements for skill-based and milestone goals.
 Earn in-game currency to spend on cosmetics.
 
