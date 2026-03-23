@@ -17,7 +17,7 @@ import {
 import { GameSkins } from '../../skins/types';
 import RPSScreen from './RPSScreen';
 import RPSResultScreen from './RPSResultScreen';
-import { resolveRPS, RPSPick, RPSResult } from '../../lib/rps';
+import { resolveRPS, RPSResult } from '../../lib/rps';
 import {
   playMarkerPlaced,
   playYourTurn,
@@ -42,10 +42,8 @@ interface OnlineGameViewProps {
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, status, myMarker, winner, placeMarker, rpsCreatorPick, rpsJoinerPick, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent, submitRPSPick } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsResultPicks, rpsRound, dismissRPSResult, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent, submitRPSPick } = useOnlineGame(gameId);
 
-  // Snapshot of picks captured when result screen opens — survives status change and draw clear
-  const [resultPicks, setResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
   const [showForfeitModal, setShowForfeitModal] = useState(false);
 
   // Derived from DB — not from presence, so no race condition when opponent navigates away after game ends
@@ -57,26 +55,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const prevStatusRef = useRef<string>('loading');
   const prevCellCountRef = useRef<number>(0);
   const hasGameStartedRef = useRef<boolean>(false);
-  const prevHadBothPicksRef = useRef(false);
   // Set to true once the result screen has been shown and dismissed for a non-draw round.
   // Prevents RPSScreen flashing back during the 'rps'→'active' status gap (race condition
   // where the result screen auto-continues before postgres_changes delivers status='active').
   const rpsResultShownRef = useRef(false);
-
-  // Open result screen when both picks first become available — no status check needed.
-  // The creator resolves RPS so quickly that the joiner may receive status='active' before
-  // both picks are set locally, so requiring status==='rps' causes the result screen to be missed.
-  useEffect(() => {
-    const hasBothPicks = !!(rpsCreatorPick && rpsJoinerPick);
-    if (hasBothPicks && !prevHadBothPicksRef.current) {
-      setResultPicks({ creator: rpsCreatorPick as RPSPick, joiner: rpsJoinerPick as RPSPick });
-    }
-    // On draw the creator clears both picks — reset the guard so re-pick works correctly
-    if (!hasBothPicks) {
-      rpsResultShownRef.current = false;
-    }
-    prevHadBothPicksRef.current = hasBothPicks;
-  }, [rpsCreatorPick, rpsJoinerPick]);
 
   useEffect(() => {
     if (rematchGameId) {
@@ -167,24 +149,27 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   }, [game, status, myMarker, winner]);
 
   const handleRPSContinue = useCallback(() => {
-    if (resultPicks) {
-      const result = resolveRPS(resultPicks.creator, resultPicks.joiner);
+    if (rpsResultPicks) {
+      const result = resolveRPS(rpsResultPicks.creator, rpsResultPicks.joiner);
       // Only set the guard on a decisive result. For draws, the re-pick screen must show
-      // again, so we leave rpsResultShownRef as-is (already reset when picks were cleared).
+      // again, so we leave rpsResultShownRef as-is (dismissRPSResult resets it via rpsRound).
       if (result !== 'draw') {
         rpsResultShownRef.current = true;
       }
+      dismissRPSResult(result === 'draw');
     }
-    setResultPicks(null);
-  }, [resultPicks]);
+  }, [rpsResultPicks, dismissRPSResult]);
 
-  // RPS result screen — shown for the full 3s timer regardless of status/pick changes
-  if (resultPicks) {
-    const result: RPSResult = resolveRPS(resultPicks.creator, resultPicks.joiner);
+  // RPS result screen — shown for the full 3s timer regardless of status/pick changes.
+  // rpsResultPicks is captured synchronously in the hook's event handlers, so it is immune
+  // to the React 18 batching race where DB null-clear can arrive in the same batch as the
+  // "both picks in" event and prevent the result screen from ever showing.
+  if (rpsResultPicks) {
+    const result: RPSResult = resolveRPS(rpsResultPicks.creator, rpsResultPicks.joiner);
     return (
       <RPSResultScreen
-        creatorPick={resultPicks.creator}
-        joinerPick={resultPicks.joiner}
+        creatorPick={rpsResultPicks.creator}
+        joinerPick={rpsResultPicks.joiner}
         isCreator={isCreator}
         result={result}
         onContinue={handleRPSContinue}
@@ -193,11 +178,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   }
 
   // RPS pick screen (no picks submitted yet, or draw re-pick).
+  // key={rpsRound} forces a full remount on each draw round, clearing RPSScreen's internal
+  // myPick/waiting state so the player gets a clean pick UI for the next round.
   // Guard: if the result screen was already shown and dismissed, don't flash RPSScreen
   // during the brief gap before status advances from 'rps' to 'active'.
   if (status === 'rps' && !rpsResultShownRef.current) {
     return (
-      <RPSScreen onSubmitPick={submitRPSPick} />
+      <RPSScreen key={rpsRound} onSubmitPick={submitRPSPick} />
     );
   }
 

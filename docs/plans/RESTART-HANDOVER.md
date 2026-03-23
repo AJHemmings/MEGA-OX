@@ -4,11 +4,11 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. We are in **live testing** on `feat/disconnect-handling`.
+> "I've read the handover. The RPS draw race condition fix is built and ready to deploy to private Vercel (not yet pushed).
 >
-> Three new bugs were fixed this session (lobby join fallback, Play Again reliability, RPS screen flash-back, and RPS pick delivery). The latest build is deployed to private Vercel at commit `f982c6c`.
+> The fix moves `rpsResultPicks` capture into `useOnlineGame` using shadow refs so it happens synchronously inside event handlers — immune to the React 18 batching race. `rpsRound` as a `key` on RPSScreen ensures remount on each draw. No DB schema changes needed.
 >
-> The user was mid-testing when this session ended. The immediate next step is continuing live testing — check the test status table below to see what is confirmed vs pending.
+> Next step: push to private Vercel (`git push private HEAD:main --force` from the worktree), test the draw path on two browsers, then run the Section 6 regression checklist before merging to local main.
 >
 > Ready when you are."
 
@@ -16,88 +16,76 @@ Read this file in full, then say:
 
 ## Current state
 
-**Active branch:** `feat/disconnect-handling`
-**Worktree path:** `F:\Projects\MEGA-OX\.worktrees\feat-disconnect-handling`
-**Parent branch:** `feat/phase-2-skins` (Phase 2 complete, not yet merged to local `main`)
+**Active worktree:**
 
-**Private Vercel (testing):** `mega-ox-dev-git-feat-disconnect-8ee57f-adams-projects-ff804fb2.vercel.app`
-— Project: `mega-ox-dev` (prj_ax0KSF6QTW1EMnAdtDa9HesZWCub), Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
-— Deployment protection: **disabled** (turned off for testing)
-— Connected to: `AJHemmings/MEGA-OX-private` — deploy by running `git push private HEAD:main --force` from the worktree
+| Worktree | Branch | Status |
+| --- | --- | --- |
+| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | RPS draw race fix committed — ready to push to private Vercel |
 
-**Public Vercel (`mega-ox`):** Portfolio/CV version. Leave alone.
+`feat/phase-2-skins` worktree has been removed. Its code is fully contained in `feat/disconnect-handling`.
 
-**`main` branch:** Do NOT push to `origin/main` without explicit instruction.
+**Private Vercel (testing):** `mega-ox-dev`
+— Project ID: `prj_ax0KSF6QTW1EMnAdtDa9HesZWCub`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
+— Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
+— Deploy by running `git push private HEAD:main --force` from the `feat-disconnect-handling` worktree
+— Deployment protection: **disabled** (for testing)
+— Latest production: commit `d7c35b3` ("fix: Play Again broken when isCreator changed by RPS swap")
+— Next deploy: RPS draw race fix (not yet pushed — run `git push private HEAD:main --force` from worktree)
 
-**Build status:** ✅ Passing — clean as of commit `f982c6c`.
+**Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone.
 
----
+**Local `main` branch:** Still behind private `main` (pre-multiplayer). Do NOT push to `origin/main` without explicit instruction.
 
-## Testing status
-
-### ✅ Confirmed working (prior session)
-- Move sync (1.1–1.5) — moves instant, boards in sync, constraints, micro/macro wins
-- Intentional exit (3.1–3.3) — forfeit confirm/cancel modal works
-- Auto-forfeit on disconnect (disconnect → 90s countdown → forfeit fires → both screens update correctly)
-- Countdown cancels when disconnected player reconnects (full close + reopen, not refresh)
-- Resume toast appears correctly
-- Audio (4.1–4.8) — all sounds confirmed working ✅
-- First game (join with code) played cleanly ✅
-
-### ⚠️ Needs testing — fixes applied this session, not yet confirmed
-| # | What to check | Fix applied |
-|---|---|---|
-| RPS | Both browsers complete RPS and enter game without one getting stuck on "Waiting for opponent" | Picks now broadcast via `rps_pick` event in addition to postgres_changes; `submitRPSPick` in `useOnlineGame` handles both paths |
-| RPS | Result screen shows on both browsers before game starts | `rpsResultShownRef` prevents RPSScreen flash-back during `rps → active` gap |
-| RPS | No browser goes back to pick selection after game is won | `advanceStatus()` — status is now monotonic, cannot go backwards from late postgres_changes |
-| Join | Creator navigates to game correctly even if joiner arrived before lobby subscription confirmed | SUBSCRIBED callback now checks DB status as fallback |
-| Play Again | Both players click Play Again → new game loads | Intent now stored in presence (`channel.track`) as reliable fallback; broadcast is fast path |
-| Play Again | Clicking "Back to Menu" from complete screen navigates cleanly | No change — was working |
-| Regression | All section 6 regression tests (see testing benchmarks doc) | Not yet run |
+**Build status:** ✅ Clean build on worktree. Not yet deployed.
 
 ---
 
-## Bugs found and fixed this session (new — on top of prior 9 fixes)
+## Remaining work before merging local main
 
-### Fix 10 — Creator stuck on "Waiting for opponent" (lobby subscription race)
-If the joiner entered the code before the creator's `lobby:${id}` postgres_changes subscription was confirmed by Supabase, the status-change event was missed and the creator never navigated to the game.
-
-**Fix:** The lobby channel's `.subscribe()` callback now runs a DB status check immediately on SUBSCRIBED. If the game is already `rps` or `active`, it navigates straight to the game.
-
-### Fix 11 — Play Again: both stuck at "Waiting..." forever
-`rematch_intent` was signalled only via ephemeral broadcast. If the channel was in a degraded state after game completion, both broadcasts were dropped silently and neither player saw the other's intent.
-
-**Fix:** `signalRematchIntent` now also calls `channel.track({ user_id, rematch_intent: intent })`, storing the intent in presence state. Presence persists for the connection lifetime. A `presence sync` handler and updated `presence join` handler pick up the intent from presence. Broadcast is kept as the fast path; presence is the reliable fallback.
-
-### Fix 12 — RPS screen flashing back after game ends / after result screen
-Two root causes:
-1. **Out-of-order postgres_changes:** A late `status: 'rps'` event arriving after `status: 'complete'` would reset the game to the RPS pick screen.
-2. **Result screen timer race:** `RPSResultScreen` auto-continues after 3s. If `status: 'active'` postgres_changes hadn't arrived yet, `resultPicks` cleared → `status === 'rps'` → RPSScreen showed.
-
-**Fix 1:** Status is now monotonic. `advanceStatus()` only applies a status update if it's a forward transition (`loading → waiting → rps → active → complete`). Late/out-of-order events are ignored.
-
-**Fix 2:** `rpsResultShownRef` is set when the result screen is dismissed. While true, the `status === 'rps'` RPSScreen render is blocked. Resets to false only when picks are cleared (draw re-pick).
-
-### Fix 13 — Creator stuck on "Waiting for opponent" during RPS (postgres_changes missed)
-The creator (browser one) would submit their RPS pick and wait, while the joiner (browser two) submitted theirs. If the joiner's `rps_joiner_pick` postgres_changes event was missed on the creator's client, `rpsJoinerPick` stayed null. The creator never detected both picks → no result screen → RPS resolution effect never fired → status stayed `rps` permanently. Joiner, who DID receive both picks, showed the result screen and bypassed to the game board via `rpsResultShownRef` — but couldn't move because status was still `rps`. Refresh fixed it by pulling both picks from DB.
-
-**Fix:** RPS pick submission moved into `useOnlineGame` as `submitRPSPick`. After writing to DB, it also broadcasts an `rps_pick` event with `{ column, pick }`. A new broadcast listener applies the pick immediately on the other client. postgres_changes is still the authoritative path; broadcast is the fast/reliable fallback. `RPSScreen` now accepts an `onSubmitPick` callback prop instead of writing to Supabase directly.
+1. ~~**Fix RPS draw bug**~~ — **Done.** Fix committed on `feat/disconnect-handling`, clean build.
+2. **Deploy to private Vercel** — `git push private HEAD:main --force` from the worktree, then test draw path on two browsers.
+3. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Verifies non-multiplayer features weren't broken by broadcast sync changes.
+4. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
 
 ---
 
-## Prior bugs fixed (previous session — for reference)
+## Bug to fix next session
 
-| # | Summary |
-|---|---|
-| 1 | AudioContext never started — added `resumeAudio()`, called on first click |
-| 2 | `wonByForfeit` race condition — derived from `forfeit_player_id` (DB), not presence |
-| 3 | Countdown not cancelling on quick reconnect — check `presenceState()` before starting |
-| 4 | Board state unsynced on join — broadcast current state on join instead of DB fetch |
-| 5 | `opponentId` null for creator — set in `postgres_changes` handler, not just `fetchGameState` |
-| 6 | Loser doesn't see complete screen — `isOver`/`winner` included in move broadcast payload |
-| 7 | Joiner stuck on "Waiting for opponent" during RPS — `prevHadBothPicksRef` trigger instead of `status === 'rps'` check |
-| 8 | RPSScreen had a dead channel — removed; state handled entirely by `useOnlineGame` |
-| 9 | Play Again redesigned with readiness dots — `rematch_intent` broadcast, two-dot UI |
+### RPS draw — Browser 1 (creator) stuck on "Waiting for opponent"
+
+**Symptom:** When both players pick the same option (draw), Browser 2 (joiner) correctly returns to the RPS pick screen. Browser 1 (creator) stays on the RPS pick screen but shows "Waiting for opponent..." with their previous pick displayed — never clearing to allow a fresh pick. Refreshing Browser 1 restores it to the pick screen correctly. The bug is intermittent — the second draw attempt in the same test session worked correctly both times.
+
+**Root cause (likely):** A React state batching race on the creator's side. The creator writes the draw-clear to DB almost immediately after detecting both picks. The Realtime event for "picks cleared" can arrive back at Browser 1 very close to the "both picks in" event. If React 18 batches these two state updates together, `rpsCreatorPick` and `rpsJoinerPick` are already `null` by the time any render commits — so the snapshot that drives the result screen never gets captured, the result screen never shows, `RPSScreen` never unmounts, and the `waiting` / `myPick` state from the previous round persists.
+
+**Files to look at first:**
+- `src/hooks/useOnlineGame.ts` — RPS resolution logic, `rpsResolutionSentRef`, draw-clear path
+- `src/components/game/OnlineGameView.tsx` — `resultPicks` snapshot logic, `handleRPSContinue`
+
+**Note on Fix 14:** The previous fix addressed `handleRPSContinue` unconditionally setting `rpsResultShownRef=true` on draws. The current bug is distinct — it's about the result screen never showing at all on Browser 1, not about the continue logic after it shows.
+
+---
+
+## Deferred (not urgent)
+
+- **Forfeit toast text** — always reads "You were forfeited from your last game after the reconnection window expired." regardless of whether the forfeit was intentional or due to disconnect. To fix properly: add a `forfeit_reason` column (`'voluntary'` | `'disconnect'`) to the `games` table, set it at the point of forfeit, read it in `useActiveGame`, and branch the toast text. Deferred — low user impact.
+
+---
+
+## Confirmed working — live testing
+
+- Move sync (1.1–1.5) — instant, in sync, constraints, micro/macro wins ✅
+- Intentional exit (3.1–3.3) — forfeit confirm/cancel modal ✅
+- Browser back button interception + tab close prompt ✅
+- Auto-forfeit on disconnect (90s countdown → forfeit fires → both screens update) ✅
+- Countdown cancels when disconnected player reconnects ✅
+- Resume toast appears correctly ✅
+- Audio (4.1–4.8) — all sounds confirmed ✅
+- RPS — both browsers complete RPS and enter game ✅
+- RPS — result screen shows on both browsers before game starts ✅
+- RPS — win case: both browsers taken to loading screen then game ✅
+- RPS — draw (second attempt): both browsers return to pick screen correctly ✅
+- Join with code — creator navigates correctly ✅
+- Play Again — both players → new RPS → new game ✅
 
 ---
 
@@ -109,27 +97,17 @@ The creator (browser one) would submit their RPS pick and wait, while the joiner
 | Demo game (`/demo`) | Done |
 | Auth flow | Done |
 | Main menu (`/menu`) | Done |
-| Tutorial - Beginner + Intermediate | Done |
+| Tutorial — Beginner + Intermediate | Done |
 | Single player vs AI (Easy / Medium / Hard) | Done — Phase 1 complete |
 | Local 2-player | Done |
-| Network multiplayer | Done |
-| Skin system scaffolding (Phase 2) | Done |
+| Network multiplayer — core | Done |
+| Skin system scaffolding | Done — Phase 2 |
 | User profiles, leaderboard, stat tracking | Done |
-| Disconnect handling | Done — Presence + grace period + forfeit |
-| Broadcast move sync | Done |
-| Audio notifications | Done — confirmed working |
-| Play Again (readiness dots) | Implemented — fixes applied, awaiting re-test |
-| RPS sync | Implemented — fixes applied, awaiting re-test |
-
----
-
-## How to deploy
-
-From the worktree:
-```bash
-git push private HEAD:main --force
-```
-Vercel auto-builds on push. Wait ~60s then test at the private URL.
+| Disconnect handling | Done — Phase 2.5 |
+| Broadcast move sync | Done — Phase 2.5 |
+| Audio notifications | Done — Phase 2.5 |
+| Play Again (readiness dots) | Done — Phase 2.5 |
+| RPS sync | Done — Phase 2.5 (draw intermittent bug remaining) |
 
 ---
 
@@ -139,10 +117,10 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
 | Phase | Area | Status |
 | --- | --- | --- |
-| 0 | Infrastructure and cost planning | Brief written |
+| 0 | Infrastructure and cost planning | Brief written (`docs/plans/phase-0-infrastructure-brief.md`) |
 | 1 | AI improvement (Easy / Medium / Hard) | **Complete and merged** |
-| 2 | Skin system code refactor | **Complete — awaiting merge** |
-| 2.5 | Disconnect handling + broadcast sync + audio + Play Again | **In progress — live testing** |
+| 2 | Skin system code refactor | **Complete — merged into private main** |
+| 2.5 | Disconnect handling + broadcast sync + audio + Play Again | **Complete — merged into private main** |
 | 3 | Player progression + achievements + virtual currency | Not started |
 | 4 | Profile customisation + emoji communication | Not started |
 | 5 | Visual redesign | Not started |
@@ -152,25 +130,42 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
 ---
 
-## Known issues / pending
+## Key design decisions
 
-- **`useLoginStreak.ts` line 31** — swap `.single()` to `.maybeSingle()` to silence 406 errors when no reward exists for streak day. Low priority, deferred.
-- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` state but not yet passed to `GameWrapper`. Phase 6 will wire this.
-- **Skins tables in Supabase have no RLS policies** — fine for Phase 2, needed in Phase 3.
-- **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active` indefinitely. Acceptable for this phase; cleanup job planned for Phase 7.
-- **`isCreator` in `useOnlineGame`** — actually means "is currently player X" (set from `player_x_id === user.id`), not "was the original game creator". Renaming to `isPlayerX` would make the codebase honest. Low priority, no user-facing impact.
-- **Play Again — both players click simultaneously** — both clients may try to create a game. `rematchCreatedRef` prevents double-creation on a single client but two simultaneous clients can still race. Acceptable edge case for now.
-- **`game_moves` table `move_number` is always 0** — full move history tracking deferred.
-- **Play Again not shown on forfeit games** — by design. `wonByForfeit` hides it and shows "Back to Menu" only.
+- **Visual redesign is Phase 5**, not Phase 0.
+- **Skin system is split:** code refactor is Phase 2; visual art direction is Phase 5.
+- **Progression, achievements, and currency are one phase** (Phase 3).
+- **AI improvement (Phase 1) comes before progression** because achievements reference difficulty levels.
+- **Hand-coded AI only** — minimax with alpha-beta pruning for Hard.
+- **Disconnect forfeit is written by the waiting player's client** (not a server function). Risk: double-disconnect leaves game stuck — cleanup deferred to Phase 7.
+- **Grace period is 90 seconds** before auto-forfeit.
+- **Intentional exits write forfeit immediately** (no grace period).
 
 ---
 
-## Merge order (when testing is done)
+## Known issues / deferred
 
-1. Merge `feat/disconnect-handling` → `feat/phase-2-skins` (it branched from there)
-2. Merge `feat/phase-2-skins` → local `main`
-3. Push local `main` → `private/main` (triggers production Vercel build)
-4. Optionally push to `origin/main` (public portfolio) — user decides
+- **`useLoginStreak.ts` line 31** — swap `.single()` to `.maybeSingle()` to silence 406 errors. Low priority, no user-facing impact.
+- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not yet passed to `GameWrapper`. Phase 6.
+- **Skins tables have no RLS policies** — fine for Phase 2, needed for Phase 3.
+- **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active`. Cleanup job planned for Phase 7.
+- **`isCreator` in `useOnlineGame`** — actually means "is player X". Renaming to `isPlayerX` deferred.
+- **Play Again simultaneous click race** — two clients can both try to create a rematch. `rematchCreatedRef` prevents it per-client, not across clients. Acceptable.
+- **`game_moves` table `move_number` is always 0** — full move history tracking deferred.
+- **Play Again not shown on forfeit games** — by design.
+- **Forfeit toast text** — see Deferred section above.
+
+---
+
+## Open questions (resolve at each phase's detail design)
+
+- Currency name and branding
+- EXP values and level curve shape
+- Art direction for visual redesign
+- Which profile items are free progression unlocks vs paid vs both
+- Achievement trigger method (DB trigger vs edge function vs client + server validation)
+- Admin access control: private API vs direct Supabase RLS
+- Bug reports: email notifications to admin on new submission?
 
 ---
 
@@ -180,16 +175,17 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | --- | --- |
 | `src/models/Game.ts` | Core game logic — OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
-| `src/hooks/useOnlineGame.ts` | Online game state — broadcast sync, RPS (inc. `submitRPSPick`), Presence, disconnect, Play Again readiness |
+| `src/hooks/useOnlineGame.ts` | Online game state — broadcast sync, RPS (inc. `submitRPSPick`), Presence, disconnect, Play Again |
 | `src/hooks/useActiveGame.ts` | Active/forfeited game detection — re-queries on navigation |
-| `src/lib/sounds.ts` | Web Audio API sound effects — `resumeAudio()` must be called on first user gesture |
-| `src/lib/gameSerializer.ts` | `serializeGame` / `deserializeGame` + `SerializedState` type |
-| `src/components/ResumeGameToast.tsx` | Resume + forfeit toast component |
+| `src/lib/sounds.ts` | Web Audio API — `resumeAudio()` must be called on first user gesture |
+| `src/lib/gameSerializer.ts` | `serializeGame` / `deserializeGame` |
+| `src/components/ResumeGameToast.tsx` | Resume + forfeit toast |
 | `src/components/game/OnlineGameView.tsx` | Online game UI — disconnect banner, forfeit modal, Play Again dots, audio |
 | `src/components/game/RPSScreen.tsx` | RPS pick UI — accepts `onSubmitPick` callback; no direct Supabase writes |
-| `src/components/game/MatchmakingPage.tsx` | Create/join game with code — lobby channel + SUBSCRIBED fallback |
-| `src/components/GameWrapper.tsx` | Local/AI game UI — audio wired here |
-| `src/App.tsx` | React Router v7. All routes. |
+| `src/components/game/RPSResultScreen.tsx` | RPS result screen — 3s auto-continue |
+| `src/components/game/MatchmakingPage.tsx` | Create/join game — lobby channel + SUBSCRIBED fallback |
+| `src/components/GameWrapper.tsx` | Local/AI game UI |
+| `src/App.tsx` | React Router v7, all routes |
 | `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
 | `src/contexts/SkinContext.tsx` | Skin context (Phase 2) |
 | `src/contexts/AuthContext.tsx` | Auth state |
@@ -220,8 +216,8 @@ Supabase project ref: **`qioxtkcjtvvkzcoupdfk`**
 
 ## ⚠️ Incidents / lessons
 
-**rm -rf incident:** Claude used `rm -rf` on directories in the main project to clean up test copies, deleting tracked files. All restored via `git restore`. **Never use `rm -rf` on directories in the main project. Delete files individually by name.**
+**rm -rf incident:** Claude used `rm -rf` on directories in the main project, deleting tracked files. All restored via `git restore`. **Never use `rm -rf` on directories in the main project. Delete files individually by name.**
 
 **Kill by PID, not taskkill /F /IM node.exe:** When stopping the dev server, kill by PID (`taskkill //F //PID <pid>`) rather than killing all node processes.
 
-**Deploy by push, not Vercel CLI:** Vercel CLI is not available in the shell. Deploy by pushing to `AJHemmings/MEGA-OX-private` — Vercel watches that repo's main branch. Use `git push private HEAD:main --force` from the worktree.
+**Deploy by push, not Vercel CLI:** Vercel CLI is not available in the shell. Deploy by pushing to `AJHemmings/MEGA-OX-private`. Use `git push private HEAD:main --force` from the worktree.
