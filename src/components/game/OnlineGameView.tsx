@@ -60,6 +60,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // where the result screen auto-continues before postgres_changes delivers status='active').
   const rpsResultShownRef = useRef(false);
 
+  // Reset RPS guard when gameId changes — React Router reuses this component instance
+  // across /game/:id navigations (Play Again), so useRef values persist between games.
+  useEffect(() => {
+    rpsResultShownRef.current = false;
+  }, [gameId]);
+
   useEffect(() => {
     if (rematchGameId) {
       navigate(`/game/${rematchGameId}`);

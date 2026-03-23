@@ -100,11 +100,16 @@ export const useOnlineGame = (gameId: string) => {
     setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
     setWinner(data.winner);
     setIsCreator(data.player_x_id === user.id);
-    rpsCreatorPickRef.current = data.rps_creator_pick;
-    rpsJoinerPickRef.current = data.rps_joiner_pick;
-    setRpsCreatorPick(data.rps_creator_pick);
-    setRpsJoinerPick(data.rps_joiner_pick);
-    captureRPSResultIfReady(data.rps_creator_pick, data.rps_joiner_pick);
+    // Only restore RPS pick state if the game is still in RPS phase.
+    // The picks stay in the DB after resolution, so restoring them on an active/complete
+    // game would spuriously trigger captureRPSResultIfReady and show the result screen.
+    if (data.status === 'rps') {
+      rpsCreatorPickRef.current = data.rps_creator_pick;
+      rpsJoinerPickRef.current = data.rps_joiner_pick;
+      setRpsCreatorPick(data.rps_creator_pick);
+      setRpsJoinerPick(data.rps_joiner_pick);
+      captureRPSResultIfReady(data.rps_creator_pick, data.rps_joiner_pick);
+    }
     setJoinerId(data.player_o_id);
     setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
     setForfeitPlayerId(data.forfeit_player_id ?? null);
@@ -146,23 +151,26 @@ export const useOnlineGame = (gameId: string) => {
         setStatus(prev => advanceStatus(prev, updated.status));
         setWinner(updated.winner);
         setMyMarker(updated.player_x_id === user.id ? 'X' : 'O');
-        // Guard: don't let a draw-clear CDC overwrite picks we haven't used yet.
-        // When the creator resolves a draw they write rps_*_pick = null to the DB.
-        // That CDC can reach the joiner BEFORE the creator's rps_pick broadcast does.
-        // If we blindly set refs to null here, captureRPSResultIfReady silently fails
-        // when the delayed broadcast finally arrives (joiner ref is null → no match).
-        // Only apply null from CDC once the result is already captured — at that point
-        // the null-clear is legitimate and we want it so the next round starts clean.
-        const nullClearAllowed = rpsResultCapturedRef.current;
-        if (updated.rps_creator_pick !== null || nullClearAllowed) {
-          rpsCreatorPickRef.current = updated.rps_creator_pick;
-          setRpsCreatorPick(updated.rps_creator_pick);
+        // Only update RPS pick state during the RPS phase.
+        // After RPS resolves, rps_creator_pick / rps_joiner_pick stay populated in the DB.
+        // Any later postgres_changes (move writes, forfeit) carries those stale picks and
+        // would spuriously re-trigger captureRPSResultIfReady — showing the RPS result screen
+        // mid-game or after a forfeit. Scoping to status='rps' eliminates that.
+        // The draw-clear null guard is preserved inside this block: when the creator writes
+        // null to clear picks after a draw, that CDC can arrive before the rps_pick broadcast,
+        // so we only apply null once the result has already been captured.
+        if (updated.status === 'rps') {
+          const nullClearAllowed = rpsResultCapturedRef.current;
+          if (updated.rps_creator_pick !== null || nullClearAllowed) {
+            rpsCreatorPickRef.current = updated.rps_creator_pick;
+            setRpsCreatorPick(updated.rps_creator_pick);
+          }
+          if (updated.rps_joiner_pick !== null || nullClearAllowed) {
+            rpsJoinerPickRef.current = updated.rps_joiner_pick;
+            setRpsJoinerPick(updated.rps_joiner_pick);
+          }
+          captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
         }
-        if (updated.rps_joiner_pick !== null || nullClearAllowed) {
-          rpsJoinerPickRef.current = updated.rps_joiner_pick;
-          setRpsJoinerPick(updated.rps_joiner_pick);
-        }
-        captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
         setForfeitPlayerId(updated.forfeit_player_id ?? null);
         // opponentId must be updated here too — creator has null until joiner joins
         setOpponentId(updated.player_x_id === user.id ? updated.player_o_id : updated.player_x_id);
