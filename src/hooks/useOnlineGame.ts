@@ -468,6 +468,16 @@ export const useOnlineGame = (gameId: string) => {
     const column = isCreator ? 'rps_creator_pick' : 'rps_joiner_pick';
     const { error } = await supabase.from('games').update({ [column]: pick }).eq('id', gameId);
     if (error) return false;
+    // Set own ref immediately — don't wait for the postgres_changes echo.
+    // The opponent's rps_pick broadcast can arrive before our echo returns, and the
+    // broadcast handler calls captureRPSResultIfReady(rpsCreatorPickRef.current, ...).
+    // If our ref is still null at that point the capture silently fails and the result
+    // screen never shows (the draw bug: creator stuck on "Waiting for opponent...").
+    if (isCreator) {
+      rpsCreatorPickRef.current = pick;
+    } else {
+      rpsJoinerPickRef.current = pick;
+    }
     channelRef.current?.send({
       type: 'broadcast',
       event: 'rps_pick',
