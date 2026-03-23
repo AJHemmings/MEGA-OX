@@ -55,15 +55,17 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const prevStatusRef = useRef<string>('loading');
   const prevCellCountRef = useRef<number>(0);
   const hasGameStartedRef = useRef<boolean>(false);
-  // Set to true once the result screen has been shown and dismissed for a non-draw round.
+  // True once the result screen has been shown and dismissed for a non-draw round.
   // Prevents RPSScreen flashing back during the 'rps'→'active' status gap (race condition
   // where the result screen auto-continues before postgres_changes delivers status='active').
-  const rpsResultShownRef = useRef(false);
+  // Must be state (not a ref) so that resetting it on gameId change triggers a re-render —
+  // a ref reset is silent and the RPSScreen would never re-appear for the new game.
+  const [rpsResultShown, setRpsResultShown] = useState(false);
 
   // Reset RPS guard when gameId changes — React Router reuses this component instance
-  // across /game/:id navigations (Play Again), so useRef values persist between games.
+  // across /game/:id navigations (Play Again), so state must be explicitly reset.
   useEffect(() => {
-    rpsResultShownRef.current = false;
+    setRpsResultShown(false);
   }, [gameId]);
 
   useEffect(() => {
@@ -160,7 +162,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       // Only set the guard on a decisive result. For draws, the re-pick screen must show
       // again, so we leave rpsResultShownRef as-is (dismissRPSResult resets it via rpsRound).
       if (result !== 'draw') {
-        rpsResultShownRef.current = true;
+        setRpsResultShown(true);
       }
       dismissRPSResult(result === 'draw');
     }
@@ -188,7 +190,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // myPick/waiting state so the player gets a clean pick UI for the next round.
   // Guard: if the result screen was already shown and dismissed, don't flash RPSScreen
   // during the brief gap before status advances from 'rps' to 'active'.
-  if (status === 'rps' && !rpsResultShownRef.current) {
+  if (status === 'rps' && !rpsResultShown) {
     return (
       <RPSScreen key={rpsRound} onSubmitPick={submitRPSPick} />
     );
