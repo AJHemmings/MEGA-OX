@@ -72,7 +72,9 @@ export const useOnlineGame = (gameId: string) => {
   // Using refs avoids the race where the DB null-clear echo arrives in the same React batch
   // as the "both picks in" event, which would prevent the result screen from ever showing.
   const captureRPSResultIfReady = useCallback((creatorPick: string | null, joinerPick: string | null) => {
+    console.log('[RPS captureRPSResultIfReady]', { creatorPick, joinerPick, alreadyCaptured: rpsResultCapturedRef.current });
     if (creatorPick && joinerPick && !rpsResultCapturedRef.current) {
+      console.log('[RPS captureRPSResultIfReady] ✅ CAPTURING result', { creator: creatorPick, joiner: joinerPick });
       rpsResultCapturedRef.current = true;
       setRpsResultPicks({ creator: creatorPick as RPSPick, joiner: joinerPick as RPSPick });
     }
@@ -161,6 +163,13 @@ export const useOnlineGame = (gameId: string) => {
         // so we only apply null once the result has already been captured.
         if (updated.status === 'rps') {
           const nullClearAllowed = rpsResultCapturedRef.current;
+          console.log('[RPS postgres_changes] status=rps', {
+            dbCreator: updated.rps_creator_pick,
+            dbJoiner: updated.rps_joiner_pick,
+            refCreator: rpsCreatorPickRef.current,
+            refJoiner: rpsJoinerPickRef.current,
+            nullClearAllowed,
+          });
           if (updated.rps_creator_pick !== null || nullClearAllowed) {
             rpsCreatorPickRef.current = updated.rps_creator_pick;
             setRpsCreatorPick(updated.rps_creator_pick);
@@ -269,6 +278,7 @@ export const useOnlineGame = (gameId: string) => {
         // Sync refs immediately so captureRPSResultIfReady can check both picks synchronously,
         // even if one pick came via broadcast and the other hasn't triggered a postgres_changes yet.
         const { column, pick } = payload.payload ?? {};
+        console.log('[RPS rps_pick broadcast]', { column, pick, refCreatorBefore: rpsCreatorPickRef.current, refJoinerBefore: rpsJoinerPickRef.current });
         if (column === 'rps_creator_pick' && pick) {
           rpsCreatorPickRef.current = pick;
           setRpsCreatorPick(pick);
@@ -324,10 +334,12 @@ export const useOnlineGame = (gameId: string) => {
     rpsResolutionSentRef.current = true;
 
     const result = resolveRPS(rpsCreatorPick as RPSPick, rpsJoinerPick as RPSPick);
+    console.log('[RPS resolution effect] creator resolving', { rpsCreatorPick, rpsJoinerPick, result });
 
     const resolve = async () => {
       if (result === 'draw') {
         rpsResolutionSentRef.current = false; // allow re-resolution after a draw
+        console.log('[RPS resolution effect] draw — writing null-clear to DB');
         const { error } = await supabase.from('games').update({
           rps_creator_pick: null,
           rps_joiner_pick: null,
@@ -487,7 +499,10 @@ export const useOnlineGame = (gameId: string) => {
     if (!user || !gameId) return false;
     const column = isCreator ? 'rps_creator_pick' : 'rps_joiner_pick';
     const { error } = await supabase.from('games').update({ [column]: pick }).eq('id', gameId);
-    if (error) return false;
+    if (error) {
+      console.error('[RPS submitRPSPick] DB write failed:', error.message);
+      return false;
+    }
     // Set own ref immediately — don't wait for the postgres_changes echo.
     // The opponent's rps_pick broadcast can arrive before our echo returns, and the
     // broadcast handler calls captureRPSResultIfReady(rpsCreatorPickRef.current, ...).
@@ -498,13 +513,18 @@ export const useOnlineGame = (gameId: string) => {
     } else {
       rpsJoinerPickRef.current = pick;
     }
+    console.log('[RPS submitRPSPick]', { column, pick, isCreator, refCreator: rpsCreatorPickRef.current, refJoiner: rpsJoinerPickRef.current });
+    // Attempt capture immediately — if the opponent's pick arrived via broadcast before we
+    // submitted (opponent was faster), the capture won't happen in the broadcast handler
+    // because our own ref was null at that point. This call covers that gap.
+    captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
     channelRef.current?.send({
       type: 'broadcast',
       event: 'rps_pick',
       payload: { column, pick },
     });
     return true;
-  }, [user, gameId, isCreator]);
+  }, [user, gameId, isCreator, captureRPSResultIfReady]);
 
   const signalRematchIntent = useCallback((intent: RematchIntent) => {
     setMyRematchIntent(intent);
