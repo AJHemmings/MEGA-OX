@@ -4,7 +4,9 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. The RPS draw bug is still unresolved after two fix attempts. The root cause is now well understood — see the bug section below. The next session needs to implement the identified fix: update `submitRPSPick` to write `rpsCreatorPickRef`/`rpsJoinerPickRef` synchronously before the `await`, then call `captureRPSResultIfReady` after. Do NOT attempt other approaches first — read the diagnosis in full before writing any code.
+> "I've read the handover. Fix attempt 4 for the RPS draw bug is committed and deployed to private Vercel. Root cause is confirmed: the draw-clear CDC reaches the joiner before the creator's broadcast, wiping the joiner's own pick ref and preventing the result screen from showing. The fix guards null-clear updates in the `postgres_changes` handler with `rpsResultCapturedRef.current`.
+>
+> Start by testing the draw path on two browsers. If it passes, move to the Section 6 regression checklist before merging to local main.
 >
 > Ready when you are."
 
@@ -16,7 +18,7 @@ Read this file in full, then say:
 
 | Worktree | Branch | Status |
 | --- | --- | --- |
-| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | RPS draw bug still live — latest commit `bd66143`, deployed but insufficient |
+| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | Fix attempt 4 deployed — draw path needs live testing |
 
 `feat/phase-2-skins` worktree has been removed. Its code is fully contained in `feat/disconnect-handling`.
 
@@ -25,8 +27,7 @@ Read this file in full, then say:
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy by running `git push private HEAD:main --force` from the `feat-disconnect-handling` worktree
 — Deployment protection: **disabled** (for testing)
-— Latest production: commit `bd66143` ("fix: RPS draw race condition — capture result synchronously before React batch")
-— Build: ✅ Clean. Deployed to private Vercel. Draw bug still reproduces — fix insufficient.
+— Latest production: fix attempt 4 commit (see `git log --oneline -1` in worktree)
 
 **Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone.
 
@@ -36,87 +37,68 @@ Read this file in full, then say:
 
 ## Remaining work before merging local main
 
-1. **Fix RPS draw bug** — two attempts made, still failing. See bug section below for exact fix needed.
-2. **Deploy to private Vercel** — after fix: `git push private HEAD:main --force` from the worktree, test draw path.
-3. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Verifies non-multiplayer features weren't broken by broadcast sync changes.
-4. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
+1. **Test RPS draw fix** — fix attempt 4 is deployed. Both players pick the same option. Confirm both browsers show the result screen, then both return to the pick screen cleanly. Repeat 3–5 times.
+2. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Verifies non-multiplayer features weren't broken by broadcast sync changes.
+3. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
 
 ---
 
-## Bug to fix next session
+## RPS draw bug — full history
 
-### RPS draw — one browser stuck on "Waiting for opponent"
+### Symptom
 
-**Symptom:** When both players pick the same option (draw), one browser correctly shows the result screen then returns to the pick screen. The other browser stays frozen on "Waiting for opponent..." with the previous pick still displayed. Refreshing that browser restores it. It is not always the same browser — the creator was stuck in earlier testing; in the session on 2026-03-23 the joiner was stuck while the creator recovered.
+When both players pick the same option (draw), one browser correctly shows the result screen and returns to the pick screen. The other browser stays frozen on "Waiting for opponent..." with the previous pick still displayed. It is not always the same browser. Refreshing restores it.
 
----
+### Confirmed root cause (2026-03-23, session after fix 3)
 
-### Fix attempts and why they failed
+Two delivery paths exist for RPS data:
+- **`rps_pick` broadcast** — fast (~10–50ms, direct WebSocket)
+- **`postgres_changes` CDC** — slower (~100–300ms, DB write → Supabase Realtime)
 
-**Fix attempt 1 (pre-session fix, ~commit 4861d8d):**
-- Addressed `handleRPSContinue` unconditionally setting `rpsResultShownRef=true` on draws, which prevented the re-pick screen from showing after the result screen dismissed.
-- Did not fix the core issue: the result screen was not showing at all on one browser.
+On a draw, the **creator's resolution effect** fires when both picks arrive in React *state* (via CDC). It then writes `rps_creator_pick = null, rps_joiner_pick = null` to the DB (the draw-clear). That null-clear CDC propagates to both clients.
 
-**Fix attempt 2 (commit bd66143, session 2026-03-23):**
-- Added `rpsCreatorPickRef` and `rpsJoinerPickRef` shadow refs in `useOnlineGame`.
-- Called `captureRPSResultIfReady()` inside `postgres_changes` and `rps_pick` broadcast handlers to capture `rpsResultPicks` synchronously before React renders.
-- Added `rpsRound` counter as `key` on `RPSScreen` to force remount on each draw.
-- Removed `prevHadBothPicksRef` edge-detection from `OnlineGameView`.
-- **Why it still fails:** `submitRPSPick` does NOT update `rpsCreatorPickRef` or `rpsJoinerPickRef`. A player's own pick ref stays `null` until `postgres_changes` echoes back from DB (which can be 100–300ms). If the opponent's pick arrives via broadcast (which is faster than CDC) during that window, `captureRPSResultIfReady(null, opponentPick)` is called — one pick is null so nothing is captured. The window closes when the player's own `postgres_changes` eventually arrives, but by then the draw-clear `postgres_changes` may arrive in the same batch — reproducing the original race at the ref level instead of the state level.
+**The race:** The null-clear CDC can reach the **joiner** before the creator's `rps_pick` broadcast does. When it arrives, the `postgres_changes` handler unconditionally overwrites `rpsCreatorPickRef` and `rpsJoinerPickRef` to null — including the joiner's own pick ref that `submitRPSPick` had correctly set. When the creator's broadcast finally arrives, `captureRPSResultIfReady(creatorPick, null)` silently fails because the joiner ref is now null.
 
----
+Result: creator captures and shows the result screen (then remounts RPSScreen). Joiner never captures, stays stuck on "Waiting for opponent..." in their RPSScreen.
 
-### Identified fix for next session
+**Key files:**
+- `src/hooks/useOnlineGame.ts` — `submitRPSPick`, `captureRPSResultIfReady`, `rpsCreatorPickRef`/`rpsJoinerPickRef`, `postgres_changes` handler, resolution effect
+- `src/components/game/OnlineGameView.tsx` — `rpsResultPicks` render guard, `handleRPSContinue`, `rpsResultShownRef`
 
-**One change in `src/hooks/useOnlineGame.ts`, in `submitRPSPick`:**
+### Fix attempts
 
-Update the player's own ref **synchronously before the `await`**, then call `captureRPSResultIfReady` **after the DB write succeeds**. This closes the window entirely — the player's own pick is visible to `captureRPSResultIfReady` from the moment they submit, regardless of when `postgres_changes` arrives.
+**Fix attempt 1 (~commit 4861d8d):**
+- `handleRPSContinue` was unconditionally setting `rpsResultShownRef=true` on draws, preventing the re-pick screen from showing after the result screen dismissed.
+- Fixed that guard. Did not fix the core issue: the result screen was not showing at all.
 
-```ts
-const submitRPSPick = useCallback(async (pick: RPSPick): Promise<boolean> => {
-  if (!user || !gameId) return false;
-  const column = isCreator ? 'rps_creator_pick' : 'rps_joiner_pick';
+**Fix attempt 2 (commit bd66143, 2026-03-23):**
+- Added `rpsCreatorPickRef` / `rpsJoinerPickRef` shadow refs alongside state.
+- Added `captureRPSResultIfReady()` called synchronously inside `postgres_changes`, `rps_pick` broadcast, and `fetchGameState`.
+- Added `rpsRound` counter as `key` on `RPSScreen` to force remount on each draw round.
+- **Why it still failed:** `submitRPSPick` still did not write the player's own pick to the ref. The broadcast from the opponent arrived before the CDC echo, `captureRPSResultIfReady(null, opponentPick)` fired and failed.
 
-  // Update ref immediately — closes the window where captureRPSResultIfReady
-  // would be called with our own pick still null (before postgres_changes echo)
-  if (isCreator) rpsCreatorPickRef.current = pick;
-  else rpsJoinerPickRef.current = pick;
+**Fix attempt 3 (commit 3a358d8, 2026-03-23):**
+- In `submitRPSPick`, immediately set the own pick ref after a successful DB write (before sending the broadcast).
+- Addressed the "own ref null when opponent broadcast arrives" scenario.
+- **Why it still failed:** The null-clear CDC (from creator's draw resolution) arrives at the joiner BEFORE the creator's broadcast. The `postgres_changes` handler unconditionally set `rpsJoinerPickRef = null`, wiping the pick that `submitRPSPick` had just set. When the creator's broadcast finally arrived, the joiner ref was null and capture failed.
 
-  const { error } = await supabase.from('games').update({ [column]: pick }).eq('id', gameId);
-  if (error) {
-    // Revert ref on failure
-    if (isCreator) rpsCreatorPickRef.current = null;
-    else rpsJoinerPickRef.current = null;
-    return false;
-  }
+**Fix attempt 4 (this commit):**
+- In the `postgres_changes` handler, guard null-clear (null) values with `rpsResultCapturedRef.current`.
+- `const nullClearAllowed = rpsResultCapturedRef.current` — only apply null from DB once the result has already been captured.
+- If the result hasn't been captured yet, preserve the locally-set refs. The broadcast will arrive eventually and trigger the capture with both refs intact.
+- Once captured, the null-clear is applied normally so the next draw round starts clean.
+- **Changed:** 5 lines in the `postgres_changes` handler in `useOnlineGame.ts`. Nothing else.
 
-  channelRef.current?.send({
-    type: 'broadcast',
-    event: 'rps_pick',
-    payload: { column, pick },
-  });
-
-  // If opponent already picked (ref set by an earlier event), capture result now
-  captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
-
-  return true;
-}, [user, gameId, isCreator, captureRPSResultIfReady]);
-```
-
-Add `captureRPSResultIfReady` to the `submitRPSPick` dependency array. Since `captureRPSResultIfReady` has `[]` deps it is a stable reference — no performance concern.
-
-**Why this is sufficient:** After this change, `rpsCreatorPickRef` and `rpsJoinerPickRef` are always set the moment a player submits, before any async operations. Every subsequent call to `captureRPSResultIfReady` (from broadcast, `postgres_changes`, or the pick submission itself) will see both picks as soon as the second one arrives. No CDC timing or React batching can prevent capture.
-
-**Files to change:**
-- `src/hooks/useOnlineGame.ts` — `submitRPSPick` only (one function, ~10 lines)
-
-**Do not change `OnlineGameView.tsx` or anything else** — the rest of the fix from bd66143 is correct.
+**If fix attempt 4 still fails — where to look:**
+- Check whether `rpsResultCapturedRef.current` is somehow `true` when it shouldn't be (stuck from a previous round). Trace resets: `dismissRPSResult` and the setup effect in `useOnlineGame`.
+- Add `console.log` to `captureRPSResultIfReady` and both the `postgres_changes` and `rps_pick` handlers. Log ref values and `rpsResultCapturedRef.current` at each call. Confirm the call order matches the expected sequence.
+- If the null-clear guard is working but capture still fails, the issue is that the creator's broadcast is never arriving. Check whether `channelRef.current` is null when `submitRPSPick` tries to send.
 
 ---
 
 ## Deferred (not urgent)
 
-- **Forfeit toast text** — always reads "You were forfeited from your last game after the reconnection window expired." regardless of whether the forfeit was intentional or due to disconnect. To fix properly: add a `forfeit_reason` column (`'voluntary'` | `'disconnect'`) to the `games` table, set it at the point of forfeit, read it in `useActiveGame`, and branch the toast text. Deferred — low user impact.
+- **Forfeit toast text** — always reads "You were forfeited from your last game after the reconnection window expired." regardless of whether the forfeit was intentional or due to disconnect. Fix: add `forfeit_reason` column (`'voluntary'` | `'disconnect'`) to `games`, set at forfeit, read in `useActiveGame`, branch toast text. Low user impact.
 
 ---
 
@@ -156,7 +138,7 @@ Add `captureRPSResultIfReady` to the `submitRPSPick` dependency array. Since `ca
 | Broadcast move sync | Done — Phase 2.5 |
 | Audio notifications | Done — Phase 2.5 |
 | Play Again (readiness dots) | Done — Phase 2.5 |
-| RPS sync | Done — Phase 2.5 (draw intermittent bug remaining) |
+| RPS sync | Done — Phase 2.5 (draw fix attempt 4 deployed, needs live test) |
 
 ---
 
@@ -224,7 +206,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | --- | --- |
 | `src/models/Game.ts` | Core game logic — OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
-| `src/hooks/useOnlineGame.ts` | Online game state — broadcast sync, RPS (inc. `submitRPSPick`), Presence, disconnect, Play Again |
+| `src/hooks/useOnlineGame.ts` | Online game state — broadcast sync, RPS (inc. `submitRPSPick`, `postgres_changes` null-clear guard), Presence, disconnect, Play Again |
 | `src/hooks/useActiveGame.ts` | Active/forfeited game detection — re-queries on navigation |
 | `src/lib/sounds.ts` | Web Audio API — `resumeAudio()` must be called on first user gesture |
 | `src/lib/gameSerializer.ts` | `serializeGame` / `deserializeGame` |

@@ -146,11 +146,23 @@ export const useOnlineGame = (gameId: string) => {
         setStatus(prev => advanceStatus(prev, updated.status));
         setWinner(updated.winner);
         setMyMarker(updated.player_x_id === user.id ? 'X' : 'O');
-        rpsCreatorPickRef.current = updated.rps_creator_pick;
-        rpsJoinerPickRef.current = updated.rps_joiner_pick;
-        setRpsCreatorPick(updated.rps_creator_pick);
-        setRpsJoinerPick(updated.rps_joiner_pick);
-        captureRPSResultIfReady(updated.rps_creator_pick, updated.rps_joiner_pick);
+        // Guard: don't let a draw-clear CDC overwrite picks we haven't used yet.
+        // When the creator resolves a draw they write rps_*_pick = null to the DB.
+        // That CDC can reach the joiner BEFORE the creator's rps_pick broadcast does.
+        // If we blindly set refs to null here, captureRPSResultIfReady silently fails
+        // when the delayed broadcast finally arrives (joiner ref is null → no match).
+        // Only apply null from CDC once the result is already captured — at that point
+        // the null-clear is legitimate and we want it so the next round starts clean.
+        const nullClearAllowed = rpsResultCapturedRef.current;
+        if (updated.rps_creator_pick !== null || nullClearAllowed) {
+          rpsCreatorPickRef.current = updated.rps_creator_pick;
+          setRpsCreatorPick(updated.rps_creator_pick);
+        }
+        if (updated.rps_joiner_pick !== null || nullClearAllowed) {
+          rpsJoinerPickRef.current = updated.rps_joiner_pick;
+          setRpsJoinerPick(updated.rps_joiner_pick);
+        }
+        captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
         setForfeitPlayerId(updated.forfeit_player_id ?? null);
         // opponentId must be updated here too — creator has null until joiner joins
         setOpponentId(updated.player_x_id === user.id ? updated.player_o_id : updated.player_x_id);
