@@ -56,14 +56,6 @@ export const useOnlineGame = (gameId: string) => {
     gameRef.current = game;
   }, [game]);
 
-  // Called by OnlineGameView when the result screen is dismissed.
-  const dismissRPSResult = useCallback((wasDraw: boolean) => {
-    setRpsResultPicks(null);
-    if (wasDraw) {
-      setRpsRound(r => r + 1);
-    }
-  }, []);
-
   const fetchGameState = useCallback(async () => {
     if (!user || !gameId) return;
     const { data, error } = await supabase.from('games').select('*').eq('id', gameId).single();
@@ -90,6 +82,16 @@ export const useOnlineGame = (gameId: string) => {
       localMoveCountRef.current = 0;
     }
   }, [user, gameId]);
+
+  // Called by OnlineGameView when the result screen is dismissed.
+  const dismissRPSResult = useCallback((wasDraw: boolean) => {
+    setRpsResultPicks(null);
+    if (wasDraw) {
+      setRpsRound(r => r + 1);
+    } else {
+      fetchGameState();
+    }
+  }, [fetchGameState]);
 
   // RPS resolution via dedicated rps_picks table.
   //
