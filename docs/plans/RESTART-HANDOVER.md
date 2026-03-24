@@ -4,9 +4,12 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Fix attempt 4 for the RPS draw bug is committed and deployed to private Vercel. Root cause is confirmed: the draw-clear CDC reaches the joiner before the creator's broadcast, wiping the joiner's own pick ref and preventing the result screen from showing. The fix guards null-clear updates in the `postgres_changes` handler with `rpsResultCapturedRef.current`.
+> "I've read the handover. Two bugs were fixed this session and deployed (commit `acd9eb7`, private Vercel `mega-ox-dev`):
 >
-> Start by testing the draw path on two browsers. If it passes, move to the Section 6 regression checklist before merging to local main.
+> 1. **Game-start bug fixed** — `dismissRPSResult(false)` now calls `fetchGameState()` when `!wasDraw`, transitioning the joiner from `'rps'` to `'active'` so they can place moves.
+> 2. **Game state sync fixed** — added an independent 1.5s polling effect (`status === 'active'`) that guarantees move delivery even if broadcast or CDC events are missed. Mirrors the `rps_picks` polling pattern. RPS code is untouched.
+>
+> Ready to test. Start with a full game: RPS win → both players alternate moves → confirm sync both ways → game over screen. Then test RPS draw (draw → re-pick → win → game plays out). Then Play Again.
 >
 > Ready when you are."
 
@@ -18,7 +21,7 @@ Read this file in full, then say:
 
 | Worktree | Branch | Status |
 | --- | --- | --- |
-| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | Fix attempt 4 deployed — draw path needs live testing |
+| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | `acd9eb7` deployed — game-start and move sync fixed, awaiting live test |
 
 `feat/phase-2-skins` worktree has been removed. Its code is fully contained in `feat/disconnect-handling`.
 
@@ -27,7 +30,7 @@ Read this file in full, then say:
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy by running `git push private HEAD:main --force` from the `feat-disconnect-handling` worktree
 — Deployment protection: **disabled** (for testing)
-— Latest production: fix attempt 4 commit (see `git log --oneline -1` in worktree)
+— Latest production: commit `acd9eb7` (game-start fix + game state polling)
 
 **Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone.
 
@@ -37,9 +40,41 @@ Read this file in full, then say:
 
 ## Remaining work before merging local main
 
-1. **Test RPS draw fix** — fix attempt 4 is deployed. Both players pick the same option. Confirm both browsers show the result screen, then both return to the pick screen cleanly. Repeat 3–5 times.
-2. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Verifies non-multiplayer features weren't broken by broadcast sync changes.
-3. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
+1. **Test full game flow** — RPS win → both players alternate moves → confirm both boards update in sync → game over screen appears on both. This is the primary test for the two fixes this session.
+2. **Test RPS draw** — draw → both return to pick screen → pick again → win → game plays out. Repeat 2–3 times. Not yet re-tested after Fix 7.
+3. **Re-test Play Again** — both players → new RPS → new game. Still needs validation after all changes.
+4. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Run before merge.
+5. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
+
+---
+
+## This session's fixes
+
+### Fix 8a — Game-start bug (commit `2a3c3d7`)
+
+**Problem:** After RPS win, joiner's `status` stayed `'rps'` forever. `dismissRPSResult(false)` cleared `rpsResultPicks` but never transitioned status. The joiner could see the board but couldn't click any cell.
+
+**Fix:** Moved `dismissRPSResult` to after `fetchGameState` in `useOnlineGame.ts` (so it can safely depend on it), then added:
+```ts
+} else {
+  fetchGameState(); // transitions joiner from 'rps' → 'active'
+}
+```
+
+### Fix 8b — Game state polling (commits `5a95079`, `acd9eb7`)
+
+**Problem:** After the RPS→active transition, O's moves weren't reaching X. The broadcast/CDC architecture is WebSocket-dependent and unreliable around status transitions. Same category of failure as the old event-based RPS system.
+
+**Fix:** Added an independent game state polling effect — mirrors the `rps_picks` polling pattern that proved reliable for RPS. Runs every 1.5s while `status === 'active'`. Uses strict `>` so a locally-placed move that hasn't landed in the DB yet is never overwritten.
+
+Also updated the broadcast move handler to track `localMoveCountRef` when applying a broadcast, preventing the poll from redundantly re-applying state already delivered by broadcast.
+
+**RPS code is entirely untouched.**
+
+```
+RPS architecture:  polls rps_picks  (status === 'rps')   ← Fix 7, unchanged
+Game architecture: polls games      (status === 'active') ← new, independent
+```
 
 ---
 
@@ -57,7 +92,7 @@ Two delivery paths exist for RPS data:
 
 On a draw, the **creator's resolution effect** fires when both picks arrive in React *state* (via CDC). It then writes `rps_creator_pick = null, rps_joiner_pick = null` to the DB (the draw-clear). That null-clear CDC propagates to both clients.
 
-**The race:** The null-clear CDC can reach the **joiner** before the creator's `rps_pick` broadcast does. When it arrives, the `postgres_changes` handler unconditionally overwrites `rpsCreatorPickRef` and `rpsJoinerPickRef` to null — including the joiner's own pick ref that `submitRPSPick` had correctly set. When the creator's broadcast finally arrives, `captureRPSResultIfReady(creatorPick, null)` silently fails because the joiner ref is now null.
+**The race:** The null-clear CDC can reach the **joiner** before the creator's `rps_pick` broadcast does. When it arrives, the `postgres_changes` handler unconditionally overwrites `rpsCreatorPickRef` and `rpsJoinerPickRef` to null — including the joiner's own pick ref that `submitRPSPick` had correctly set. When the creator's broadcast finally arrived, `captureRPSResultIfReady(creatorPick, null)` silently failed because the joiner ref was now null.
 
 Result: creator captures and shows the result screen (then remounts RPSScreen). Joiner never captures, stays stuck on "Waiting for opponent..." in their RPSScreen.
 
@@ -67,32 +102,17 @@ Result: creator captures and shows the result screen (then remounts RPSScreen). 
 
 ### Fix attempts
 
-**Fix attempt 1 (~commit 4861d8d):**
-- `handleRPSContinue` was unconditionally setting `rpsResultShownRef=true` on draws, preventing the re-pick screen from showing after the result screen dismissed.
-- Fixed that guard. Did not fix the core issue: the result screen was not showing at all.
+**Fix attempts 1–6:** Multiple attempts to fix the event-based RPS system (broadcast + CDC refs). All failed due to race conditions between broadcast delivery, CDC delivery, and draw-clear nulls. See git history (commits 4861d8d through a7eca80) for full detail.
 
-**Fix attempt 2 (commit bd66143, 2026-03-23):**
-- Added `rpsCreatorPickRef` / `rpsJoinerPickRef` shadow refs alongside state.
-- Added `captureRPSResultIfReady()` called synchronously inside `postgres_changes`, `rps_pick` broadcast, and `fetchGameState`.
-- Added `rpsRound` counter as `key` on `RPSScreen` to force remount on each draw round.
-- **Why it still failed:** `submitRPSPick` still did not write the player's own pick to the ref. The broadcast from the opponent arrived before the CDC echo, `captureRPSResultIfReady(null, opponentPick)` fired and failed.
+**Fix 7 — Architectural redesign (commit 95d8a7f, 2026-03-24):**
 
-**Fix attempt 3 (commit 3a358d8, 2026-03-23):**
-- In `submitRPSPick`, immediately set the own pick ref after a successful DB write (before sending the broadcast).
-- Addressed the "own ref null when opponent broadcast arrives" scenario.
-- **Why it still failed:** The null-clear CDC (from creator's draw resolution) arrives at the joiner BEFORE the creator's broadcast. The `postgres_changes` handler unconditionally set `rpsJoinerPickRef = null`, wiping the pick that `submitRPSPick` had just set. When the creator's broadcast finally arrived, the joiner ref was null and capture failed.
+The entire event-based RPS system was scrapped. Removed: `rpsCreatorPickRef`, `rpsJoinerPickRef`, `rpsResultCapturedRef`, `rpsResolutionSentRef`, `captureRPSResultIfReady`, the resolution effect, all `rps_pick` and `rps_resolved` broadcast handlers, and the `if (updated.status === 'rps')` block from `postgres_changes`. 226 lines removed, 75 added.
 
-**Fix attempt 4 (this commit):**
-- In the `postgres_changes` handler, guard null-clear (null) values with `rpsResultCapturedRef.current`.
-- `const nullClearAllowed = rpsResultCapturedRef.current` — only apply null from DB once the result has already been captured.
-- If the result hasn't been captured yet, preserve the locally-set refs. The broadcast will arrive eventually and trigger the capture with both refs intact.
-- Once captured, the null-clear is applied normally so the next draw round starts clean.
-- **Changed:** 5 lines in the `postgres_changes` handler in `useOnlineGame.ts`. Nothing else.
-
-**If fix attempt 4 still fails — where to look:**
-- Check whether `rpsResultCapturedRef.current` is somehow `true` when it shouldn't be (stuck from a previous round). Trace resets: `dismissRPSResult` and the setup effect in `useOnlineGame`.
-- Add `console.log` to `captureRPSResultIfReady` and both the `postgres_changes` and `rps_pick` handlers. Log ref values and `rpsResultCapturedRef.current` at each call. Confirm the call order matches the expected sequence.
-- If the null-clear guard is working but capture still fails, the issue is that the creator's broadcast is never arriving. Check whether `channelRef.current` is null when `submitRPSPick` tries to send.
+**New architecture:**
+- Supabase `rps_picks` table: `(game_id UUID, user_id UUID, pick TEXT, PRIMARY KEY(game_id, user_id))`
+- Both players upsert their pick — no broadcast, no WebSocket dependency
+- Both clients poll `rps_picks` every 1s: when 2 rows appear, each resolves result independently
+- Creator waits 2s, then: draw → delete picks → both see 0 rows → `rpsRound++` → new round; win → update game row + delete picks → joiner's `fetchGameState` syncs new status
 
 ---
 
@@ -104,19 +124,19 @@ Result: creator captures and shows the result screen (then remounts RPSScreen). 
 
 ## Confirmed working — live testing
 
-- Move sync (1.1–1.5) — instant, in sync, constraints, micro/macro wins ✅
+- Move sync (1.1–1.5) — instant, in sync, constraints, micro/macro wins ✅ (re-test needed after this session's fixes)
 - Intentional exit (3.1–3.3) — forfeit confirm/cancel modal ✅
 - Browser back button interception + tab close prompt ✅
 - Auto-forfeit on disconnect (90s countdown → forfeit fires → both screens update) ✅
 - Countdown cancels when disconnected player reconnects ✅
 - Resume toast appears correctly ✅
 - Audio (4.1–4.8) — all sounds confirmed ✅
-- RPS — both browsers complete RPS and enter game ✅
-- RPS — result screen shows on both browsers before game starts ✅
-- RPS — win case: both browsers taken to loading screen then game ✅
-- RPS — draw (second attempt): both browsers return to pick screen correctly ✅
+- RPS — both browsers submit picks successfully ✅ (Fix 7)
+- RPS — result screen shows on both browsers before game starts ✅ (Fix 7)
+- RPS — win case: result screen → game starts, both players can move ⚠️ (fix deployed, not yet re-tested)
+- RPS — draw: result screen → both return to pick screen ⚠️ (not yet re-tested after Fix 7)
 - Join with code — creator navigates correctly ✅
-- Play Again — both players → new RPS → new game ✅
+- Play Again — both players → new RPS → new game ⚠️ (not yet re-tested after Fix 8)
 
 ---
 
@@ -138,7 +158,7 @@ Result: creator captures and shows the result screen (then remounts RPSScreen). 
 | Broadcast move sync | Done — Phase 2.5 |
 | Audio notifications | Done — Phase 2.5 |
 | Play Again (readiness dots) | Done — Phase 2.5 |
-| RPS sync | Done — Phase 2.5 (draw fix attempt 4 deployed, needs live test) |
+| RPS sync | Fix 8 deployed — awaiting live test |
 
 ---
 
@@ -206,7 +226,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | --- | --- |
 | `src/models/Game.ts` | Core game logic — OOP, no React |
 | `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
-| `src/hooks/useOnlineGame.ts` | Online game state — broadcast sync, RPS (inc. `submitRPSPick`, `postgres_changes` null-clear guard), Presence, disconnect, Play Again |
+| `src/hooks/useOnlineGame.ts` | Online game state — RPS polling (`rps_picks`, status=`'rps'`), game state polling (`games`, status=`'active'`), broadcast sync, `dismissRPSResult`, Presence, disconnect, Play Again |
 | `src/hooks/useActiveGame.ts` | Active/forfeited game detection — re-queries on navigation |
 | `src/lib/sounds.ts` | Web Audio API — `resumeAudio()` must be called on first user gesture |
 | `src/lib/gameSerializer.ts` | `serializeGame` / `deserializeGame` |
