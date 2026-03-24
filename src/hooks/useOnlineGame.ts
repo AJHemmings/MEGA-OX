@@ -111,6 +111,13 @@ export const useOnlineGame = (gameId: string) => {
         .single();
       if (!data || data.status !== 'rps') return;
       if (data.rps_creator_pick && data.rps_joiner_pick) {
+        // Only act if we've already submitted our own pick this round.
+        // After a draw dismissal, both refs are reset to null but the DB still
+        // has the previous round's picks until the null-clear CDC propagates.
+        // Without this guard the poll recaptures stale data and creates an
+        // infinite RPS loop.
+        const ownPickSubmitted = rpsCreatorPickRef.current !== null || rpsJoinerPickRef.current !== null;
+        if (!ownPickSubmitted) return;
         console.log('[RPS poll] ✅ both picks found in DB', { creator: data.rps_creator_pick, joiner: data.rps_joiner_pick });
         rpsCreatorPickRef.current = data.rps_creator_pick;
         rpsJoinerPickRef.current = data.rps_joiner_pick;
