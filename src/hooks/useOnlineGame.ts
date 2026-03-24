@@ -93,6 +93,33 @@ export const useOnlineGame = (gameId: string) => {
     }
   }, []);
 
+  // DB polling fallback for RPS resolution.
+  // The fast path (broadcast + postgres_changes) depends on the Realtime channel being in
+  // SUBSCRIBED state. When it isn't, the "falling back to REST API" warning fires and the
+  // stuck-browser symptom occurs: one player submits but never receives the opponent's pick.
+  // This effect polls the DB every 1.5s during the RPS phase and captures the result the
+  // moment both picks are present — regardless of WebSocket health.
+  // Re-runs on rpsRound so draw rounds get their own fresh polling interval.
+  useEffect(() => {
+    if (status !== 'rps' || !gameId) return;
+    const interval = setInterval(async () => {
+      if (rpsResultCapturedRef.current) return;
+      const { data } = await supabase
+        .from('games')
+        .select('rps_creator_pick, rps_joiner_pick, status')
+        .eq('id', gameId)
+        .single();
+      if (!data || data.status !== 'rps') return;
+      if (data.rps_creator_pick && data.rps_joiner_pick) {
+        console.log('[RPS poll] ✅ both picks found in DB', { creator: data.rps_creator_pick, joiner: data.rps_joiner_pick });
+        rpsCreatorPickRef.current = data.rps_creator_pick;
+        rpsJoinerPickRef.current = data.rps_joiner_pick;
+        captureRPSResultIfReady(data.rps_creator_pick, data.rps_joiner_pick);
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [status, gameId, rpsRound, captureRPSResultIfReady]);
+
   const fetchGameState = useCallback(async () => {
     if (!user || !gameId) return;
     const { data, error } = await supabase.from('games').select('*').eq('id', gameId).single();
