@@ -261,7 +261,11 @@ export const useOnlineGame = (gameId: string) => {
       })
       .on('broadcast', { event: 'move' }, (payload: { payload: { state: SerializedState; isOver?: boolean; winner?: string | null } }) => {
         if (payload.payload?.state) {
-          setGame(deserializeGame(payload.payload.state));
+          const incomingCount = countMoves(payload.payload.state);
+          if (incomingCount >= localMoveCountRef.current) {
+            setGame(deserializeGame(payload.payload.state));
+            localMoveCountRef.current = incomingCount;
+          }
           // Update status/winner immediately from broadcast — don't wait for postgres_changes
           // so both players see the complete screen at the same time
           if (payload.payload.isOver) {
@@ -309,6 +313,36 @@ export const useOnlineGame = (gameId: string) => {
 
     writeForfeit();
   }, [disconnectCountdown, myMarker, opponentId, status, gameId]);
+
+  // Game state polling — independent of broadcast/CDC and the RPS polling.
+  // Polls the games table every 1.5s while active so move delivery is guaranteed
+  // even if a Realtime broadcast or postgres_changes event is missed.
+  // Uses strict > so a local move that hasn't landed in DB yet is never overwritten.
+  useEffect(() => {
+    if (status !== 'active' || !gameId || !user) return;
+    const poll = async () => {
+      const { data } = await supabase
+        .from('games')
+        .select('state, status, winner')
+        .eq('id', gameId)
+        .single();
+      if (!data) return;
+      if (data.status === 'complete') {
+        setStatus(prev => advanceStatus(prev, 'complete'));
+        setWinner(data.winner);
+        return;
+      }
+      if (data.state && Object.keys(data.state).length > 0) {
+        const dbMoveCount = countMoves(data.state as SerializedState);
+        if (dbMoveCount > localMoveCountRef.current) {
+          setGame(deserializeGame(data.state as any));
+          localMoveCountRef.current = dbMoveCount;
+        }
+      }
+    };
+    const interval = setInterval(poll, 1500);
+    return () => clearInterval(interval);
+  }, [status, gameId, user]);
 
   // When both players signal play_again, the player who is currently X creates the rematch.
   // Using myMarker rather than isCreator because isCreator reflects post-RPS player assignment
