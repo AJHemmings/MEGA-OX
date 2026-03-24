@@ -333,7 +333,7 @@ export const useOnlineGame = (gameId: string) => {
         return;
       }
       if (data.state && Object.keys(data.state).length > 0) {
-        const dbMoveCount = countMoves(data.state as SerializedState);
+        const dbMoveCount = countMoves(data.state as unknown as SerializedState);
         if (dbMoveCount > localMoveCountRef.current) {
           setGame(deserializeGame(data.state as any));
           localMoveCountRef.current = dbMoveCount;
