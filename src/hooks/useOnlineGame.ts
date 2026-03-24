@@ -81,51 +81,17 @@ export const useOnlineGame = (gameId: string) => {
   }, []);
 
   // Called by OnlineGameView after the result screen is dismissed.
-  // For draws: increments rpsRound (forces RPSScreen remount to clear internal pick state)
-  // and resets the refs so the next round can be captured.
+  // Always clears pick refs — prevents the DB polling fallback from recapturing
+  // stale picks before the null-clear CDC propagates (both win and draw cases).
   const dismissRPSResult = useCallback((wasDraw: boolean) => {
     rpsResultCapturedRef.current = false;
     setRpsResultPicks(null);
+    rpsCreatorPickRef.current = null;
+    rpsJoinerPickRef.current = null;
     if (wasDraw) {
-      rpsCreatorPickRef.current = null;
-      rpsJoinerPickRef.current = null;
       setRpsRound(r => r + 1);
     }
   }, []);
-
-  // DB polling fallback for RPS resolution.
-  // The fast path (broadcast + postgres_changes) depends on the Realtime channel being in
-  // SUBSCRIBED state. When it isn't, the "falling back to REST API" warning fires and the
-  // stuck-browser symptom occurs: one player submits but never receives the opponent's pick.
-  // This effect polls the DB every 1.5s during the RPS phase and captures the result the
-  // moment both picks are present — regardless of WebSocket health.
-  // Re-runs on rpsRound so draw rounds get their own fresh polling interval.
-  useEffect(() => {
-    if (status !== 'rps' || !gameId) return;
-    const interval = setInterval(async () => {
-      if (rpsResultCapturedRef.current) return;
-      const { data } = await supabase
-        .from('games')
-        .select('rps_creator_pick, rps_joiner_pick, status')
-        .eq('id', gameId)
-        .single();
-      if (!data || data.status !== 'rps') return;
-      if (data.rps_creator_pick && data.rps_joiner_pick) {
-        // Only act if we've already submitted our own pick this round.
-        // After a draw dismissal, both refs are reset to null but the DB still
-        // has the previous round's picks until the null-clear CDC propagates.
-        // Without this guard the poll recaptures stale data and creates an
-        // infinite RPS loop.
-        const ownPickSubmitted = rpsCreatorPickRef.current !== null || rpsJoinerPickRef.current !== null;
-        if (!ownPickSubmitted) return;
-        console.log('[RPS poll] ✅ both picks found in DB', { creator: data.rps_creator_pick, joiner: data.rps_joiner_pick });
-        rpsCreatorPickRef.current = data.rps_creator_pick;
-        rpsJoinerPickRef.current = data.rps_joiner_pick;
-        captureRPSResultIfReady(data.rps_creator_pick, data.rps_joiner_pick);
-      }
-    }, 1500);
-    return () => clearInterval(interval);
-  }, [status, gameId, rpsRound, captureRPSResultIfReady]);
 
   const fetchGameState = useCallback(async () => {
     if (!user || !gameId) return;
@@ -163,6 +129,49 @@ export const useOnlineGame = (gameId: string) => {
       localMoveCountRef.current = 0;
     }
   }, [user, gameId, captureRPSResultIfReady]);
+
+  // DB polling fallback for RPS resolution.
+  // When the Realtime channel WebSocket is degraded ("falling back to REST API"), broadcast
+  // and postgres_changes events never arrive. This effect polls the DB every 1.5s so the
+  // result captures regardless of WebSocket health.
+  //
+  // Guards:
+  // - ownPickSubmitted: only capture from poll after the local player has submitted this
+  //   round. After dismissRPSResult clears refs, this is false until the next submit —
+  //   preventing the poll from recapturing stale DB data before the null-clear CDC lands.
+  // - status mismatch: if the DB has moved past 'rps' but local state is still 'rps'
+  //   (CDC never arrived on broken channel), call fetchGameState to unblock the browser.
+  //
+  // Placed after fetchGameState so it can reference it.
+  // Re-runs on rpsRound so each draw round gets a fresh interval.
+  useEffect(() => {
+    if (status !== 'rps' || !gameId) return;
+    const interval = setInterval(async () => {
+      if (rpsResultCapturedRef.current) return;
+      const { data } = await supabase
+        .from('games')
+        .select('rps_creator_pick, rps_joiner_pick, status')
+        .eq('id', gameId)
+        .single();
+      if (!data) return;
+      // If DB has moved past rps but local state hasn't (CDC missed on broken channel),
+      // fetch full game state to unblock this browser.
+      if (data.status !== 'rps') {
+        console.log('[RPS poll] status mismatch — DB is', data.status, '— calling fetchGameState');
+        fetchGameState();
+        return;
+      }
+      if (data.rps_creator_pick && data.rps_joiner_pick) {
+        const ownPickSubmitted = rpsCreatorPickRef.current !== null || rpsJoinerPickRef.current !== null;
+        if (!ownPickSubmitted) return;
+        console.log('[RPS poll] ✅ both picks found in DB', { creator: data.rps_creator_pick, joiner: data.rps_joiner_pick });
+        rpsCreatorPickRef.current = data.rps_creator_pick;
+        rpsJoinerPickRef.current = data.rps_joiner_pick;
+        captureRPSResultIfReady(data.rps_creator_pick, data.rps_joiner_pick);
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [status, gameId, rpsRound, fetchGameState, captureRPSResultIfReady]);
 
   useEffect(() => {
     if (!user || !gameId) return;
