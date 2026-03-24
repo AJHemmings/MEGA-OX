@@ -29,10 +29,7 @@ export const useOnlineGame = (gameId: string) => {
   const [status, setStatus] = useState<OnlineGameStatus>('loading');
   const [myMarker, setMyMarker] = useState<'X' | 'O' | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
-  const [rpsCreatorPick, setRpsCreatorPick] = useState<string | null>(null);
-  const [rpsJoinerPick, setRpsJoinerPick] = useState<string | null>(null);
-  // rpsResultPicks is captured synchronously in event handlers (immune to React 18 batching).
-  // It is only cleared by dismissRPSResult — never by DB null events directly.
+  // rpsResultPicks drives the result screen — set by the rps_picks polling effect.
   const [rpsResultPicks, setRpsResultPicks] = useState<{ creator: RPSPick; joiner: RPSPick } | null>(null);
   // Increments on each draw round — used as key on RPSScreen to force remount and reset its
   // internal myPick/waiting state so the player can pick again cleanly.
@@ -47,47 +44,21 @@ export const useOnlineGame = (gameId: string) => {
   const [myRematchIntent, setMyRematchIntent] = useState<RematchIntent | null>(null);
   const [opponentRematchIntent, setOpponentRematchIntent] = useState<RematchIntent | null>(null);
 
-  // Prevents double-resolution if the effect fires again before Realtime returns status='active'
-  const rpsResolutionSentRef = useRef(false);
   const localMoveCountRef = useRef(0);
   const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const gameRef = useRef<Game | null>(null);
   const rematchCreatedRef = useRef(false);
-  // Shadow refs for RPS picks — kept in sync alongside state so event handlers can read the
-  // current value of both picks synchronously without depending on a React render cycle.
-  const rpsCreatorPickRef = useRef<string | null>(null);
-  const rpsJoinerPickRef = useRef<string | null>(null);
-  // Guards against capturing the same round twice (e.g. broadcast + postgres_changes both firing).
-  const rpsResultCapturedRef = useRef(false);
 
   // Keep gameRef in sync so event handlers can read latest game state without stale closure
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
 
-  // Called synchronously inside Realtime event handlers — captures both picks the moment they
-  // are both known, before React has had a chance to batch any further state updates.
-  // Using refs avoids the race where the DB null-clear echo arrives in the same React batch
-  // as the "both picks in" event, which would prevent the result screen from ever showing.
-  const captureRPSResultIfReady = useCallback((creatorPick: string | null, joinerPick: string | null) => {
-    console.log('[RPS captureRPSResultIfReady]', { creatorPick, joinerPick, alreadyCaptured: rpsResultCapturedRef.current });
-    if (creatorPick && joinerPick && !rpsResultCapturedRef.current) {
-      console.log('[RPS captureRPSResultIfReady] ✅ CAPTURING result', { creator: creatorPick, joiner: joinerPick });
-      rpsResultCapturedRef.current = true;
-      setRpsResultPicks({ creator: creatorPick as RPSPick, joiner: joinerPick as RPSPick });
-    }
-  }, []);
-
-  // Called by OnlineGameView after the result screen is dismissed.
-  // Always clears pick refs — prevents the DB polling fallback from recapturing
-  // stale picks before the null-clear CDC propagates (both win and draw cases).
+  // Called by OnlineGameView when the result screen is dismissed.
   const dismissRPSResult = useCallback((wasDraw: boolean) => {
-    rpsResultCapturedRef.current = false;
     setRpsResultPicks(null);
-    rpsCreatorPickRef.current = null;
-    rpsJoinerPickRef.current = null;
     if (wasDraw) {
       setRpsRound(r => r + 1);
     }
@@ -102,16 +73,6 @@ export const useOnlineGame = (gameId: string) => {
     setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
     setWinner(data.winner);
     setIsCreator(data.player_x_id === user.id);
-    // Only restore RPS pick state if the game is still in RPS phase.
-    // The picks stay in the DB after resolution, so restoring them on an active/complete
-    // game would spuriously trigger captureRPSResultIfReady and show the result screen.
-    if (data.status === 'rps') {
-      rpsCreatorPickRef.current = data.rps_creator_pick;
-      rpsJoinerPickRef.current = data.rps_joiner_pick;
-      setRpsCreatorPick(data.rps_creator_pick);
-      setRpsJoinerPick(data.rps_joiner_pick);
-      captureRPSResultIfReady(data.rps_creator_pick, data.rps_joiner_pick);
-    }
     setJoinerId(data.player_o_id);
     setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
     setForfeitPlayerId(data.forfeit_player_id ?? null);
@@ -128,58 +89,82 @@ export const useOnlineGame = (gameId: string) => {
       setGame(new Game());
       localMoveCountRef.current = 0;
     }
-  }, [user, gameId, captureRPSResultIfReady]);
+  }, [user, gameId]);
 
-  // DB polling fallback for RPS resolution.
-  // When the Realtime channel WebSocket is degraded ("falling back to REST API"), broadcast
-  // and postgres_changes events never arrive. This effect polls the DB every 1.5s so the
-  // result captures regardless of WebSocket health.
+  // RPS resolution via dedicated rps_picks table.
   //
-  // Guards:
-  // - ownPickSubmitted: only capture from poll after the local player has submitted this
-  //   round. After dismissRPSResult clears refs, this is false until the next submit —
-  //   preventing the poll from recapturing stale DB data before the null-clear CDC lands.
-  // - status mismatch: if the DB has moved past 'rps' but local state is still 'rps'
-  //   (CDC never arrived on broken channel), call fetchGameState to unblock the browser.
+  // Each player upserts their pick into rps_picks(game_id, user_id, pick).
+  // Both clients poll every 1s. When both rows appear, each client independently computes
+  // the result and shows the result screen (deterministic — both get the same answer).
   //
-  // Placed after fetchGameState so it can reference it.
-  // Re-runs on rpsRound so each draw round gets a fresh interval.
+  // Creator resolves after a 2s delay (gives joiner's poll one full cycle to see both rows),
+  // then deletes the picks and updates the game if needed. Joiner's next poll sees 0 rows
+  // and calls fetchGameState to sync the new status.
+  //
+  // Re-runs on rpsRound so each draw round gets a fresh capturedThisRound flag.
   useEffect(() => {
-    if (status !== 'rps' || !gameId) return;
-    const interval = setInterval(async () => {
-      if (rpsResultCapturedRef.current) return;
-      const { data } = await supabase
-        .from('games')
-        .select('rps_creator_pick, rps_joiner_pick, status')
-        .eq('id', gameId)
-        .single();
-      if (!data) return;
-      // If DB has moved past rps but local state hasn't (CDC missed on broken channel),
-      // fetch full game state to unblock this browser.
-      if (data.status !== 'rps') {
-        console.log('[RPS poll] status mismatch — DB is', data.status, '— calling fetchGameState');
-        fetchGameState();
+    if (status !== 'rps' || !gameId || !user) return;
+    let capturedThisRound = false;
+
+    const poll = async () => {
+      if (capturedThisRound) return;
+      const { data: picks } = await (supabase as any)
+        .from('rps_picks')
+        .select('user_id, pick')
+        .eq('game_id', gameId) as { data: Array<{ user_id: string; pick: string }> | null };
+      if (!picks) return;
+
+      if (picks.length === 2) {
+        capturedThisRound = true;
+        const myRow = picks.find((p: any) => p.user_id === user.id);
+        const opponentRow = picks.find((p: any) => p.user_id !== user.id);
+        if (!myRow || !opponentRow) return;
+
+        const creatorPick = isCreator ? myRow.pick : opponentRow.pick;
+        const joinerPick  = isCreator ? opponentRow.pick : myRow.pick;
+        setRpsResultPicks({ creator: creatorPick as RPSPick, joiner: joinerPick as RPSPick });
+
+        if (isCreator) {
+          // Wait 2s so the joiner's poll has time to see both rows before we delete them.
+          await new Promise(r => setTimeout(r, 2000));
+          const result = resolveRPS(creatorPick as RPSPick, joinerPick as RPSPick);
+          if (result === 'draw') {
+            // Delete picks — both clients see 0 rows → dismissRPSResult → rpsRound++ → new round
+            await (supabase as any).from('rps_picks').delete().eq('game_id', gameId);
+          } else {
+            const creatorWins = result === 'p1';
+            const newPlayerXId = creatorWins ? user.id : joinerId!;
+            const newPlayerOId = creatorWins ? joinerId! : user.id;
+            const updatePayload: Record<string, any> = { status: 'active' };
+            if (!creatorWins) {
+              updatePayload.player_x_id = newPlayerXId;
+              updatePayload.player_o_id = newPlayerOId;
+            }
+            // Update game first so joiner's fetchGameState sees the new status
+            await supabase.from('games').update(updatePayload).eq('id', gameId);
+            await (supabase as any).from('rps_picks').delete().eq('game_id', gameId);
+            // Advance creator's own state without waiting for CDC
+            setStatus(prev => advanceStatus(prev, 'active'));
+            setMyMarker(newPlayerXId === user.id ? 'X' : 'O');
+          }
+        }
         return;
       }
-      if (data.rps_creator_pick && data.rps_joiner_pick) {
-        const ownPickSubmitted = rpsCreatorPickRef.current !== null || rpsJoinerPickRef.current !== null;
-        if (!ownPickSubmitted) return;
-        console.log('[RPS poll] ✅ both picks found in DB', { creator: data.rps_creator_pick, joiner: data.rps_joiner_pick });
-        rpsCreatorPickRef.current = data.rps_creator_pick;
-        rpsJoinerPickRef.current = data.rps_joiner_pick;
-        captureRPSResultIfReady(data.rps_creator_pick, data.rps_joiner_pick);
+
+      // 0 picks and no result shown yet — sync in case status moved past rps on the DB
+      if (picks.length === 0 && !capturedThisRound) {
+        fetchGameState();
       }
-    }, 1500);
-    return () => clearInterval(interval);
-  }, [status, gameId, rpsRound, fetchGameState, captureRPSResultIfReady]);
+    };
+
+    const interval = setInterval(poll, 1000);
+    poll();
+    return () => { clearInterval(interval); capturedThisRound = true; };
+  }, [status, gameId, user, isCreator, joinerId, rpsRound, fetchGameState]);
 
   useEffect(() => {
     if (!user || !gameId) return;
-    rpsResolutionSentRef.current = false; // reset for each new game
     rematchCreatedRef.current = false;
-    rpsResultCapturedRef.current = false;
-    rpsCreatorPickRef.current = null;
-    rpsJoinerPickRef.current = null;
 
     fetchGameState();
 
@@ -196,33 +181,6 @@ export const useOnlineGame = (gameId: string) => {
         setStatus(prev => advanceStatus(prev, updated.status));
         setWinner(updated.winner);
         setMyMarker(updated.player_x_id === user.id ? 'X' : 'O');
-        // Only update RPS pick state during the RPS phase.
-        // After RPS resolves, rps_creator_pick / rps_joiner_pick stay populated in the DB.
-        // Any later postgres_changes (move writes, forfeit) carries those stale picks and
-        // would spuriously re-trigger captureRPSResultIfReady — showing the RPS result screen
-        // mid-game or after a forfeit. Scoping to status='rps' eliminates that.
-        // The draw-clear null guard is preserved inside this block: when the creator writes
-        // null to clear picks after a draw, that CDC can arrive before the rps_pick broadcast,
-        // so we only apply null once the result has already been captured.
-        if (updated.status === 'rps') {
-          const nullClearAllowed = rpsResultCapturedRef.current;
-          console.log('[RPS postgres_changes] status=rps', {
-            dbCreator: updated.rps_creator_pick,
-            dbJoiner: updated.rps_joiner_pick,
-            refCreator: rpsCreatorPickRef.current,
-            refJoiner: rpsJoinerPickRef.current,
-            nullClearAllowed,
-          });
-          if (updated.rps_creator_pick !== null || nullClearAllowed) {
-            rpsCreatorPickRef.current = updated.rps_creator_pick;
-            setRpsCreatorPick(updated.rps_creator_pick);
-          }
-          if (updated.rps_joiner_pick !== null || nullClearAllowed) {
-            rpsJoinerPickRef.current = updated.rps_joiner_pick;
-            setRpsJoinerPick(updated.rps_joiner_pick);
-          }
-          captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
-        }
         setForfeitPlayerId(updated.forfeit_player_id ?? null);
         // opponentId must be updated here too — creator has null until joiner joins
         setOpponentId(updated.player_x_id === user.id ? updated.player_o_id : updated.player_x_id);
@@ -315,35 +273,10 @@ export const useOnlineGame = (gameId: string) => {
           setRematchGameId(payload.payload.gameId);
         }
       })
-      .on('broadcast', { event: 'rps_pick' }, (payload: { payload: { column: string; pick: string } }) => {
-        // Fast-path delivery of RPS picks — supplements postgres_changes which can be missed.
-        // Both paths set the same state so whichever arrives first wins; the second is a no-op.
-        // Sync refs immediately so captureRPSResultIfReady can check both picks synchronously,
-        // even if one pick came via broadcast and the other hasn't triggered a postgres_changes yet.
-        const { column, pick } = payload.payload ?? {};
-        console.log('[RPS rps_pick broadcast]', { column, pick, refCreatorBefore: rpsCreatorPickRef.current, refJoinerBefore: rpsJoinerPickRef.current });
-        if (column === 'rps_creator_pick' && pick) {
-          rpsCreatorPickRef.current = pick;
-          setRpsCreatorPick(pick);
-        } else if (column === 'rps_joiner_pick' && pick) {
-          rpsJoinerPickRef.current = pick;
-          setRpsJoinerPick(pick);
-        }
-        captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
-      })
       .on('broadcast', { event: 'rematch_intent' }, (payload: { payload: { intent: RematchIntent } }) => {
         if (payload.payload?.intent) {
           setOpponentRematchIntent(payload.payload.intent);
         }
-      })
-      .on('broadcast', { event: 'rps_resolved' }, (payload: { payload: { playerXId: string; playerOId: string } }) => {
-        // Fast-path delivery of RPS resolution — supplements postgres_changes which can be missed.
-        // Joiner receives this and advances to 'active' without waiting for a postgres_changes event.
-        const { playerXId, playerOId } = payload.payload ?? {};
-        if (!playerXId || !playerOId) return;
-        setStatus(prev => advanceStatus(prev, 'active'));
-        setMyMarker(playerXId === user.id ? 'X' : 'O');
-        setIsCreator(playerXId === user.id);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -359,70 +292,7 @@ export const useOnlineGame = (gameId: string) => {
       if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
-  }, [gameId, user, fetchGameState, captureRPSResultIfReady]);
-
-  // Only the creator resolves RPS to avoid a write race condition.
-  // rpsResolutionSentRef guards against the effect re-firing (while Realtime hasn't
-  // returned status='active' yet) and accidentally overwriting the first resolution.
-  useEffect(() => {
-    if (
-      status !== 'rps' ||
-      !rpsCreatorPick ||
-      !rpsJoinerPick ||
-      !isCreator ||
-      !user
-    ) return;
-
-    if (rpsResolutionSentRef.current) return;
-    rpsResolutionSentRef.current = true;
-
-    const result = resolveRPS(rpsCreatorPick as RPSPick, rpsJoinerPick as RPSPick);
-    console.log('[RPS resolution effect] creator resolving', { rpsCreatorPick, rpsJoinerPick, result });
-
-    const resolve = async () => {
-      if (result === 'draw') {
-        rpsResolutionSentRef.current = false; // allow re-resolution after a draw
-        console.log('[RPS resolution effect] draw — writing null-clear to DB');
-        const { error } = await supabase.from('games').update({
-          rps_creator_pick: null,
-          rps_joiner_pick: null,
-        }).eq('id', gameId);
-        if (error) console.error('RPS draw clear failed:', error.message);
-        return;
-      }
-
-      // Compute final player assignment before the write so we can broadcast it
-      const newPlayerXId = result === 'p2' ? joinerId! : user.id;
-      const newPlayerOId = result === 'p2' ? user.id : joinerId!;
-
-      const updatePayload: Record<string, any> = { status: 'active' };
-      if (result === 'p2') {
-        // Joiner wins RPS — swap so joiner becomes X (goes first)
-        updatePayload.player_x_id = newPlayerXId;
-        updatePayload.player_o_id = newPlayerOId;
-      }
-      const { error } = await supabase.from('games').update(updatePayload).eq('id', gameId);
-      if (error) {
-        console.error('RPS resolution failed:', error.message);
-        rpsResolutionSentRef.current = false; // allow retry on failure
-        return;
-      }
-
-      // Advance creator's own state immediately — broadcast self=false won't deliver to us
-      setStatus(prev => advanceStatus(prev, 'active'));
-      setMyMarker(newPlayerXId === user.id ? 'X' : 'O');
-      setIsCreator(newPlayerXId === user.id);
-
-      // Broadcast to joiner — fast path so they advance without depending on postgres_changes
-      channelRef.current?.send({
-        type: 'broadcast',
-        event: 'rps_resolved',
-        payload: { playerXId: newPlayerXId, playerOId: newPlayerOId },
-      });
-    };
-
-    resolve();
-  }, [status, rpsCreatorPick, rpsJoinerPick, isCreator, joinerId, gameId, user]);
+  }, [gameId, user, fetchGameState]);
 
   useEffect(() => {
     if (disconnectCountdown !== 0 || !myMarker || !opponentId || status !== 'active') return;
@@ -535,39 +405,18 @@ export const useOnlineGame = (gameId: string) => {
     return true;
   }, [game, user, myMarker, status, gameId]);
 
-  // Write the player's RPS pick to DB and broadcast it immediately.
-  // Broadcast ensures the opponent receives the pick without depending on postgres_changes
-  // delivery, which can be missed when the Realtime connection is briefly degraded.
+  // Upsert the player's pick into rps_picks. The polling effect handles the rest.
   const submitRPSPick = useCallback(async (pick: RPSPick): Promise<boolean> => {
     if (!user || !gameId) return false;
-    const column = isCreator ? 'rps_creator_pick' : 'rps_joiner_pick';
-    const { error } = await supabase.from('games').update({ [column]: pick }).eq('id', gameId);
+    const { error } = await (supabase as any)
+      .from('rps_picks')
+      .upsert({ game_id: gameId, user_id: user.id, pick }, { onConflict: 'game_id,user_id' }) as { error: { message: string } | null };
     if (error) {
-      console.error('[RPS submitRPSPick] DB write failed:', error.message);
+      console.error('[RPS submitRPSPick] upsert failed:', error.message);
       return false;
     }
-    // Set own ref immediately — don't wait for the postgres_changes echo.
-    // The opponent's rps_pick broadcast can arrive before our echo returns, and the
-    // broadcast handler calls captureRPSResultIfReady(rpsCreatorPickRef.current, ...).
-    // If our ref is still null at that point the capture silently fails and the result
-    // screen never shows (the draw bug: creator stuck on "Waiting for opponent...").
-    if (isCreator) {
-      rpsCreatorPickRef.current = pick;
-    } else {
-      rpsJoinerPickRef.current = pick;
-    }
-    console.log('[RPS submitRPSPick]', { column, pick, isCreator, refCreator: rpsCreatorPickRef.current, refJoiner: rpsJoinerPickRef.current });
-    // Attempt capture immediately — if the opponent's pick arrived via broadcast before we
-    // submitted (opponent was faster), the capture won't happen in the broadcast handler
-    // because our own ref was null at that point. This call covers that gap.
-    captureRPSResultIfReady(rpsCreatorPickRef.current, rpsJoinerPickRef.current);
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'rps_pick',
-      payload: { column, pick },
-    });
     return true;
-  }, [user, gameId, isCreator, captureRPSResultIfReady]);
+  }, [user, gameId]);
 
   const signalRematchIntent = useCallback((intent: RematchIntent) => {
     setMyRematchIntent(intent);
@@ -584,7 +433,7 @@ export const useOnlineGame = (gameId: string) => {
 
   return {
     game, status, myMarker, winner, placeMarker,
-    rpsCreatorPick, rpsJoinerPick, rpsResultPicks, rpsRound, dismissRPSResult, isCreator,
+    rpsResultPicks, rpsRound, dismissRPSResult, isCreator,
     opponentConnected, disconnectCountdown, opponentId,
     rematchGameId, forfeitPlayerId,
     myRematchIntent, opponentRematchIntent, signalRematchIntent,
