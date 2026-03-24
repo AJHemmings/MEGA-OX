@@ -5,7 +5,8 @@
       "Bash(supabase:*)",
       "Bash(git checkout:*)",
       "Bash(cd:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "mcp__plugin_supabase_supabase__apply_migration"
     ]
   }
 }

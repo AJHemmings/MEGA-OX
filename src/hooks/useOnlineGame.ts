@@ -68,6 +68,11 @@ export const useOnlineGame = (gameId: string) => {
     setJoinerId(data.player_o_id);
     setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
     setForfeitPlayerId(data.forfeit_player_id ?? null);
+    // Rematch intent — restore on reconnect
+    const myIntent = data.player_x_id === user.id ? data.rematch_x_intent : data.rematch_o_intent;
+    const opIntent = data.player_x_id === user.id ? data.rematch_o_intent : data.rematch_x_intent;
+    if (myIntent) setMyRematchIntent(myIntent as RematchIntent);
+    if (opIntent) setOpponentRematchIntent(opIntent as RematchIntent);
     if (data.state && Object.keys(data.state).length > 0) {
       const dbMoveCount = countMoves(data.state as unknown as SerializedState);
       // Only apply DB state if it's at least as current as local — prevents overwriting a
@@ -187,6 +192,11 @@ export const useOnlineGame = (gameId: string) => {
         // opponentId must be updated here too — creator has null until joiner joins
         setOpponentId(updated.player_x_id === user.id ? updated.player_o_id : updated.player_x_id);
         if (updated.player_o_id) setJoinerId(updated.player_o_id);
+        // Rematch intent via DB — reliable alternative to broadcast when WebSocket is degraded
+        const pgMyIntent = updated.player_x_id === user.id ? updated.rematch_x_intent : updated.rematch_o_intent;
+        const pgOpIntent = updated.player_x_id === user.id ? updated.rematch_o_intent : updated.rematch_x_intent;
+        if (pgMyIntent) setMyRematchIntent(pgMyIntent as RematchIntent);
+        if (pgOpIntent) setOpponentRematchIntent(pgOpIntent as RematchIntent);
         if (updated.state && Object.keys(updated.state).length > 0) {
           // Only apply if the DB state is at least as current as our local state
           const dbMoveCount = countMoves(updated.state);
@@ -456,16 +466,14 @@ export const useOnlineGame = (gameId: string) => {
 
   const signalRematchIntent = useCallback((intent: RematchIntent) => {
     setMyRematchIntent(intent);
-    // Update presence so the intent survives reconnects and is visible via sync events.
-    // This is the reliable path — broadcast below is the fast path.
+    // Reliable path: write to DB — delivered via postgres_changes regardless of WebSocket state.
+    // Broadcast fallback to REST API does not reliably fan out to WebSocket subscribers.
+    const col = myMarker === 'X' ? 'rematch_x_intent' : 'rematch_o_intent';
+    supabase.from('games').update({ [col]: intent }).eq('id', gameId);
+    // Fast path: presence + broadcast for immediate delivery on healthy connections
     channelRef.current?.track({ user_id: user?.id, rematch_intent: intent });
-    // Fast path: broadcast for immediate delivery
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'rematch_intent',
-      payload: { intent },
-    });
-  }, [user]);
+    channelRef.current?.send({ type: 'broadcast', event: 'rematch_intent', payload: { intent } });
+  }, [user, myMarker, gameId]);
 
   return {
     game, status, myMarker, winner, placeMarker,
