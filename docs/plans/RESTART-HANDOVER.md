@@ -4,12 +4,12 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Two bugs were fixed this session and deployed (commit `acd9eb7`, private Vercel `mega-ox-dev`):
+> "I've read the handover. Fix 9 deployed (commit `89fe317`, private Vercel `mega-ox-dev`). Two Play Again bugs fixed:
 >
-> 1. **Game-start bug fixed** — `dismissRPSResult(false)` now calls `fetchGameState()` when `!wasDraw`, transitioning the joiner from `'rps'` to `'active'` so they can place moves.
-> 2. **Game state sync fixed** — added an independent 1.5s polling effect (`status === 'active'`) that guarantees move delivery even if broadcast or CDC events are missed. Mirrors the `rps_picks` polling pattern. RPS code is untouched.
+> 1. **RLS block on rematch INSERT** — the original policy required `auth.uid() = player_x_id`. Rematch swaps positions, so the creating player inserts a row where they are `player_o_id`. Fixed: `auth.uid() = player_x_id OR auth.uid() = player_o_id`.
+> 2. **Intent not reaching the other player** — Supabase broadcast REST fallback (triggered when one browser's WebSocket is degraded) does not reliably fan out to WebSocket subscribers. Fixed: write `rematch_x_intent` / `rematch_o_intent` to the games row; `postgres_changes` delivers it reliably on both sides. Broadcast kept as a fast path.
 >
-> Ready to test. Start with a full game: RPS win → both players alternate moves → confirm sync both ways → game over screen. Then test RPS draw (draw → re-pick → win → game plays out). Then Play Again.
+> Confirmed working this session: RPS, game generation, move sync. Play Again deployed but not yet live-tested after Fix 9.
 >
 > Ready when you are."
 
@@ -21,7 +21,7 @@ Read this file in full, then say:
 
 | Worktree | Branch | Status |
 | --- | --- | --- |
-| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | `acd9eb7` deployed — game-start and move sync fixed, awaiting live test |
+| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | `89fe317` deployed — Play Again fixes, awaiting live test |
 
 `feat/phase-2-skins` worktree has been removed. Its code is fully contained in `feat/disconnect-handling`.
 
@@ -30,7 +30,7 @@ Read this file in full, then say:
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy by running `git push private HEAD:main --force` from the `feat-disconnect-handling` worktree
 — Deployment protection: **disabled** (for testing)
-— Latest production: commit `acd9eb7` (game-start fix + game state polling)
+— Latest production: commit `89fe317` (Fix 9 — Play Again RLS + intent delivery)
 
 **Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone.
 
@@ -40,15 +40,30 @@ Read this file in full, then say:
 
 ## Remaining work before merging local main
 
-1. **Test full game flow** — RPS win → both players alternate moves → confirm both boards update in sync → game over screen appears on both. This is the primary test for the two fixes this session.
+1. **Test Play Again (Fix 9)** — both players click Play Again → both dots go green → new RPS screen → new game plays out. This is the primary test for this session's fixes.
 2. **Test RPS draw** — draw → both return to pick screen → pick again → win → game plays out. Repeat 2–3 times. Not yet re-tested after Fix 7.
-3. **Re-test Play Again** — both players → new RPS → new game. Still needs validation after all changes.
-4. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Run before merge.
-5. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
+3. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Run before merge.
+4. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
 
 ---
 
 ## This session's fixes
+
+### Fix 9 — Play Again (commit `89fe317`, 2026-03-24)
+
+Two independent bugs both blocked Play Again.
+
+**Bug A — RLS blocked the INSERT:**
+The games INSERT policy required `auth.uid() = player_x_id`. Rematch swaps who goes first: the creating player (current X) inserts a row with `player_x_id = opponentId` and `player_o_id = auth.uid()`. So `auth.uid() ≠ player_x_id` → 403.
+
+Fix: `auth.uid() = player_x_id OR auth.uid() = player_o_id` (migration `20260324000001`).
+
+**Bug B — Intent not delivered due to degraded WebSocket:**
+The losing browser had a degraded WebSocket (`Realtime send() is automatically falling back to REST API`). Supabase's broadcast REST fallback doesn't reliably fan out to WebSocket subscribers, so one player's intent never reached the other player's `rematch_intent` handler. Same root cause as the old event-based RPS failures.
+
+Fix: Write intent to `rematch_x_intent` / `rematch_o_intent` columns on the games row (migration `20260324000002`). `postgres_changes` delivers it via CDC — a separate, more reliable path than broadcasts. Broadcast and presence kept as fast paths. The `postgres_changes` handler and `fetchGameState` both read intent columns with null guards so move writes (which don't touch intent columns) don't wipe state.
+
+---
 
 ### Fix 8a — Game-start bug (commit `2a3c3d7`)
 
@@ -124,7 +139,7 @@ The entire event-based RPS system was scrapped. Removed: `rpsCreatorPickRef`, `r
 
 ## Confirmed working — live testing
 
-- Move sync (1.1–1.5) — instant, in sync, constraints, micro/macro wins ✅ (re-test needed after this session's fixes)
+- Move sync (1.1–1.5) — instant, in sync, constraints, micro/macro wins ✅
 - Intentional exit (3.1–3.3) — forfeit confirm/cancel modal ✅
 - Browser back button interception + tab close prompt ✅
 - Auto-forfeit on disconnect (90s countdown → forfeit fires → both screens update) ✅
@@ -133,10 +148,11 @@ The entire event-based RPS system was scrapped. Removed: `rpsCreatorPickRef`, `r
 - Audio (4.1–4.8) — all sounds confirmed ✅
 - RPS — both browsers submit picks successfully ✅ (Fix 7)
 - RPS — result screen shows on both browsers before game starts ✅ (Fix 7)
-- RPS — win case: result screen → game starts, both players can move ⚠️ (fix deployed, not yet re-tested)
+- RPS — win case: result screen → game starts, both players can move ✅ (Fix 8a)
+- Game generation — working ✅
 - RPS — draw: result screen → both return to pick screen ⚠️ (not yet re-tested after Fix 7)
 - Join with code — creator navigates correctly ✅
-- Play Again — both players → new RPS → new game ⚠️ (not yet re-tested after Fix 8)
+- Play Again — both players → new RPS → new game ⚠️ (Fix 9 deployed, not yet live-tested)
 
 ---
 
@@ -158,7 +174,8 @@ The entire event-based RPS system was scrapped. Removed: `rpsCreatorPickRef`, `r
 | Broadcast move sync | Done — Phase 2.5 |
 | Audio notifications | Done — Phase 2.5 |
 | Play Again (readiness dots) | Done — Phase 2.5 |
-| RPS sync | Fix 8 deployed — awaiting live test |
+| RPS sync | Fix 8 deployed and live-tested ✅ |
+| Play Again | Fix 9 deployed — awaiting live test |
 
 ---
 
