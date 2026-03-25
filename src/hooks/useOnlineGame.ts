@@ -172,6 +172,10 @@ export const useOnlineGame = (gameId: string) => {
   useEffect(() => {
     if (!user || !gameId) return;
     rematchCreatedRef.current = false;
+    // Reset rematch intents so stale 'play_again' values from the previous game
+    // don't trigger spurious game creation on the next game's first render.
+    setMyRematchIntent(null);
+    setOpponentRematchIntent(null);
 
     fetchGameState();
 

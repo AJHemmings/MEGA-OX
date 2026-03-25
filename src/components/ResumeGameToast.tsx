@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveGame } from '../hooks/useActiveGame';
 
@@ -10,7 +10,6 @@ const ResumeGameToast: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const params = useParams<{ id?: string }>();
   const { activeGameId, forfeitedGameId } = useActiveGame(user?.id ?? null, location.pathname);
 
   const [showForfeitToast, setShowForfeitToast] = useState(false);
@@ -30,8 +29,10 @@ const ResumeGameToast: React.FC = () => {
     return () => clearTimeout(timer);
   }, [forfeitedGameId, location.pathname]);
 
-  // Don't show resume toast if already on that game's screen
-  const isOnActiveGame = params.id && params.id === activeGameId;
+  // Don't show resume toast if already on that game's screen.
+  // useParams() is unavailable here (ProtectedRoute is above the :id route),
+  // so compare against location.pathname directly.
+  const isOnActiveGame = activeGameId && location.pathname === `/game/${activeGameId}`;
 
   const toastStyle: React.CSSProperties = {
     position: 'fixed',
