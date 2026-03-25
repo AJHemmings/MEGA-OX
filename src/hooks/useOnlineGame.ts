@@ -389,7 +389,8 @@ export const useOnlineGame = (gameId: string) => {
 
       // Write rematch_game_id to DB — reliable delivery to player O via postgres_changes.
       // Broadcast is kept as the fast path but is fire-and-forget; DB is the fallback.
-      await supabase.from('games').update({ rematch_game_id: data.id }).eq('id', gameId);
+      const { error: rematchIdError } = await supabase.from('games').update({ rematch_game_id: data.id }).eq('id', gameId);
+      if (rematchIdError) console.error('[createRematch] rematch_game_id write failed:', rematchIdError.message);
 
       channelRef.current?.send({
         type: 'broadcast',
@@ -402,6 +403,17 @@ export const useOnlineGame = (gameId: string) => {
 
     createRematch();
   }, [myRematchIntent, opponentRematchIntent, user, opponentId, myMarker, isCreator, gameId]);
+
+  // Polling fallback for player O waiting on a rematch game ID.
+  // The primary delivery path (rematch_game_id CDC from player X's DB write) can be missed
+  // if the postgres_changes event is dropped. This polls fetchGameState every 2s while the
+  // player is on the complete screen with Play Again clicked but no rematch game yet received.
+  // Stops automatically once rematchGameId is set (navigation fires from OnlineGameView).
+  useEffect(() => {
+    if (status !== 'complete' || myRematchIntent !== 'play_again' || rematchGameId) return;
+    const interval = setInterval(fetchGameState, 2000);
+    return () => clearInterval(interval);
+  }, [status, myRematchIntent, rematchGameId, fetchGameState]);
 
   const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
     if (!game || !user || !myMarker || status !== 'active') return false;
