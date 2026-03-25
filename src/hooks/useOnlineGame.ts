@@ -401,7 +401,7 @@ export const useOnlineGame = (gameId: string) => {
     };
 
     createRematch();
-  }, [myRematchIntent, opponentRematchIntent, user, opponentId, myMarker, isCreator]);
+  }, [myRematchIntent, opponentRematchIntent, user, opponentId, myMarker, isCreator, gameId]);
 
   const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
     if (!game || !user || !myMarker || status !== 'active') return false;
