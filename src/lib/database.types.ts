@@ -165,6 +165,7 @@ export type Database = {
           next_player: string
           player_o_id: string | null
           player_x_id: string | null
+          rematch_game_id: string | null
           rematch_o_intent: string | null
           rematch_x_intent: string | null
           rps_creator_pick: string | null
@@ -186,6 +187,7 @@ export type Database = {
           next_player?: string
           player_o_id?: string | null
           player_x_id?: string | null
+          rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
           rps_creator_pick?: string | null
@@ -207,6 +209,7 @@ export type Database = {
           next_player?: string
           player_o_id?: string | null
           player_x_id?: string | null
+          rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
           rps_creator_pick?: string | null

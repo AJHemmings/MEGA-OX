@@ -73,6 +73,7 @@ export const useOnlineGame = (gameId: string) => {
     const opIntent = data.player_x_id === user.id ? data.rematch_o_intent : data.rematch_x_intent;
     if (myIntent) setMyRematchIntent(myIntent as RematchIntent);
     if (opIntent) setOpponentRematchIntent(opIntent as RematchIntent);
+    if (data.rematch_game_id) setRematchGameId(data.rematch_game_id);
     if (data.state && Object.keys(data.state).length > 0) {
       const dbMoveCount = countMoves(data.state as unknown as SerializedState);
       // Only apply DB state if it's at least as current as local — prevents overwriting a
@@ -201,6 +202,7 @@ export const useOnlineGame = (gameId: string) => {
         const pgOpIntent = updated.player_x_id === user.id ? updated.rematch_o_intent : updated.rematch_x_intent;
         if (pgMyIntent) setMyRematchIntent(pgMyIntent as RematchIntent);
         if (pgOpIntent) setOpponentRematchIntent(pgOpIntent as RematchIntent);
+        if (updated.rematch_game_id) setRematchGameId(updated.rematch_game_id);
         if (updated.state && Object.keys(updated.state).length > 0) {
           // Only apply if the DB state is at least as current as our local state
           const dbMoveCount = countMoves(updated.state);
@@ -384,6 +386,10 @@ export const useOnlineGame = (gameId: string) => {
         rematchCreatedRef.current = false;
         return;
       }
+
+      // Write rematch_game_id to DB — reliable delivery to player O via postgres_changes.
+      // Broadcast is kept as the fast path but is fire-and-forget; DB is the fallback.
+      await supabase.from('games').update({ rematch_game_id: data.id }).eq('id', gameId);
 
       channelRef.current?.send({
         type: 'broadcast',
