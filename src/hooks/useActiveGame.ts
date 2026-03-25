@@ -21,6 +21,7 @@ export const useActiveGame = (userId: string | null, pathname: string): ActiveGa
         .select('id')
         .or(`player_x_id.eq.${userId},player_o_id.eq.${userId}`)
         .in('status', ['active', 'rps'])
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
