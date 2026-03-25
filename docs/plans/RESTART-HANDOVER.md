@@ -4,12 +4,15 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Fix 9 deployed (commit `89fe317`, private Vercel `mega-ox-dev`). Two Play Again bugs fixed:
+> "I've read the handover. Fix 11 deployed (commit `b39944c`, private Vercel `mega-ox-dev`). Two bugs fixed this session:
 >
-> 1. **RLS block on rematch INSERT** — the original policy required `auth.uid() = player_x_id`. Rematch swaps positions, so the creating player inserts a row where they are `player_o_id`. Fixed: `auth.uid() = player_x_id OR auth.uid() = player_o_id`.
-> 2. **Intent not reaching the other player** — Supabase broadcast REST fallback (triggered when one browser's WebSocket is degraded) does not reliably fan out to WebSocket subscribers. Fixed: write `rematch_x_intent` / `rematch_o_intent` to the games row; `postgres_changes` delivers it reliably on both sides. Broadcast kept as a fast path.
+> 1. **URL cycling / both players stuck on different RPS games (Fix 11a)** — `myRematchIntent` and `opponentRematchIntent` are `useState`, so they survive a `gameId` change (React Router reuses the component). Both carry stale `'play_again'` into every new game mount. `rematchCreatedRef` just got reset to `false` and `myMarker` is still the old value before `fetchGameState` returns — so the creation effect fires, creates another game, navigates there, and repeats. Players end up on different game IDs and get stuck on RPS. Fixed: reset both intents to `null` in the main `useEffect` alongside the existing `rematchCreatedRef` reset.
 >
-> Confirmed working this session: RPS, game generation, move sync. Play Again deployed but not yet live-tested after Fix 9.
+> 2. **Resume Game toast always visible / clicking does nothing (Fix 11b)** — `ResumeGameToast` renders inside `ProtectedRoute` as a sibling of `<Outlet />`, so `useParams()` returns `{}` — no `:id` in scope at that level. The `isOnActiveGame` guard was always `false`. Fixed: compare `location.pathname` against `` /game/${activeGameId} `` directly instead.
+>
+> Fix 10 (same session, earlier) fixed a build failure: `database.types.ts` was missing `rematch_x_intent` and `rematch_o_intent` after the Fix 9 migration added those columns. Types manually updated; build is green.
+>
+> Play Again flow now needs a full live test — it was broken (URL cycling) and is now fixed. RPS draw path also still needs testing after Fix 7. Both are the top priority for this session.
 >
 > Ready when you are."
 
@@ -21,7 +24,7 @@ Read this file in full, then say:
 
 | Worktree | Branch | Status |
 | --- | --- | --- |
-| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | `89fe317` deployed — Play Again fixes, awaiting live test |
+| `.worktrees/feat-disconnect-handling` | `feat/disconnect-handling` | `b39944c` deployed — Fix 10 + Fix 11, awaiting Play Again live test |
 
 `feat/phase-2-skins` worktree has been removed. Its code is fully contained in `feat/disconnect-handling`.
 
@@ -30,7 +33,7 @@ Read this file in full, then say:
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy by running `git push private HEAD:main --force` from the `feat-disconnect-handling` worktree
 — Deployment protection: **disabled** (for testing)
-— Latest production: commit `89fe317` (Fix 9 — Play Again RLS + intent delivery)
+— Latest production: commit `b39944c` (Fix 11 — URL cycling + toast guard)
 
 **Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone.
 
@@ -40,14 +43,42 @@ Read this file in full, then say:
 
 ## Remaining work before merging local main
 
-1. **Test Play Again (Fix 9)** — both players click Play Again → both dots go green → new RPS screen → new game plays out. This is the primary test for this session's fixes.
-2. **Test RPS draw** — draw → both return to pick screen → pick again → win → game plays out. Repeat 2–3 times. Not yet re-tested after Fix 7.
+1. **Test Play Again (Fix 11)** — both players click Play Again → both dots go green → single consistent game ID → new RPS screen → both players can move in the new game. This is the primary test after Fix 11 fixed the URL cycling.
+2. **Test RPS draw** — draw → both return to pick screen → pick again → win → game starts. Repeat 2–3 times. Not yet re-tested after Fix 7.
 3. **Section 6 regression checklist** — `docs/plans/2026-03-19-testing-benchmarks.md`. Run before merge.
 4. **Merge to local main** — pull private/main into local main, then push to origin/main (user decides on public deploy).
 
 ---
 
 ## This session's fixes
+
+### Fix 11 — URL cycling + Resume Game toast (commit `b39944c`, 2026-03-25)
+
+**Bug A — URL cycling / both players stuck on different RPS games:**
+
+After Play Again, both players navigated to a new game. But `myRematchIntent` and `opponentRematchIntent` are `useState` — they survive a `gameId` prop change because React Router reuses the `OnlineGameView` component instance. Both carried stale `'play_again'` values into the new game. At that point, `rematchCreatedRef` had just been reset to `false` (in the main `useEffect`), and `myMarker` was still the old game's value (before `fetchGameState` returned with the new game's data). The creation effect saw both intents set, `myMarker === 'X'`, `rematchCreatedRef === false` — and created yet another game. This cascaded: each new game mount repeated the pattern, cycling through many game IDs. Players ended up on different IDs and each one's RPS polling watched a different `rps_picks` row — neither side ever saw both picks, both got stuck on "Waiting for opponent...".
+
+Fix: two lines added to the main `useEffect` in `useOnlineGame.ts` (alongside the existing `rematchCreatedRef` reset):
+```ts
+setMyRematchIntent(null);
+setOpponentRematchIntent(null);
+```
+
+**Bug B — Resume Game toast always visible / clicking did nothing:**
+
+`ResumeGameToast` is rendered inside `ProtectedRoute` as a sibling of `<Outlet />`. That means it lives at the parent route level, not inside the `/game/:id` route context. `useParams<{ id? }>()` returned `{}` — there is no `:id` in scope. The `isOnActiveGame` guard was always `false`, so the toast appeared on every page including the game screen the user was already on. Clicking navigated to the same URL → no visible change.
+
+Fix: replace `params.id === activeGameId` with `location.pathname === /game/${activeGameId}`. `useLocation()` works at any level of the component tree.
+
+---
+
+### Fix 10 — database.types.ts missing rematch columns (commit `3abdfa0`, 2026-03-25)
+
+**Problem:** The Fix 9 migration added `rematch_x_intent` and `rematch_o_intent` columns to the `games` table. The generated `src/lib/database.types.ts` was never regenerated. TypeScript had no knowledge of those columns → build failed with `TS2339: Property 'rematch_x_intent' does not exist`.
+
+**Fix:** Manually added `rematch_x_intent: string | null` and `rematch_o_intent: string | null` to `Row`, `Insert`, and `Update` in the `games` table definition. Type check clean, build green.
+
+---
 
 ### Fix 9 — Play Again (commit `89fe317`, 2026-03-24)
 
@@ -145,6 +176,7 @@ The entire event-based RPS system was scrapped. Removed: `rpsCreatorPickRef`, `r
 - Auto-forfeit on disconnect (90s countdown → forfeit fires → both screens update) ✅
 - Countdown cancels when disconnected player reconnects ✅
 - Resume toast appears correctly ✅
+- Resume toast suppressed when already on that game ✅ (Fix 11b)
 - Audio (4.1–4.8) — all sounds confirmed ✅
 - RPS — both browsers submit picks successfully ✅ (Fix 7)
 - RPS — result screen shows on both browsers before game starts ✅ (Fix 7)
@@ -152,7 +184,7 @@ The entire event-based RPS system was scrapped. Removed: `rpsCreatorPickRef`, `r
 - Game generation — working ✅
 - RPS — draw: result screen → both return to pick screen ⚠️ (not yet re-tested after Fix 7)
 - Join with code — creator navigates correctly ✅
-- Play Again — both players → new RPS → new game ⚠️ (Fix 9 deployed, not yet live-tested)
+- Play Again — URL cycling fixed (Fix 11a), both navigate to same game ID ⚠️ (fix deployed, not yet live-tested)
 
 ---
 
@@ -175,7 +207,7 @@ The entire event-based RPS system was scrapped. Removed: `rpsCreatorPickRef`, `r
 | Audio notifications | Done — Phase 2.5 |
 | Play Again (readiness dots) | Done — Phase 2.5 |
 | RPS sync | Fix 8 deployed and live-tested ✅ |
-| Play Again | Fix 9 deployed — awaiting live test |
+| Play Again | Fixes 9–11 deployed — awaiting live test |
 
 ---
 
