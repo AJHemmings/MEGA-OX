@@ -385,6 +385,13 @@ export const useOnlineGame = (gameId: string) => {
       const newPlayerX = myMarker === 'X' ? opponentId : user.id;
       const newPlayerO = myMarker === 'X' ? user.id : opponentId;
 
+      // Clean up any abandoned 'rps' games between these two players before creating the new one.
+      // Prevents stale rematch rows from accumulating and triggering the resume toast on login.
+      await supabase.from('games')
+        .update({ status: 'complete' })
+        .or(`and(player_x_id.eq.${newPlayerX},player_o_id.eq.${newPlayerO}),and(player_x_id.eq.${newPlayerO},player_o_id.eq.${newPlayerX})`)
+        .eq('status', 'rps');
+
       const { data, error } = await supabase.from('games').insert({
         player_x_id: newPlayerX,
         player_o_id: newPlayerO,

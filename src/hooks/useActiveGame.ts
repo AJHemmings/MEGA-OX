@@ -21,12 +21,15 @@ export const useActiveGame = (userId: string | null, pathname: string): ActiveGa
       setActiveGameId(null);
       setForfeitedGameId(null);
 
-      // Active or in-RPS game
+      const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+      // Active or in-RPS game. 'rps' rows are filtered to the last 30 minutes — abandoned
+      // Play Again rematch games stay in 'rps' forever and would otherwise trigger the toast.
       const { data: active } = await supabase
         .from('games')
         .select('id')
         .or(`player_x_id.eq.${userId},player_o_id.eq.${userId}`)
-        .in('status', ['active', 'rps'])
+        .or(`status.eq.active,and(status.eq.rps,updated_at.gte.${thirtyMinAgo})`)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -39,7 +42,6 @@ export const useActiveGame = (userId: string | null, pathname: string): ActiveGa
       }
 
       // Recently forfeited (last 30 minutes)
-      const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
       const { data: forfeited } = await supabase
         .from('games')
         .select('id')
