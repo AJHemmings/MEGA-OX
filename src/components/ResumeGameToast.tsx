@@ -29,10 +29,11 @@ const ResumeGameToast: React.FC = () => {
     return () => clearTimeout(timer);
   }, [forfeitedGameId, location.pathname]);
 
-  // Don't show resume toast if already on that game's screen.
-  // useParams() is unavailable here (ProtectedRoute is above the :id route),
-  // so compare against location.pathname directly.
-  const isOnActiveGame = activeGameId && location.pathname === `/game/${activeGameId}`;
+  // Don't show resume toast when already on any game screen.
+  // The toast is only useful on non-game pages (menu, profile, etc.).
+  // We can't reliably compare against activeGameId here because the DB query
+  // may return a different game than the one in the URL (stale rps game, timing race).
+  const isOnGameRoute = location.pathname.startsWith('/game/');
 
   const toastStyle: React.CSSProperties = {
     position: 'fixed',
@@ -48,7 +49,7 @@ const ResumeGameToast: React.FC = () => {
     maxWidth: '300px',
   };
 
-  if (activeGameId && !isOnActiveGame) {
+  if (activeGameId && !isOnGameRoute) {
     return (
       <div style={toastStyle}>
         <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#a0aec0' }}>
