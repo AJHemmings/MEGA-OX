@@ -138,9 +138,17 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     if (!rematchGameId) return;
     if (rematchNavFiredRef.current) return;
     if (rematchOverlay === 'agreed') return;
+    // If this player already clicked Play Again, show the overlay before navigating.
+    // Closes the race where rematchGameId arrives before the intent watcher fires.
+    if (myRematchIntent === 'play_again' && !overlayShownRef.current) {
+      overlayShownRef.current = true;
+      setWaitCountdown(null);
+      setRematchOverlay('agreed');
+      return;
+    }
     rematchNavFiredRef.current = true;
     navigate(`/game/${rematchGameId}`);
-  }, [rematchGameId, navigate, rematchOverlay]);
+  }, [rematchGameId, navigate, rematchOverlay, myRematchIntent]);
 
   // Show overlay when both intents are known — or immediately if opponent already decided.
   // Runs on every intent change so it catches the case where opponent decided before I clicked.

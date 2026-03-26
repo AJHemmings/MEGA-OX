@@ -50,6 +50,11 @@ export const useOnlineGame = (gameId: string) => {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const gameRef = useRef<Game | null>(null);
   const rematchCreatedRef = useRef(false);
+  // Tracks the gameId that was active when the setup effect last ran.
+  // Used by fetchGameState to detect and discard in-flight results from a
+  // previous game — the polling fallback can dispatch a fetch just before
+  // cleanup fires, and that stale result must not overwrite new-game state.
+  const currentGameIdRef = useRef<string>(gameId);
 
   // Keep gameRef in sync so event handlers can read latest game state without stale closure
   useEffect(() => {
@@ -61,6 +66,9 @@ export const useOnlineGame = (gameId: string) => {
     const { data, error } = await supabase.from('games').select('*').eq('id', gameId).single();
     if (error) console.error('fetchGameState failed:', error.message);
     if (!data) return;
+    // Discard stale results — the polling fallback can dispatch a fetch just before gameId
+    // changes, and that async call may resolve after the component has navigated to a new game.
+    if (currentGameIdRef.current !== gameId) return;
     setStatus(data.status as OnlineGameStatus);
     setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
     setWinner(data.winner);
@@ -172,11 +180,13 @@ export const useOnlineGame = (gameId: string) => {
 
   useEffect(() => {
     if (!user || !gameId) return;
+    currentGameIdRef.current = gameId;
     rematchCreatedRef.current = false;
     // Reset rematch intents so stale 'play_again' values from the previous game
     // don't trigger spurious game creation on the next game's first render.
     setMyRematchIntent(null);
     setOpponentRematchIntent(null);
+    setRpsRound(0);
 
     fetchGameState();
 
