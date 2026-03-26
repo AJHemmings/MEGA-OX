@@ -449,24 +449,45 @@ export const useOnlineGame = (gameId: string) => {
       setWinner(winnerValue);
     }
 
-    // 2. Broadcast to opponent via channel (fast path) — include isOver/winner so
-    //    the opponent's status updates immediately without waiting for postgres_changes
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'move',
-      payload: { state: newState, isOver, winner: winnerValue },
-    });
-
-    // 3. Write to DB async — authoritative checkpoint, not the sync mechanism
-    supabase.from('games').update({
-      state: newState as any,
-      next_player: gameCopy.currentPlayer.marker,
-      next_micro_board: gameCopy.nextMicroBoardIndex,
-      status: isOver ? 'complete' : 'active',
-      winner: winnerValue,
-    }).eq('id', gameId).then(({ error }) => {
+    // 2 & 3. DB write + broadcast — ordering depends on whether the game ended.
+    //
+    // For a winning move: await the DB write BEFORE broadcasting. This ensures the
+    // DB shows 'complete' before the opponent sees the game as over and navigates
+    // away. Without this, useActiveGame on the menu page queries the DB during the
+    // fire-and-forget window and finds the game still 'active' → spurious resume toast.
+    //
+    // For regular moves: broadcast first (fast path), then fire-and-forget DB write.
+    // The polling fallback (every 1.5s) guarantees eventual consistency.
+    if (isOver) {
+      const { error } = await supabase.from('games').update({
+        state: newState as any,
+        next_player: gameCopy.currentPlayer.marker,
+        next_micro_board: gameCopy.nextMicroBoardIndex,
+        status: 'complete',
+        winner: winnerValue,
+      }).eq('id', gameId);
       if (error) console.error('Move DB write failed:', error.message);
-    });
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'move',
+        payload: { state: newState, isOver, winner: winnerValue },
+      });
+    } else {
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'move',
+        payload: { state: newState, isOver, winner: winnerValue },
+      });
+      supabase.from('games').update({
+        state: newState as any,
+        next_player: gameCopy.currentPlayer.marker,
+        next_micro_board: gameCopy.nextMicroBoardIndex,
+        status: 'active',
+        winner: null,
+      }).eq('id', gameId).then(({ error }) => {
+        if (error) console.error('Move DB write failed:', error.message);
+      });
+    }
 
     if (isOver) {
       supabase.from('game_moves').insert({
