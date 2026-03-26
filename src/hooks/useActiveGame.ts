@@ -15,6 +15,12 @@ export const useActiveGame = (userId: string | null, pathname: string): ActiveGa
     if (!userId) return;
 
     const check = async () => {
+      // Clear stale state immediately so the resume toast never shows during the async
+      // gap between pathname change and query resolution. Without this, a player who
+      // navigates away from a just-completed game sees the toast for ~100–200ms.
+      setActiveGameId(null);
+      setForfeitedGameId(null);
+
       // Active or in-RPS game
       const { data: active } = await supabase
         .from('games')

@@ -17,6 +17,7 @@ import {
 import { GameSkins } from '../../skins/types';
 import RPSScreen from './RPSScreen';
 import RPSResultScreen from './RPSResultScreen';
+import RematchOutcomeOverlay from './RematchOutcomeOverlay';
 import { resolveRPS, RPSResult } from '../../lib/rps';
 import {
   playMarkerPlaced,
@@ -35,6 +36,46 @@ const defaultGameSkins: GameSkins = {
   p2WonBoardSkin: DEFAULT_WON_BOARD_O_SKIN,
 };
 
+// Countdown ring shown while waiting for the opponent to decide on a rematch.
+const RING_RADIUS = 36;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+const CountdownRing: React.FC<{ seconds: number; total: number }> = ({ seconds, total }) => {
+  const strokeDashoffset = RING_CIRCUMFERENCE * (1 - seconds / total);
+  return (
+    <svg width="88" height="88" viewBox="0 0 88 88">
+      {/* Background track */}
+      <circle cx="44" cy="44" r={RING_RADIUS} fill="none" stroke="#3a4a5a" strokeWidth="4" />
+      {/* Depleting arc */}
+      <circle
+        cx="44"
+        cy="44"
+        r={RING_RADIUS}
+        fill="none"
+        stroke="#00d4aa"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeDasharray={RING_CIRCUMFERENCE}
+        strokeDashoffset={strokeDashoffset}
+        transform="rotate(-90 44 44)"
+        style={{ transition: 'stroke-dashoffset 0.9s linear' }}
+      />
+      {/* Countdown number */}
+      <text
+        x="44"
+        y="50"
+        textAnchor="middle"
+        fill="#ffffff"
+        fontSize="22"
+        fontWeight="bold"
+        fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
+      >
+        {seconds}
+      </text>
+    </svg>
+  );
+};
+
 interface OnlineGameViewProps {
   gameId: string;
 }
@@ -45,6 +86,19 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const { game, status, myMarker, winner, placeMarker, rpsResultPicks, rpsRound, dismissRPSResult, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent, submitRPSPick } = useOnlineGame(gameId);
 
   const [showForfeitModal, setShowForfeitModal] = useState(false);
+
+  // Rematch outcome overlay — 'agreed' (cover screen) or 'opted_out' (modal)
+  const [rematchOverlay, setRematchOverlay] = useState<'agreed' | 'opted_out' | null>(null);
+  // Counts down from 30 while waiting for opponent to decide; null when not waiting
+  const [waitCountdown, setWaitCountdown] = useState<number | null>(null);
+  // Keeps rematchGameId accessible in dismiss callbacks without stale closures
+  const rematchGameIdRef = useRef<string | null>(null);
+  // Guards against showing the overlay more than once per game
+  const overlayShownRef = useRef(false);
+  // Prevents countdown from being started more than once per game
+  const countdownStartedRef = useRef(false);
+  // Prevents the rematch navigation from firing twice (effect + dismiss handler)
+  const rematchNavFiredRef = useRef(false);
 
   // Derived from DB — not from presence, so no race condition when opponent navigates away after game ends
   const wonByForfeit = forfeitPlayerId !== null;
@@ -62,17 +116,72 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // a ref reset is silent and the RPSScreen would never re-appear for the new game.
   const [rpsResultShown, setRpsResultShown] = useState(false);
 
-  // Reset RPS guard when gameId changes — React Router reuses this component instance
-  // across /game/:id navigations (Play Again), so state must be explicitly reset.
+  // Keep rematchGameIdRef current so dismiss callbacks always have the latest value
+  useEffect(() => { rematchGameIdRef.current = rematchGameId; }, [rematchGameId]);
+
+  // Reset RPS guard AND all rematch overlay state when gameId changes.
+  // React Router reuses this component instance across /game/:id navigations (Play Again),
+  // so every piece of per-game state must be explicitly reset here.
   useEffect(() => {
     setRpsResultShown(false);
+    setRematchOverlay(null);
+    setWaitCountdown(null);
+    overlayShownRef.current = false;
+    countdownStartedRef.current = false;
+    rematchNavFiredRef.current = false;
   }, [gameId]);
 
+  // Auto-navigate when rematch game is ready — suppressed while the 'agreed' overlay is
+  // showing so the overlay can navigate on dismiss instead. rematchNavFiredRef prevents the
+  // effect and the dismiss handler from both firing a navigate.
   useEffect(() => {
-    if (rematchGameId) {
-      navigate(`/game/${rematchGameId}`);
+    if (!rematchGameId) return;
+    if (rematchNavFiredRef.current) return;
+    if (rematchOverlay === 'agreed') return;
+    rematchNavFiredRef.current = true;
+    navigate(`/game/${rematchGameId}`);
+  }, [rematchGameId, navigate, rematchOverlay]);
+
+  // Show overlay when both intents are known — or immediately if opponent already decided.
+  // Runs on every intent change so it catches the case where opponent decided before I clicked.
+  useEffect(() => {
+    if (myRematchIntent !== 'play_again') return;
+    if (overlayShownRef.current) return;
+
+    if (opponentRematchIntent === 'play_again') {
+      overlayShownRef.current = true;
+      setWaitCountdown(null);
+      setRematchOverlay('agreed');
+    } else if (opponentRematchIntent === 'back_to_menu') {
+      overlayShownRef.current = true;
+      setWaitCountdown(null);
+      setRematchOverlay('opted_out');
     }
-  }, [rematchGameId, navigate]);
+  }, [myRematchIntent, opponentRematchIntent]);
+
+  // Start the 30-second countdown the first time I click Play Again and opponent is undecided.
+  useEffect(() => {
+    if (myRematchIntent !== 'play_again') return;
+    if (countdownStartedRef.current) return;
+    if (opponentRematchIntent !== null) return; // opponent already decided — overlay handles it
+    countdownStartedRef.current = true;
+    setWaitCountdown(30);
+  }, [myRematchIntent, opponentRematchIntent]);
+
+  // Countdown tick — triggers 'opted_out' overlay when it reaches zero.
+  useEffect(() => {
+    if (waitCountdown === null) return;
+    if (waitCountdown <= 0) {
+      setWaitCountdown(null);
+      if (!overlayShownRef.current) {
+        overlayShownRef.current = true;
+        setRematchOverlay('opted_out');
+      }
+      return;
+    }
+    const timer = setTimeout(() => setWaitCountdown(c => c !== null ? c - 1 : null), 1000);
+    return () => clearTimeout(timer);
+  }, [waitCountdown]);
 
   const handleForfeit = useCallback(async () => {
     if (!myMarker || !user) return;
@@ -167,6 +276,29 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       dismissRPSResult(result === 'draw');
     }
   }, [rpsResultPicks, dismissRPSResult]);
+
+  // Navigate to the agreed rematch game — called by the 'agreed' overlay on dismiss.
+  // Uses rematchGameIdRef so the callback is never stale even if rematchGameId arrived late.
+  const handleAgreedDismiss = useCallback(() => {
+    setRematchOverlay(null);
+    if (!rematchNavFiredRef.current) {
+      const targetId = rematchGameIdRef.current;
+      if (targetId) {
+        // Navigate now and lock the flag so the auto-navigate effect doesn't double-fire.
+        rematchNavFiredRef.current = true;
+        navigate(`/game/${targetId}`);
+      }
+      // If rematchGameId hasn't arrived yet (e.g. Player O polling lag), leave the flag
+      // unset. The auto-navigate effect will fire the moment rematchGameId lands, and by
+      // then rematchOverlay is null so its guard won't block it.
+    }
+  }, [navigate]);
+
+  // Navigate to menu when the 'opted_out' overlay (or countdown timeout) dismisses.
+  const handleOptedOutDismiss = useCallback(() => {
+    setRematchOverlay(null);
+    navigate('/menu');
+  }, [navigate]);
 
   // RPS result screen — shown for the full 3s timer regardless of status/pick changes.
   // rpsResultPicks is captured synchronously in the hook's event handlers, so it is immune
@@ -331,14 +463,22 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
                 <span title="You" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: myRematchIntent === 'play_again' ? '#00d4aa' : myRematchIntent === 'back_to_menu' ? '#ff6b35' : '#3a4a5a' }} />
                 <span title="Opponent" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: opponentRematchIntent === 'play_again' ? '#00d4aa' : opponentRematchIntent === 'back_to_menu' ? '#ff6b35' : '#3a4a5a' }} />
               </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => signalRematchIntent('play_again')}
-                  disabled={myRematchIntent !== null}
-                  style={{ marginTop: '10px', padding: '12px 24px', fontSize: '15px', cursor: myRematchIntent !== null ? 'default' : 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa', fontWeight: 'bold', borderColor: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa' }}
-                >
-                  {myRematchIntent === 'play_again' ? 'Waiting...' : 'Play Again'}
-                </button>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+                {myRematchIntent === 'play_again' && waitCountdown !== null ? (
+                  // Countdown ring replaces the disabled "Waiting..." button
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
+                    <CountdownRing seconds={waitCountdown} total={30} />
+                    <span style={{ color: '#a0aec0', fontSize: '13px' }}>Waiting for opponent...</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => signalRematchIntent('play_again')}
+                    disabled={myRematchIntent !== null}
+                    style={{ marginTop: '10px', padding: '12px 24px', fontSize: '15px', cursor: myRematchIntent !== null ? 'default' : 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa', fontWeight: 'bold', borderColor: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa' }}
+                  >
+                    {myRematchIntent === 'play_again' ? 'Waiting...' : 'Play Again'}
+                  </button>
+                )}
                 <button
                   onClick={() => { signalRematchIntent('back_to_menu'); navigate('/menu'); }}
                   style={{ marginTop: '10px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
@@ -349,6 +489,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
             </>
           )}
         </div>
+      )}
+      {/* Rematch outcome overlays — rendered outside the scroll container so they cover everything */}
+      {rematchOverlay && (
+        <RematchOutcomeOverlay
+          type={rematchOverlay}
+          onDismiss={rematchOverlay === 'agreed' ? handleAgreedDismiss : handleOptedOutDismiss}
+        />
       )}
     </div>
     </SkinProvider>
