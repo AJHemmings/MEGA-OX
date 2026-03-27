@@ -187,6 +187,9 @@ export const useOnlineGame = (gameId: string) => {
     setMyRematchIntent(null);
     setOpponentRematchIntent(null);
     setRpsRound(0);
+    // Reset rematchGameId so the auto-navigate effect on the new game doesn't
+    // fire with a stale ID and poison rematchNavFiredRef before the real rematch is created.
+    setRematchGameId(null);
 
     fetchGameState();
 

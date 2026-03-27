@@ -184,12 +184,16 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       if (!overlayShownRef.current) {
         overlayShownRef.current = true;
         setRematchOverlay('opted_out');
+        // Write 'back_to_menu' to DB so the opponent can't trigger a rematch
+        // after the countdown expires — without this, a late Play Again click
+        // from the opponent would find both intents = 'play_again' and create a game.
+        signalRematchIntent('back_to_menu');
       }
       return;
     }
     const timer = setTimeout(() => setWaitCountdown(c => c !== null ? c - 1 : null), 1000);
     return () => clearTimeout(timer);
-  }, [waitCountdown]);
+  }, [waitCountdown, signalRematchIntent]);
 
   const handleForfeit = useCallback(async () => {
     if (!myMarker || !user) return;
