@@ -136,6 +136,11 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // effect and the dismiss handler from both firing a navigate.
   useEffect(() => {
     if (!rematchGameId) return;
+    // Guard: rematchGameId still holds the previous game's ID during the async gap between
+    // gameId changing (React Router navigate) and setRematchGameId(null) applying. Treating
+    // a self-ID as a real rematch would show a spurious overlay and poison rematchNavFiredRef,
+    // blocking navigation when the *real* rematch is created later.
+    if (rematchGameId === gameId) return;
     if (rematchNavFiredRef.current) return;
     if (rematchOverlay === 'agreed') return;
     // If this player already clicked Play Again, show the overlay before navigating.
@@ -148,7 +153,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     }
     rematchNavFiredRef.current = true;
     navigate(`/game/${rematchGameId}`);
-  }, [rematchGameId, navigate, rematchOverlay, myRematchIntent]);
+  }, [rematchGameId, gameId, navigate, rematchOverlay, myRematchIntent]);
 
   // Show overlay when both intents are known — or immediately if opponent already decided.
   // Runs on every intent change so it catches the case where opponent decided before I clicked.
@@ -295,16 +300,19 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     setRematchOverlay(null);
     if (!rematchNavFiredRef.current) {
       const targetId = rematchGameIdRef.current;
-      if (targetId) {
+      if (targetId && targetId !== gameId) {
         // Navigate now and lock the flag so the auto-navigate effect doesn't double-fire.
         rematchNavFiredRef.current = true;
         navigate(`/game/${targetId}`);
       }
+      // If targetId === gameId, rematchGameId is stale (async clear hasn't applied yet).
+      // Don't poison rematchNavFiredRef — the real rematch will arrive later and the
+      // auto-navigate effect will handle it then.
       // If rematchGameId hasn't arrived yet (e.g. Player O polling lag), leave the flag
       // unset. The auto-navigate effect will fire the moment rematchGameId lands, and by
       // then rematchOverlay is null so its guard won't block it.
     }
-  }, [navigate]);
+  }, [navigate, gameId]);
 
   // Navigate to menu when the 'opted_out' overlay (or countdown timeout) dismisses.
   const handleOptedOutDismiss = useCallback(() => {
