@@ -1,7 +1,7 @@
 // src/hooks/useProgression.ts
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { levelFromXP, xpToNextLevel, cumulativeXPToLevel } from '../lib/progression';
+import { xpToNextLevel, cumulativeXPToLevel } from '../lib/progression';
 
 export interface ProgressionState {
   xp: number;
