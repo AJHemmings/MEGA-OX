@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { LevelBadge } from '../progression/LevelBadge';
 
 interface ProfileData {
   player_id: string;
   username: string;
   avatar_url: string | null;
+  level: number;
   rank_tier: string;
   wins: number;
   losses: number;
@@ -40,7 +42,7 @@ const ProfilePage: React.FC = () => {
     const loadProfile = async () => {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, player_stats(rank_tier, wins, losses, draws)')
+        .select('id, username, avatar_url, level, player_stats(rank_tier, wins, losses, draws)')
         .eq('username', username)
         .single();
 
@@ -53,6 +55,7 @@ const ProfilePage: React.FC = () => {
         player_id: pid,
         username: profileData.username,
         avatar_url: profileData.avatar_url,
+        level: (profileData as any).level ?? 1,
         rank_tier: stats?.rank_tier ?? 'Challenger',
         wins: stats?.wins ?? 0,
         losses: stats?.losses ?? 0,
@@ -139,7 +142,10 @@ const ProfilePage: React.FC = () => {
             }
           </div>
           <div>
-            <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{profile.username}</div>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {profile.username}
+              <LevelBadge level={profile.level} size="md" />
+            </div>
             <div style={{ color: tierColour[profile.rank_tier] ?? '#a0aec0', fontSize: '14px', marginTop: '4px' }}>{profile.rank_tier}</div>
             {leaderboardPos && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
           </div>

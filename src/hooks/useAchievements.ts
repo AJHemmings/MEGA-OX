@@ -27,7 +27,7 @@ export function useAchievements(userId: string | undefined) {
     async function load() {
       const [{ data: all }, { data: unlocked }] = await Promise.all([
         supabase.from('achievements').select('*').order('threshold'),
-        supabase.from('player_achievements').select('achievement_id, unlocked_at').eq('user_id', userId)
+        supabase.from('player_achievements').select('achievement_id, unlocked_at').eq('user_id', userId as string)
       ]);
 
       const unlockedMap = new Map(

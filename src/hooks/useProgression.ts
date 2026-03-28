@@ -24,9 +24,10 @@ export function useProgression(userId: string | undefined): ProgressionState {
     if (!userId) return;
 
     async function load() {
+      const uid = userId as string;
       const [{ data: prog }, { data: balance }] = await Promise.all([
-        supabase.from('player_progression').select('*').eq('user_id', userId).single(),
-        supabase.from('currency_balance').select('coins').eq('player_id', userId).single()
+        supabase.from('player_progression').select('*').eq('user_id', uid).single(),
+        supabase.from('currency_balance').select('coins').eq('player_id', uid).single()
       ]);
 
       const xp = prog?.xp ?? 0;
