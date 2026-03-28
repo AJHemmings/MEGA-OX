@@ -14,11 +14,14 @@ export interface ProgressionState {
   loading: boolean;
 }
 
-export function useProgression(userId: string | undefined): ProgressionState {
+export function useProgression(userId: string | undefined): ProgressionState & { refresh: () => void } {
   const [state, setState] = useState<ProgressionState>({
     xp: 0, level: 1, totalCreditsEarned: 0, credits: 0,
     xpToNext: 100, xpIntoLevel: 0, xpNeededForLevel: 100, loading: true
   });
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
 
   useEffect(() => {
     if (!userId) return;
@@ -49,7 +52,7 @@ export function useProgression(userId: string | undefined): ProgressionState {
     }
 
     load();
-  }, [userId]);
+  }, [userId, refreshKey]);
 
-  return state;
+  return { ...state, refresh };
 }

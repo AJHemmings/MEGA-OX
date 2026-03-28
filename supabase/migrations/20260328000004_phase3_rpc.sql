@@ -2,8 +2,9 @@
 CREATE OR REPLACE FUNCTION public.increment_credits(p_user_id uuid, p_amount integer)
 RETURNS void AS $$
 BEGIN
-  UPDATE public.currency_balance
-  SET coins = coins + p_amount
-  WHERE player_id = p_user_id;
+  INSERT INTO public.currency_balance (player_id, coins)
+  VALUES (p_user_id, p_amount)
+  ON CONFLICT (player_id)
+  DO UPDATE SET coins = public.currency_balance.coins + EXCLUDED.coins;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

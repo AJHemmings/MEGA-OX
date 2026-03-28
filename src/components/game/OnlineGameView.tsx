@@ -110,6 +110,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   // Progression data for the XP bar displayed in PostGameModal
   const progression = useProgression(user?.id);
+  const { refresh: refreshProgression } = progression;
 
   // Derived from DB — not from presence, so no race condition when opponent navigates away after game ends
   const wonByForfeit = forfeitPlayerId !== null;
@@ -138,9 +139,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     callPostGameHandler(gameId).then(result => {
       if (result && !result.alreadyProcessed) {
         setPostGameResult(result);
+        refreshProgression(); // re-fetch so PostGameModal shows updated XP
       }
     });
-  }, [status, gameId]);
+  }, [status, gameId, refreshProgression]);
 
   // Reset RPS guard AND all rematch overlay state when gameId changes.
   // React Router reuses this component instance across /game/:id navigations (Play Again),
