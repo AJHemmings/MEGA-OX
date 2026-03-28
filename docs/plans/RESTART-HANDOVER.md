@@ -4,30 +4,33 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. Phase 2.5 (disconnect handling, broadcast sync, audio, Play Again) is complete and merged into local `main`. The latest deployed commit is `d4b94b5` on private Vercel (`mega-ox-dev`).
+> "I've read the handover. Phase 2.5 is complete and merged into local `main`. The latest deployed commit is `d4b94b5` on private Vercel (`mega-ox-dev`).
 >
-> One item still needs a full live test before Phase 3 can be called complete:
-> 1. **Play Again** — working on two browsers locally against the deployed build. Full two-device test (separate real devices) is pending but not blocking Phase 3 brainstorming.
+> Play Again is working on two browsers locally — full two-device live test still pending.
 >
-> RPS draw confirmed working (2026-03-28). ✅
->
-> Phase 3 is **Player Progression + Achievements + Virtual Currency**. Before we design anything, I have some clarifying questions."
-
-Then ask the Phase 3 clarifying questions listed below.
+> **Phase 3 design is complete.** The full spec is at `docs/superpowers/specs/2026-03-28-phase3-progression-design.md`. Read it before we write the implementation plan."
 
 ---
 
-## Phase 3 clarifying questions
+## Phase 3 design — completed 2026-03-28
 
-Before starting any design work on Phase 3, ask:
+**Design doc:** `docs/superpowers/specs/2026-03-28-phase3-progression-design.md`
 
-1. What is the currency called? (coins, stars, something thematic?)
-2. Should XP and levels be visible to other players, or private?
-3. Do you want a level-up animation or screen, or just a badge update?
-4. Are achievements permanent (once unlocked, always shown) or can they be reset?
-5. Which triggers method do you prefer — DB trigger, edge function, or client-side with server validation?
-6. Is there a maximum level, or infinite scaling?
-7. Should the currency shop be reachable from the main menu, the profile, or both?
+All clarifying questions answered. Key decisions:
+
+| Question | Decision |
+|---|---|
+| Currency name | Credits |
+| XP visibility | Private (profile only) |
+| Level visibility | Public (shown to other players) |
+| Level-up experience | Modal with full rewards summary |
+| Achievements reset | Permanent — never reset on same account |
+| Achievement trigger | Supabase edge function (security priority) |
+| Level cap | 250 (MAX_LEVEL constant, extensible) |
+| Shop / credits access | Persistent nav header + main menu + profile |
+| Award values | Stored in `reward_config` table — admin-tunable, no code deploy |
+
+**Next step:** invoke the `writing-plans` skill to create the Phase 3 implementation plan.
 
 ---
 
