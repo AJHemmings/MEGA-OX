@@ -1,0 +1,56 @@
+// src/components/game/RPSScreen.tsx
+import React, { useState } from 'react';
+import { RPSPick } from '../../lib/rps';
+
+interface RPSScreenProps {
+  // Called when the player picks. Returns true on success, false on failure.
+  onSubmitPick: (pick: RPSPick) => Promise<boolean>;
+}
+
+const PICKS: RPSPick[] = ['rock', 'paper', 'scissors'];
+const EMOJI: Record<RPSPick, string> = { rock: '🪨', paper: '📄', scissors: '✂️' };
+
+const RPSScreen: React.FC<RPSScreenProps> = ({ onSubmitPick }) => {
+  const [myPick, setMyPick] = useState<RPSPick | null>(null);
+  const [waiting, setWaiting] = useState(false);
+  const [error, setError] = useState('');
+
+  const submitPick = async (pick: RPSPick) => {
+    setMyPick(pick);
+    setWaiting(true);
+    const ok = await onSubmitPick(pick);
+    if (!ok) {
+      setError('Failed to submit pick. Please try again.');
+      setMyPick(null);
+      setWaiting(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: '24px' }}>
+      <h2 style={{ fontSize: '28px', margin: 0 }}>Rock Paper Scissors</h2>
+      <p style={{ color: '#a0aec0', margin: 0 }}>
+        {waiting ? 'Waiting for opponent...' : 'Pick to determine who goes first'}
+      </p>
+      {error && <p style={{ color: '#ff6b35', margin: 0, fontSize: '14px' }}>{error}</p>}
+      {!myPick && (
+        <div style={{ display: 'flex', gap: '16px' }}>
+          {PICKS.map(pick => (
+            <button
+              key={pick}
+              onClick={() => submitPick(pick)}
+              style={{ fontSize: '48px', background: '#2a3441', border: '2px solid #3a4a5a', borderRadius: '12px', padding: '16px 24px', cursor: 'pointer' }}
+            >
+              {EMOJI[pick]}
+            </button>
+          ))}
+        </div>
+      )}
+      {myPick && (
+        <div style={{ fontSize: '48px' }}>{EMOJI[myPick]}</div>
+      )}
+    </div>
+  );
+};
+
+export default RPSScreen;

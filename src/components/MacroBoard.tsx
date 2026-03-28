@@ -1,5 +1,6 @@
 import React from "react";
 import MicroBoard from "./MicroBoard";
+import BoardSkin from "./skins/BoardSkin";
 
 type MacroBoardProps = {
   microBoards: {
@@ -55,40 +56,42 @@ const MacroBoard: React.FC<MacroBoardProps> = ({
   });
 
   return (
-    <div style={gridStyle} aria-label="Macro board">
-      {/* Divider Lines */}
-      <div style={lineStyleHorizontal(1)} />
-      <div style={lineStyleHorizontal(2)} />
-      <div style={lineStyleVertical(1)} />
-      <div style={lineStyleVertical(2)} />
+    <BoardSkin>
+      <div style={gridStyle} aria-label="Macro board">
+        {/* Divider Lines */}
+        <div style={lineStyleHorizontal(1)} />
+        <div style={lineStyleHorizontal(2)} />
+        <div style={lineStyleVertical(1)} />
+        <div style={lineStyleVertical(2)} />
 
-      {/* MicroBoards */}
-      {microBoards.map((mb, index) => (
-        <MicroBoard
-          key={index}
-          cells={mb.cells}
-          winner={mb.winner}
-          onCellClick={(cellIndex) => onPlaceMarker(index, cellIndex)}
-          disabled={
-            macroWinner !== "" ||
-            (nextMicroBoardIndex !== null && nextMicroBoardIndex !== index)
-          }
-          highlight={
-            nextMicroBoardIndex === null || nextMicroBoardIndex === index
-          }
-          recentlyPlacedCell={
-            lastMove && lastMove.microBoardIndex === index 
-              ? lastMove.cellIndex 
-              : -1
-          }
-          currentPlayerMarker={
-            lastMove && lastMove.microBoardIndex === index 
-              ? lastMove.playerMarker 
-              : ""
-          }
-        />
-      ))}
-    </div>
+        {/* MicroBoards */}
+        {microBoards.map((mb, index) => (
+          <MicroBoard
+            key={index}
+            cells={mb.cells}
+            winner={mb.winner}
+            onCellClick={(cellIndex) => onPlaceMarker(index, cellIndex)}
+            disabled={
+              macroWinner !== "" ||
+              (nextMicroBoardIndex !== null && nextMicroBoardIndex !== index)
+            }
+            highlight={
+              nextMicroBoardIndex === null || nextMicroBoardIndex === index
+            }
+            recentlyPlacedCell={
+              lastMove && lastMove.microBoardIndex === index
+                ? lastMove.cellIndex
+                : -1
+            }
+            currentPlayerMarker={
+              lastMove && lastMove.microBoardIndex === index
+                ? lastMove.playerMarker
+                : ""
+            }
+          />
+        ))}
+      </div>
+    </BoardSkin>
   );
 };
 

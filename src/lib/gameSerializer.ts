@@ -1,6 +1,6 @@
 import { Game, Marker } from '../models/Game';
 
-interface SerializedState {
+export interface SerializedState {
   boards: string[][];       // [microBoardIndex][cellIndex] = 'X' | 'O' | ''
   boardWinners: string[];
   macroWinner: string;

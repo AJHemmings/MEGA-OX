@@ -157,6 +157,7 @@ export type Database = {
       games: {
         Row: {
           created_at: string | null
+          forfeit_player_id: string | null
           game_code: string | null
           id: string
           match_type: string
@@ -164,6 +165,11 @@ export type Database = {
           next_player: string
           player_o_id: string | null
           player_x_id: string | null
+          rematch_game_id: string | null
+          rematch_o_intent: string | null
+          rematch_x_intent: string | null
+          rps_creator_pick: string | null
+          rps_joiner_pick: string | null
           season_id: string | null
           state: Json
           status: string
@@ -173,6 +179,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          forfeit_player_id?: string | null
           game_code?: string | null
           id?: string
           match_type?: string
@@ -180,6 +187,11 @@ export type Database = {
           next_player?: string
           player_o_id?: string | null
           player_x_id?: string | null
+          rematch_game_id?: string | null
+          rematch_o_intent?: string | null
+          rematch_x_intent?: string | null
+          rps_creator_pick?: string | null
+          rps_joiner_pick?: string | null
           season_id?: string | null
           state?: Json
           status?: string
@@ -189,6 +201,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          forfeit_player_id?: string | null
           game_code?: string | null
           id?: string
           match_type?: string
@@ -196,6 +209,11 @@ export type Database = {
           next_player?: string
           player_o_id?: string | null
           player_x_id?: string | null
+          rematch_game_id?: string | null
+          rematch_o_intent?: string | null
+          rematch_x_intent?: string | null
+          rps_creator_pick?: string | null
+          rps_joiner_pick?: string | null
           season_id?: string | null
           state?: Json
           status?: string

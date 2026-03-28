@@ -2,7 +2,7 @@
 // Provides three difficulty levels: Easy (random), Medium (rule-based), Hard (minimax).
 // No React imports — pure logic only.
 
-import { Game, Marker, MacroBoard, MicroBoard, Cell } from "../models/Game";
+import { Game, Marker, MicroBoard } from "../models/Game";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 

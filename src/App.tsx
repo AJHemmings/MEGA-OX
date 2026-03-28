@@ -15,6 +15,7 @@ import LeaderboardPage from './components/leaderboard/LeaderboardPage';
 import SeasonPage from './components/season/SeasonPage';
 import HowToPlayPage from './components/game/HowToPlayPage';
 import HowToPlaySelectPage from './components/game/HowToPlaySelectPage';
+import LocalRPSScreen from './components/game/LocalRPSScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import GuestLandingPage from './components/GuestLandingPage';
 import DemoGamePage from './components/DemoGamePage';
@@ -29,7 +30,20 @@ const TrainingRoute: React.FC = () => {
 
 const LocalGameRoute: React.FC = () => {
   const navigate = useNavigate();
-  return <GameWrapper gameMode="local" onBackToMenu={() => navigate('/multiplayer')} />;
+  const [p1GoesFirst, setP1GoesFirst] = React.useState<boolean | null>(null);
+
+  if (p1GoesFirst === null) {
+    return <LocalRPSScreen onResult={setP1GoesFirst} />;
+  }
+
+  // p1GoesFirst is intentionally not passed to GameWrapper yet —
+  // Phase 6 will wire it to control which player's board skin is displayed.
+  return (
+    <GameWrapper
+      gameMode="local"
+      onBackToMenu={() => navigate('/multiplayer')}
+    />
+  );
 };
 
 const OnlineGameRoute: React.FC = () => {

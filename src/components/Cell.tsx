@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import "./animations.css";
+import MarkerSkin from "./skins/MarkerSkin";
 
 type CellProps = {
   value: string;
@@ -42,6 +43,8 @@ const Cell: React.FC<CellProps> = ({
     }
   }, [shouldAnimate, value, playerMarker]);
 
+  const player = value === 'X' ? 1 : 2;
+
   return (
     <button
       ref={cellRef}
@@ -59,11 +62,14 @@ const Cell: React.FC<CellProps> = ({
         borderRadius: "4px",
         transition: "all 0.2s ease",
         position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         ...style,
       }}
       aria-label={`Cell with value ${value}`}
     >
-      {value}
+      <MarkerSkin player={player} value={value} />
     </button>
   );
 };

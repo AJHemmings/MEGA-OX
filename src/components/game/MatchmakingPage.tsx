@@ -45,11 +45,25 @@ const MatchmakingPage: React.FC = () => {
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${data.id}`
       }, (payload) => {
-        if ((payload.new as any).status === 'active') {
+        if ((payload.new as any).status === 'rps' || (payload.new as any).status === 'active') {
           supabase.removeChannel(channel);
           navigate(`/game/${data.id}`);
         }
-      }).subscribe();
+      }).subscribe(async (subStatus) => {
+        if (subStatus === 'SUBSCRIBED') {
+          // Fallback: if the joiner arrived before our subscription was confirmed, the
+          // postgres_changes event would have been missed. Check DB status now.
+          const { data: current } = await supabase
+            .from('games')
+            .select('status')
+            .eq('id', data.id)
+            .single();
+          if (current && (current.status === 'rps' || current.status === 'active')) {
+            supabase.removeChannel(channel);
+            navigate(`/game/${data.id}`);
+          }
+        }
+      });
   };
 
   const joinGame = async () => {
@@ -65,7 +79,7 @@ const MatchmakingPage: React.FC = () => {
 
     const { error } = await supabase.from('games').update({
       player_o_id: user.id,
-      status: 'active',
+      status: 'rps',
     }).eq('id', game.id);
 
     setLoading(false);
