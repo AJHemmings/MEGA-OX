@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LevelBadge } from '../progression/LevelBadge';
+import { XPProgressBar } from '../progression/XPProgressBar';
+import { useProgression } from '../../hooks/useProgression';
 
 interface ProfileData {
   player_id: string;
@@ -99,6 +101,7 @@ const ProfilePage: React.FC = () => {
   }, [username]);
 
   const isOwnProfile = user && profile && user.id === profile.player_id;
+  const progression = useProgression(isOwnProfile ? user?.id : undefined);
 
   const resultColour = { Win: '#00d4aa', Loss: '#ff6b35', Draw: '#a0aec0' };
 
@@ -150,6 +153,18 @@ const ProfilePage: React.FC = () => {
             {leaderboardPos && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
           </div>
         </div>
+
+        {/* XP progress — own profile only */}
+        {isOwnProfile && !progression.loading && (
+          <div style={{ background: '#2a3441', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' }}>
+            <XPProgressBar
+              level={progression.level}
+              xpIntoLevel={progression.xpIntoLevel}
+              xpNeededForLevel={progression.xpNeededForLevel}
+              xpToNext={progression.xpToNext}
+            />
+          </div>
+        )}
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
