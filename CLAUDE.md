@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Exploration Policy
+
+Always use jCodemunch-MCP tools — never fall back to Read, Grep, Glob, or Bash for code exploration.
+
+- Before reading a file: use get_file_outline or get_file_content
+- Before searching: use search_symbols or search_text
+- Before exploring structure: use get_file_tree or get_repo_outline
+- Call list_repos first; if the project is not indexed, call index_folder with the current directory.
+
 ## Project Overview
 
 **Mega OX** is an "Ultimate Naughts and Crosses" game — a 3×3 grid of micro tic-tac-toe boards. Winning a micro board claims that cell on the macro board; win 3 macro cells in a row to win the game. Your move's cell index determines which micro board your opponent must play in next.
@@ -23,10 +32,12 @@ No test suite is configured yet. `react-scripts test` is available from CRA but 
 **State routing in `App.tsx`** — navigation is handled by a `currentState` string (`'menu'` | `'multiplayer-menu'` | `'game'`), not React Router. React Router is installed but unused.
 
 **Game logic lives in two places:**
+
 - `src/models/Game.ts` — Pure OOP classes (`Cell`, `MicroBoard`, `MacroBoard`, `Game`). All game rules live here. No React.
 - `src/hooks/useGameLogic.ts` — Wraps `Game` instances in React state. Uses an object spread trick (`{ ...game }`) to force re-renders since `Game` mutates in place.
 
 **Component tree:**
+
 ```
 App → GameWrapper → MacroBoard → MicroBoard → Cell
                  → PlayerIndicator
