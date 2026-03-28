@@ -39,6 +39,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          id: string
+          key: string
+          name: string
+          description: string
+          condition_key: string
+          threshold: number
+          reward_xp: number
+          reward_credits: number
+          reward_skin_id: string | null
+          icon_url: string | null
+        }
+        Insert: {
+          id?: string
+          key: string
+          name: string
+          description: string
+          condition_key: string
+          threshold: number
+          reward_xp?: number
+          reward_credits?: number
+          reward_skin_id?: string | null
+          icon_url?: string | null
+        }
+        Update: {
+          id?: string
+          key?: string
+          name?: string
+          description?: string
+          condition_key?: string
+          threshold?: number
+          reward_xp?: number
+          reward_credits?: number
+          reward_skin_id?: string | null
+          icon_url?: string | null
+        }
+        Relationships: []
+      }
       cosmetic_items: {
         Row: {
           animated: boolean
@@ -168,6 +207,8 @@ export type Database = {
           rematch_game_id: string | null
           rematch_o_intent: string | null
           rematch_x_intent: string | null
+          rewards_retry_count: number
+          rewards_status: string
           rps_creator_pick: string | null
           rps_joiner_pick: string | null
           season_id: string | null
@@ -190,6 +231,8 @@ export type Database = {
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
+          rewards_retry_count?: number
+          rewards_status?: string
           rps_creator_pick?: string | null
           rps_joiner_pick?: string | null
           season_id?: string | null
@@ -212,6 +255,8 @@ export type Database = {
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
+          rewards_retry_count?: number
+          rewards_status?: string
           rps_creator_pick?: string | null
           rps_joiner_pick?: string | null
           season_id?: string | null
@@ -369,6 +414,24 @@ export type Database = {
           },
         ]
       }
+      player_achievements: {
+        Row: {
+          user_id: string
+          achievement_id: string
+          unlocked_at: string
+        }
+        Insert: {
+          user_id: string
+          achievement_id: string
+          unlocked_at?: string
+        }
+        Update: {
+          user_id?: string
+          achievement_id?: string
+          unlocked_at?: string
+        }
+        Relationships: []
+      }
       player_inventory: {
         Row: {
           acquired_at: string | null
@@ -411,6 +474,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      player_progression: {
+        Row: {
+          user_id: string
+          xp: number
+          level: number
+          total_credits_earned: number
+        }
+        Insert: {
+          user_id: string
+          xp?: number
+          level?: number
+          total_credits_earned?: number
+        }
+        Update: {
+          user_id?: string
+          xp?: number
+          level?: number
+          total_credits_earned?: number
+        }
+        Relationships: []
       }
       player_stats: {
         Row: {
@@ -462,6 +546,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           id: string
+          level: number
           role: string
           username: string
         }
@@ -472,6 +557,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id: string
+          level?: number
           role?: string
           username: string
         }
@@ -482,6 +568,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id?: string
+          level?: number
           role?: string
           username?: string
         }
@@ -580,6 +667,12 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reward_config: {
+        Row: { key: string; value: number }
+        Insert: { key: string; value: number }
+        Update: { key?: string; value?: number }
+        Relationships: []
       }
       season_prizes: {
         Row: {
