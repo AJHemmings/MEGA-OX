@@ -166,6 +166,24 @@ const ProfilePage: React.FC = () => {
           </div>
         )}
 
+        {/* Achievements link — own profile only */}
+        {isOwnProfile && (
+          <div style={{ marginBottom: '16px' }}>
+            <button
+              onClick={() => navigate('/achievements')}
+              style={{
+                width: '100%', background: '#2a3441', border: '1px solid #4a5568',
+                borderRadius: '10px', padding: '14px 20px', color: '#fff',
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', fontSize: '14px', fontWeight: 500,
+              }}
+            >
+              <span>Achievements</span>
+              <span style={{ color: '#a0aec0' }}>›</span>
+            </button>
+          </div>
+        )}
+
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           {[
