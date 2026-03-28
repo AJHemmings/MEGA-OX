@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { callPostGameHandler } from '../lib/postGame';
 
 interface AuthContextType {
   user: User | null;
@@ -19,11 +20,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function processMissedRewards(userId: string) {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+    const { data: missed } = await supabase
+      .from('games')
+      .select('id, rewards_status, updated_at')
+      .or(`player_x_id.eq.${userId},player_o_id.eq.${userId}`)
+      .eq('status', 'complete')
+      .or(
+        `rewards_status.eq.pending,and(rewards_status.eq.processing,updated_at.lt.${tenMinutesAgo})`
+      )
+      .lt('rewards_retry_count', 3);
+
+    if (!missed || missed.length === 0) return;
+
+    for (const game of missed) {
+      await callPostGameHandler(game.id).catch(() => {
+        // Silent failure — will retry next login
+      });
+    }
+  }
+
   useEffect(() => {
     // Restore existing session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        processMissedRewards(session.user.id);
+      }
       setLoading(false);
     });
 
