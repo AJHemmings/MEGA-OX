@@ -59,7 +59,10 @@ Deno.serve(async (req) => {
   if (game.player_x_id !== userId && game.player_o_id !== userId) {
     return new Response('Not a participant', { status: 403 })
   }
-  if (game.rewards_status === 'complete' || game.rewards_status === 'processing') {
+  if (game.rewards_status === 'processing') {
+    return new Response(JSON.stringify({ processing: true }), { status: 202 })
+  }
+  if (game.rewards_status === 'complete') {
     return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200 })
   }
   if (game.rewards_status === 'failed') {
@@ -74,11 +77,19 @@ Deno.serve(async (req) => {
       .select('id', { count: 'exact', head: true })
       .eq('game_id', gameId)
 
+    // Fetch actual level for the early return case
+    const { data: earlyProgression } = await supabase
+      .from('player_progression')
+      .select('level')
+      .eq('user_id', userId)
+      .single()
+    const realLevel = earlyProgression?.level ?? 1
+
     if ((moveCount ?? 0) < MIN_MOVES) {
       await supabase.from('games').update({ rewards_status: 'complete' }).eq('id', gameId)
       return new Response(JSON.stringify({
         xpAwarded: 0, creditsAwarded: 0,
-        previousLevel: 1, newLevel: 1, leveledUp: false, newAchievements: []
+        previousLevel: realLevel, newLevel: realLevel, leveledUp: false, newAchievements: []
       }), { status: 200 })
     }
 
@@ -138,7 +149,6 @@ Deno.serve(async (req) => {
     const statMap: Record<string, number> = {
       total_wins: totalWins,
       total_games: totalGames,
-      level: newLevel,
       total_credits_earned: newTotalCredits
     }
 
@@ -277,14 +287,20 @@ Deno.serve(async (req) => {
     })
 
   } catch (err) {
-    const retryCount = (game.rewards_retry_count ?? 0) + 1
+    console.error('post-game-handler error:', err)
+    // Re-fetch current retry count to avoid stale read
+    const { data: currentGame } = await supabase
+      .from('games')
+      .select('rewards_retry_count')
+      .eq('id', gameId)
+      .single()
+    const currentRetryCount = currentGame?.rewards_retry_count ?? game.rewards_retry_count ?? 0
+    const retryCount = currentRetryCount + 1
     const newStatus = retryCount >= 3 ? 'failed' : 'pending'
     await supabase.from('games').update({
       rewards_status: newStatus,
       rewards_retry_count: retryCount
     }).eq('id', gameId)
-
-    console.error('post-game-handler error:', err)
     return new Response('Internal error', { status: 500 })
   }
 })
