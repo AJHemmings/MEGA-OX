@@ -6,9 +6,10 @@ Read this file in full, then say:
 
 > "I've read the handover. Phase 2.5 (disconnect handling, broadcast sync, audio, Play Again) is complete and merged into local `main`. The latest deployed commit is `d4b94b5` on private Vercel (`mega-ox-dev`).
 >
-> Two items still need a live test before Phase 3 can start:
-> 1. **Play Again** — both players click Play Again → dots both go green → same new game ID → new RPS screen → both can move. (Fix 11 deployed, not yet confirmed with two real browsers.)
-> 2. **RPS draw** — draw → both return to pick screen → pick again → win → game starts. (Not re-tested since Fix 7 rewrote the RPS architecture.)
+> One item still needs a full live test before Phase 3 can be called complete:
+> 1. **Play Again** — working on two browsers locally against the deployed build. Full two-device test (separate real devices) is pending but not blocking Phase 3 brainstorming.
+>
+> RPS draw confirmed working (2026-03-28). ✅
 >
 > Phase 3 is **Player Progression + Achievements + Virtual Currency**. Before we design anything, I have some clarifying questions."
 
@@ -45,12 +46,11 @@ All multiplayer work is now on local `main`. No active worktrees.
 
 ---
 
-## What needs live testing before Phase 3
+## What needs live testing before Phase 3 is fully closed
 
-1. **Play Again (Fix 11a)** — both players click Play Again → both dots go green → single consistent game ID → new RPS screen → both players can move in the new game.
-2. **RPS draw** — draw → both return to pick screen → pick again → win → game starts. Repeat 2–3 times.
+1. **Play Again (Fix 11a)** — working on two browsers locally against the deployed build. Full two-device test (separate real devices) still pending. Use `docs/plans/2026-03-19-testing-benchmarks.md` Section 6 as the checklist.
 
-Both use `docs/plans/2026-03-19-testing-benchmarks.md` (Section 6) as the checklist.
+RPS draw ✅ confirmed working 2026-03-28. This is not blocking Phase 3.
 
 ---
 
@@ -69,8 +69,8 @@ Both use `docs/plans/2026-03-19-testing-benchmarks.md` (Section 6) as the checkl
 - RPS — win case: result screen → game starts, both players can move ✅ (Fix 8a)
 - Game generation — working ✅
 - Join with code — creator navigates correctly ✅
-- RPS draw — result screen → both return to pick screen ⚠️ (not re-tested since Fix 7)
-- Play Again — URL cycling fixed (Fix 11a), chained rematch fixed (Fix 12) ⚠️ (not yet live-tested with two real browsers)
+- RPS draw — result screen → both return to pick screen ✅ (confirmed working, 2026-03-28)
+- Play Again — URL cycling fixed (Fix 11a), chained rematch fixed (Fix 12) ⚠️ (working on two browsers locally against deployed build — full two-device live test pending)
 
 ---
 
