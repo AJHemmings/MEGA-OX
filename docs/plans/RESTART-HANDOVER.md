@@ -6,37 +6,41 @@ Read this file in full, then say:
 
 > "I've read the handover. Phase 2.5 is complete and merged into local `main`. The latest deployed commit is `d4b94b5` on private Vercel (`mega-ox-dev`).
 >
-> Play Again is working on two browsers locally — full two-device live test still pending.
->
-> **Phase 3 design is complete.** The full spec is at `docs/superpowers/specs/2026-03-28-phase3-progression-design.md`. Read it before we write the implementation plan."
+> **Phase 3 implementation is complete** on branch `feat/phase3-progression` in worktree `.worktrees/feat-phase3-progression`. Pending manual testing before merge. Read `docs/superpowers/plans/2026-03-28-phase3-progression-worktree-handover.md` for the full Phase 3 state."
 
 ---
 
-## Phase 3 design — completed 2026-03-28
+## Phase 3 — implementation complete, pending manual testing (2026-03-28)
 
 **Design doc:** `docs/superpowers/specs/2026-03-28-phase3-progression-design.md`
+**Implementation plan:** `docs/superpowers/plans/2026-03-28-phase3-progression.md`
+**Worktree handover:** `docs/superpowers/plans/2026-03-28-phase3-progression-worktree-handover.md`
 
-All clarifying questions answered. Key decisions:
+**Branch:** `feat/phase3-progression` — worktree at `.worktrees/feat-phase3-progression`
+**Build status:** Clean (no TS errors, 13 Jest tests passing)
 
-| Question | Decision |
-|---|---|
-| Currency name | Credits |
-| XP visibility | Private (profile only) |
-| Level visibility | Public (shown to other players) |
-| Level-up experience | Modal with full rewards summary |
-| Achievements reset | Permanent — never reset on same account |
-| Achievement trigger | Supabase edge function (security priority) |
-| Level cap | 250 (MAX_LEVEL constant, extensible) |
-| Shop / credits access | Persistent nav header + main menu + profile |
-| Award values | Stored in `reward_config` table — admin-tunable, no code deploy |
+**What is built:**
+- 5 SQL migrations (schema, seed, triggers, RPC, leaderboard view update)
+- `post-game-handler` Supabase edge function (XP, credits, achievements, idempotency, retry)
+- `useProgression`, `useAchievements` hooks
+- `CreditsBalance`, `LevelBadge`, `XPProgressBar`, `PostGameModal` components
+- `/achievements` page
+- Post-game call wired into `OnlineGameView` and `AuthContext` (deferred)
 
-**Next step:** invoke the `writing-plans` skill to create the Phase 3 implementation plan.
+**Before merging to main:**
+1. Apply 5 SQL migrations to Supabase (dashboard SQL editor) — in order 000001 → 000005
+2. Deploy edge function: `npx supabase functions deploy post-game-handler`
+3. Manual smoke testing (see worktree handover for checklist)
+4. Merge `feat/phase3-progression` into `main`
+5. Push to `private main` to deploy
 
 ---
 
 ## Current state
 
-All multiplayer work is now on local `main`. No active worktrees.
+`main` branch: Phase 2.5 complete. Phase 3 code is on `feat/phase3-progression` worktree — not yet merged.
+
+**Active worktree:** `.worktrees/feat-phase3-progression` → branch `feat/phase3-progression`
 
 **Private Vercel (`mega-ox-dev`):** Testing environment
 — Project ID: `prj_ax0KSF6QTW1EMnAdtDa9HesZWCub`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
