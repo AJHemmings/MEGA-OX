@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import introJs from 'intro.js';
 import 'intro.js/introjs.css';
 import NewsSlideshow from './layout/NewsSlideshow';
+import { CreditsBalance } from './layout/CreditsBalance';
 import { useTutorial } from '../hooks/useTutorial';
 import { useLoginStreak } from '../hooks/useLoginStreak';
 import { Modal } from './modal';
@@ -100,6 +101,7 @@ const MainMenu: React.FC = () => {
               <div style={{ fontSize: '12px', color: '#a0aec0' }}>{profile.rank_tier} · W:{profile.wins} L:{profile.losses} D:{profile.draws}</div>
             </div>
           )}
+          <CreditsBalance />
           <button onClick={() => navigate('/settings')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer' }}>Settings</button>
         </div>
       </div>
