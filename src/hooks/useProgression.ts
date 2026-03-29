@@ -1,5 +1,5 @@
 // src/hooks/useProgression.ts
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { xpToNextLevel, cumulativeXPToLevel } from '../lib/progression';
 
@@ -21,7 +21,7 @@ export function useProgression(userId: string | undefined): ProgressionState & {
   });
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const refresh = () => setRefreshKey(k => k + 1);
+  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
   useEffect(() => {
     if (!userId) return;

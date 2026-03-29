@@ -8,7 +8,8 @@ export async function callPostGameHandler(gameId: string): Promise<PostGameResul
 
   try {
     const res = await supabase.functions.invoke('post-game-handler', {
-      body: { gameId }
+      body: { gameId },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     if (res.error) {
