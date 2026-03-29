@@ -9,6 +9,7 @@ export interface PlayerProfile {
   wins: number;
   losses: number;
   draws: number;
+  level: number;
 }
 
 export const usePlayerProfile = () => {
@@ -17,24 +18,32 @@ export const usePlayerProfile = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('profiles')
-      .select('username, avatar_url, player_stats(rank_tier, wins, losses, draws)')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          const stats = (data as any).player_stats;
-          setProfile({
-            username: data.username,
-            avatar_url: data.avatar_url,
-            rank_tier: stats?.rank_tier ?? 'Challenger',
-            wins: stats?.wins ?? 0,
-            losses: stats?.losses ?? 0,
-            draws: stats?.draws ?? 0,
-          });
-        }
-      });
+
+    Promise.all([
+      supabase
+        .from('profiles')
+        .select('username, avatar_url, player_stats(rank_tier, wins, losses, draws)')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('player_progression')
+        .select('level')
+        .eq('user_id', user.id)
+        .single(),
+    ]).then(([{ data }, { data: prog }]) => {
+      if (data) {
+        const stats = (data as any).player_stats;
+        setProfile({
+          username: data.username,
+          avatar_url: data.avatar_url,
+          rank_tier: stats?.rank_tier ?? 'Challenger',
+          wins: stats?.wins ?? 0,
+          losses: stats?.losses ?? 0,
+          draws: stats?.draws ?? 0,
+          level: (prog as any)?.level ?? 1,
+        });
+      }
+    });
   }, [user]);
 
   return profile;

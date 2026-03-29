@@ -11,6 +11,7 @@ import { CreditsBalance } from './layout/CreditsBalance';
 import { useTutorial } from '../hooks/useTutorial';
 import { useLoginStreak } from '../hooks/useLoginStreak';
 import { Modal } from './modal';
+import { LevelBadge } from './progression/LevelBadge';
 
 const MainMenu: React.FC = () => {
   const { signOut } = useAuth();
@@ -97,7 +98,10 @@ const MainMenu: React.FC = () => {
         <div id="menu-profile" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {profile && (
             <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={() => navigate(`/profile/${profile.username}`)}>
-              <div style={{ fontWeight: 'bold' }}>{profile.username}</div>
+              <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                <LevelBadge level={profile.level} size="sm" />
+                {profile.username}
+              </div>
               <div style={{ fontSize: '12px', color: '#a0aec0' }}>{profile.rank_tier} · W:{profile.wins} L:{profile.losses} D:{profile.draws}</div>
             </div>
           )}

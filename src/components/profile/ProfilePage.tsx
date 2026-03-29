@@ -44,7 +44,7 @@ const ProfilePage: React.FC = () => {
     const loadProfile = async () => {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, level, player_stats(rank_tier, wins, losses, draws)')
+        .select('id, username, avatar_url, player_stats(rank_tier, wins, losses, draws)')
         .eq('username', username)
         .single();
 
@@ -53,11 +53,18 @@ const ProfilePage: React.FC = () => {
       const stats = (profileData as any).player_stats;
       const pid = profileData.id;
 
+      // Fetch level from player_progression (Phase 3 table; gracefully defaults to 1 if not yet migrated)
+      const { data: prog } = await supabase
+        .from('player_progression')
+        .select('level')
+        .eq('user_id', pid)
+        .single();
+
       setProfile({
         player_id: pid,
         username: profileData.username,
         avatar_url: profileData.avatar_url,
-        level: (profileData as any).level ?? 1,
+        level: prog?.level ?? 1,
         rank_tier: stats?.rank_tier ?? 'Challenger',
         wins: stats?.wins ?? 0,
         losses: stats?.losses ?? 0,

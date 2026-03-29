@@ -1,11 +1,13 @@
 // src/components/achievements/AchievementsPage.tsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAchievements } from '../../hooks/useAchievements';
 
 export const AchievementsPage: React.FC = () => {
   const { user } = useAuth();
   const { achievements, loading } = useAchievements(user?.id);
+  const navigate = useNavigate();
 
   if (loading) return <div style={{ color: '#fff', padding: 32 }}>Loading...</div>;
 
@@ -36,8 +38,15 @@ export const AchievementsPage: React.FC = () => {
   );
 
   return (
-    <div style={{ padding: 24, maxWidth: 600, margin: '0 auto', color: '#fff' }}>
-      <h1 style={{ marginBottom: 24 }}>Achievements</h1>
+    <div style={{ minHeight: '100vh', background: '#1a2332', padding: 24, color: '#fff' }}>
+    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: 24 }}>
+        <button
+          onClick={() => navigate(-1)}
+          style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '20px', padding: 0 }}
+        >←</button>
+        <h1 style={{ margin: 0 }}>Achievements</h1>
+      </div>
 
       {unlocked.length > 0 && (
         <>
@@ -60,6 +69,13 @@ export const AchievementsPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {!loading && achievements.length === 0 && (
+        <div style={{ color: '#4a5568', fontSize: 14, marginTop: 16 }}>
+          No achievements available yet.
+        </div>
+      )}
+    </div>
     </div>
   );
 };
