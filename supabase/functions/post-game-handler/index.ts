@@ -1,6 +1,11 @@
 // supabase/functions/post-game-handler/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 const MAX_LEVEL = 250
 const MIN_MOVES = 5
 
@@ -28,12 +33,15 @@ function levelFromXP(totalXP: number): number {
 const HARD_AI_MATCH_TYPE = 'ai_hard'
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
   const authHeader = req.headers.get('Authorization')
-  if (!authHeader) return new Response('Unauthorized', { status: 401 })
+  if (!authHeader) return new Response('Unauthorized', { status: 401, headers: corsHeaders })
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -42,11 +50,11 @@ Deno.serve(async (req) => {
 
   const token = authHeader.replace('Bearer ', '')
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  if (authError || !user) return new Response('Unauthorized', { status: 401 })
+  if (authError || !user) return new Response('Unauthorized', { status: 401, headers: corsHeaders })
   const userId = user.id
 
   const { gameId } = await req.json()
-  if (!gameId) return new Response('gameId required', { status: 400 })
+  if (!gameId) return new Response('gameId required', { status: 400, headers: corsHeaders })
 
   const { data: game, error: gameError } = await supabase
     .from('games')
@@ -54,19 +62,19 @@ Deno.serve(async (req) => {
     .eq('id', gameId)
     .single()
 
-  if (gameError || !game) return new Response('Game not found', { status: 404 })
-  if (game.status !== 'complete') return new Response('Game not complete', { status: 400 })
+  if (gameError || !game) return new Response('Game not found', { status: 404, headers: corsHeaders })
+  if (game.status !== 'complete') return new Response('Game not complete', { status: 400, headers: corsHeaders })
   if (game.player_x_id !== userId && game.player_o_id !== userId) {
-    return new Response('Not a participant', { status: 403 })
+    return new Response('Not a participant', { status: 403, headers: corsHeaders })
   }
   if (game.rewards_status === 'processing') {
-    return new Response(JSON.stringify({ processing: true }), { status: 202 })
+    return new Response(JSON.stringify({ processing: true }), { status: 202, headers: corsHeaders })
   }
   if (game.rewards_status === 'complete') {
-    return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200 })
+    return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200, headers: corsHeaders })
   }
   if (game.rewards_status === 'failed') {
-    return new Response('Permanently failed', { status: 422 })
+    return new Response('Permanently failed', { status: 422, headers: corsHeaders })
   }
 
   await supabase.from('games').update({ rewards_status: 'processing' }).eq('id', gameId)
@@ -90,7 +98,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         xpAwarded: 0, creditsAwarded: 0,
         previousLevel: realLevel, newLevel: realLevel, leveledUp: false, newAchievements: []
-      }), { status: 200 })
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     const { data: configRows } = await supabase.from('reward_config').select('key, value')
@@ -283,7 +291,7 @@ Deno.serve(async (req) => {
       }))
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (err) {
@@ -301,6 +309,6 @@ Deno.serve(async (req) => {
       rewards_status: newStatus,
       rewards_retry_count: retryCount
     }).eq('id', gameId)
-    return new Response('Internal error', { status: 500 })
+    return new Response('Internal error', { status: 500, headers: corsHeaders })
   }
 })
