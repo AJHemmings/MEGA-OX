@@ -105,8 +105,9 @@ Deno.serve(async (req) => {
     const config: Record<string, number> = {}
     for (const row of configRows ?? []) config[row.key] = row.value
 
-    const isWin = game.winner === userId
-    const isDraw = game.winner === null
+    const myMarker = game.player_x_id === userId ? 'X' : 'O'
+    const isWin = game.winner === myMarker
+    const isDraw = game.winner === 'draw'
     const isHardAI = game.match_type === HARD_AI_MATCH_TYPE
 
     let xpEarned = config.xp_game_complete ?? 20
