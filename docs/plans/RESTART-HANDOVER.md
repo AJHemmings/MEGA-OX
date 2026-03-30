@@ -6,11 +6,11 @@ Read this file in full, then say:
 
 > "I've read the handover. Phase 2.5 is complete and merged into local `main`. The latest deployed commit is `d4b94b5` on private Vercel (`mega-ox-dev`).
 >
-> **Phase 3 implementation is complete** on branch `feat/phase3-progression` in worktree `.worktrees/feat-phase3-progression`. Pending manual testing before merge. Read `docs/superpowers/plans/2026-03-28-phase3-progression-worktree-handover.md` for the full Phase 3 state."
+> **Phase 3 implementation is complete** on branch `feat/phase3-progression` in worktree `.worktrees/feat-phase3-progression`. The modal gate and per-player rewards bugs are fixed (commit `6f68263`, edge function v5 deployed). Ready for full smoke test. Read `docs/superpowers/plans/2026-03-28-phase3-progression-worktree-handover.md` for the full Phase 3 state."
 
 ---
 
-## Phase 3 — implementation complete, pending manual testing (2026-03-28)
+## Phase 3 — implementation complete, ready for full smoke test (2026-03-30)
 
 **Design doc:** `docs/superpowers/specs/2026-03-28-phase3-progression-design.md`
 **Implementation plan:** `docs/superpowers/plans/2026-03-28-phase3-progression.md`
@@ -18,8 +18,10 @@ Read this file in full, then say:
 
 **Branch:** `feat/phase3-progression` — worktree at `.worktrees/feat-phase3-progression`
 **Build status:** Clean (no TS errors, 13 Jest tests passing)
+**Edge function:** v5 deployed (2026-03-30) — per-player rewards bug fixed
 
 **What is built:**
+
 - 5 SQL migrations (schema, seed, triggers, RPC, leaderboard view update)
 - `post-game-handler` Supabase edge function (XP, credits, achievements, idempotency, retry)
 - `useProgression`, `useAchievements` hooks
@@ -28,9 +30,10 @@ Read this file in full, then say:
 - Post-game call wired into `OnlineGameView` and `AuthContext` (deferred)
 
 **Before merging to main:**
-1. Apply 5 SQL migrations to Supabase (dashboard SQL editor) — in order 000001 → 000005
-2. Deploy edge function: `npx supabase functions deploy post-game-handler`
-3. Manual smoke testing (see worktree handover for checklist)
+
+1. ✅ Apply 5 SQL migrations to Supabase (all applied)
+2. ✅ Deploy edge function (v5 deployed 2026-03-30)
+3. Manual smoke testing (see worktree handover — run the full checklist with two accounts)
 4. Merge `feat/phase3-progression` into `main`
 5. Push to `private main` to deploy
 
@@ -97,6 +100,7 @@ RPS draw ✅ confirmed working 2026-03-28. This is not blocking Phase 3.
 `myRematchIntent` and `opponentRematchIntent` are `useState` — they survive a `gameId` change because React Router reuses the `OnlineGameView` component instance. Both carried stale `'play_again'` values into the new game. `rematchCreatedRef` had just been reset to `false` and `myMarker` was still the old value before `fetchGameState` returned. The creation effect saw both intents set, `myMarker === 'X'`, `rematchCreatedRef === false` — and created another game. This cascaded: each new game mount repeated the pattern. Players ended up on different IDs, each one's RPS polling watched a different row, neither saw both picks.
 
 **Fix:** Reset both intents to `null` in the main `useEffect` (alongside the existing `rematchCreatedRef` reset):
+
 ```ts
 setMyRematchIntent(null);
 setOpponentRematchIntent(null);
@@ -136,6 +140,7 @@ The losing browser had a degraded WebSocket (`Realtime send() is automatically f
 **Problem:** After RPS win, joiner's `status` stayed `'rps'` forever. `dismissRPSResult(false)` cleared `rpsResultPicks` but never transitioned status. Board was visible but no cells were clickable.
 
 **Fix:** Moved `dismissRPSResult` to after `fetchGameState`, then added:
+
 ```ts
 } else {
   fetchGameState(); // transitions joiner from 'rps' → 'active'
@@ -163,6 +168,7 @@ Fixes 1–6 all failed. The event-based RPS system (broadcast + CDC refs) was sc
 On a draw, the creator's resolution effect fires when both picks arrive in React state (via CDC). It writes `rps_creator_pick = null, rps_joiner_pick = null` to the DB (draw-clear). That null-clear CDC propagates to both clients. The race: the null-clear CDC can reach the joiner before the creator's `rps_pick` broadcast does. The `postgres_changes` handler overwrote `rpsJoinerPickRef` to null — including the joiner's own pick. When the creator's broadcast finally arrived, `captureRPSResultIfReady(creatorPick, null)` silently failed. Creator captured + showed result. Joiner stayed stuck on "Waiting for opponent...".
 
 **New architecture:**
+
 - `rps_picks` table: `(game_id UUID, user_id UUID, pick TEXT, PRIMARY KEY(game_id, user_id))`
 - Both players upsert their pick — no broadcast, no WebSocket dependency
 - Both clients poll every 1s: when 2 rows appear, each resolves independently
@@ -177,41 +183,41 @@ All attempted to patch the event-based system. Approaches tried: reordering hand
 
 Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
-| Phase | Area | Status |
-|-------|------|--------|
-| 0 | Infrastructure and cost planning | Brief written (`docs/plans/phase-0-infrastructure-brief.md`) |
-| 1 | AI improvement (Easy / Medium / Hard) | **Complete** |
-| 2 | Skin system code refactor | **Complete** |
-| 2.5 | Disconnect handling + broadcast sync + audio + Play Again | **Complete** |
-| 3 | Player progression + achievements + virtual currency | Not started — next |
-| 4 | Profile customisation + emoji communication | Not started |
-| 5 | Visual redesign | Not started |
-| 6 | Cash shop | Not started |
-| 7 | Admin dashboard | Not started |
-| 8 | Bug report system | Not started |
+| Phase | Area                                                      | Status                                                       |
+| ----- | --------------------------------------------------------- | ------------------------------------------------------------ |
+| 0     | Infrastructure and cost planning                          | Brief written (`docs/plans/phase-0-infrastructure-brief.md`) |
+| 1     | AI improvement (Easy / Medium / Hard)                     | **Complete**                                                 |
+| 2     | Skin system code refactor                                 | **Complete**                                                 |
+| 2.5   | Disconnect handling + broadcast sync + audio + Play Again | **Complete**                                                 |
+| 3     | Player progression + achievements + virtual currency      | Not started — next                                           |
+| 4     | Profile customisation + emoji communication               | Not started                                                  |
+| 5     | Visual redesign                                           | Not started                                                  |
+| 6     | Cash shop                                                 | Not started                                                  |
+| 7     | Admin dashboard                                           | Not started                                                  |
+| 8     | Bug report system                                         | Not started                                                  |
 
 ---
 
 ## What is built and working
 
-| Feature | Status |
-|---------|--------|
-| Guest landing page (`/`) | Done |
-| Demo game (`/demo`) | Done |
-| Auth flow | Done |
-| Main menu (`/menu`) | Done |
-| Tutorial — Beginner + Intermediate | Done |
-| Single player vs AI (Easy / Medium / Hard) | Done — Phase 1 |
-| Local 2-player | Done |
-| Network multiplayer — core | Done |
-| Skin system scaffolding | Done — Phase 2 |
-| User profiles, leaderboard, stat tracking | Done |
-| Disconnect handling | Done — Phase 2.5 |
-| Broadcast move sync | Done — Phase 2.5 |
-| Audio notifications | Done — Phase 2.5 |
-| Play Again (readiness dots) | Done — Phase 2.5 |
-| RPS sync | Done — Fix 7 + 8 |
-| Play Again reliability | Done — Fixes 9–12 |
+| Feature                                    | Status            |
+| ------------------------------------------ | ----------------- |
+| Guest landing page (`/`)                   | Done              |
+| Demo game (`/demo`)                        | Done              |
+| Auth flow                                  | Done              |
+| Main menu (`/menu`)                        | Done              |
+| Tutorial — Beginner + Intermediate         | Done              |
+| Single player vs AI (Easy / Medium / Hard) | Done — Phase 1    |
+| Local 2-player                             | Done              |
+| Network multiplayer — core                 | Done              |
+| Skin system scaffolding                    | Done — Phase 2    |
+| User profiles, leaderboard, stat tracking  | Done              |
+| Disconnect handling                        | Done — Phase 2.5  |
+| Broadcast move sync                        | Done — Phase 2.5  |
+| Audio notifications                        | Done — Phase 2.5  |
+| Play Again (readiness dots)                | Done — Phase 2.5  |
+| RPS sync                                   | Done — Fix 7 + 8  |
+| Play Again reliability                     | Done — Fixes 9–12 |
 
 ---
 
@@ -257,27 +263,27 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 
 ## Key files
 
-| File | Purpose |
-|------|---------|
-| `src/models/Game.ts` | Core game logic — OOP, no React |
-| `src/hooks/useGameLogic.ts` | React wrapper, `{ ...game }` spread for re-renders |
-| `src/hooks/useOnlineGame.ts` | Online game state — RPS polling (`rps_picks`, status=`'rps'`), game state polling (`games`, status=`'active'`), broadcast sync, `dismissRPSResult`, Presence, disconnect, Play Again |
-| `src/hooks/useActiveGame.ts` | Active/forfeited game detection — re-queries on navigation |
-| `src/lib/sounds.ts` | Web Audio API — `resumeAudio()` must be called on first user gesture |
-| `src/lib/gameSerializer.ts` | `serializeGame` / `deserializeGame` |
-| `src/components/ResumeGameToast.tsx` | Resume + forfeit toast |
-| `src/components/game/OnlineGameView.tsx` | Online game UI — disconnect banner, forfeit modal, Play Again dots, audio |
-| `src/components/game/RPSScreen.tsx` | RPS pick UI — accepts `onSubmitPick` callback; no direct Supabase writes |
-| `src/components/game/RPSResultScreen.tsx` | RPS result screen — 3s auto-continue |
-| `src/components/game/MatchmakingPage.tsx` | Create/join game — lobby channel + SUBSCRIBED fallback |
-| `src/components/GameWrapper.tsx` | Local/AI game UI |
-| `src/App.tsx` | React Router v7, all routes |
-| `src/ai/aiPlayer.ts` | AI difficulty module (Phase 1) |
-| `src/contexts/SkinContext.tsx` | Skin context (Phase 2) |
-| `src/contexts/AuthContext.tsx` | Auth state |
-| `src/lib/rps.ts` | RPS logic — pure functions |
-| `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap |
-| `docs/plans/2026-03-19-testing-benchmarks.md` | Live testing checklist — run before Phase 3 |
+| File                                              | Purpose                                                                                                                                                                              |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/models/Game.ts`                              | Core game logic — OOP, no React                                                                                                                                                      |
+| `src/hooks/useGameLogic.ts`                       | React wrapper, `{ ...game }` spread for re-renders                                                                                                                                   |
+| `src/hooks/useOnlineGame.ts`                      | Online game state — RPS polling (`rps_picks`, status=`'rps'`), game state polling (`games`, status=`'active'`), broadcast sync, `dismissRPSResult`, Presence, disconnect, Play Again |
+| `src/hooks/useActiveGame.ts`                      | Active/forfeited game detection — re-queries on navigation                                                                                                                           |
+| `src/lib/sounds.ts`                               | Web Audio API — `resumeAudio()` must be called on first user gesture                                                                                                                 |
+| `src/lib/gameSerializer.ts`                       | `serializeGame` / `deserializeGame`                                                                                                                                                  |
+| `src/components/ResumeGameToast.tsx`              | Resume + forfeit toast                                                                                                                                                               |
+| `src/components/game/OnlineGameView.tsx`          | Online game UI — disconnect banner, forfeit modal, Play Again dots, audio                                                                                                            |
+| `src/components/game/RPSScreen.tsx`               | RPS pick UI — accepts `onSubmitPick` callback; no direct Supabase writes                                                                                                             |
+| `src/components/game/RPSResultScreen.tsx`         | RPS result screen — 3s auto-continue                                                                                                                                                 |
+| `src/components/game/MatchmakingPage.tsx`         | Create/join game — lobby channel + SUBSCRIBED fallback                                                                                                                               |
+| `src/components/GameWrapper.tsx`                  | Local/AI game UI                                                                                                                                                                     |
+| `src/App.tsx`                                     | React Router v7, all routes                                                                                                                                                          |
+| `src/ai/aiPlayer.ts`                              | AI difficulty module (Phase 1)                                                                                                                                                       |
+| `src/contexts/SkinContext.tsx`                    | Skin context (Phase 2)                                                                                                                                                               |
+| `src/contexts/AuthContext.tsx`                    | Auth state                                                                                                                                                                           |
+| `src/lib/rps.ts`                                  | RPS logic — pure functions                                                                                                                                                           |
+| `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap                                                                                                                                                        |
+| `docs/plans/2026-03-19-testing-benchmarks.md`     | Live testing checklist — run before Phase 3                                                                                                                                          |
 
 ---
 
