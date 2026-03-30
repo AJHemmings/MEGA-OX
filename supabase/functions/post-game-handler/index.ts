@@ -43,22 +43,28 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return new Response('Unauthorized', { status: 401, headers: corsHeaders })
 
+  // Use anon key + forwarded auth header for user verification (Supabase recommended pattern)
+  const supabaseUser = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  )
+  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
+  if (authError || !user) return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+  const userId = user.id
+
+  // Admin client for all DB operations (bypasses RLS)
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
-
-  const token = authHeader.replace('Bearer ', '')
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  if (authError || !user) return new Response('Unauthorized', { status: 401, headers: corsHeaders })
-  const userId = user.id
 
   const { gameId } = await req.json()
   if (!gameId) return new Response('gameId required', { status: 400, headers: corsHeaders })
 
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('id, status, player_x_id, player_o_id, winner, match_type, rewards_status, rewards_retry_count')
+    .select('id, status, player_x_id, player_o_id, winner, match_type, player_x_rewards_status, player_x_rewards_retry_count, player_o_rewards_status, player_o_rewards_retry_count')
     .eq('id', gameId)
     .single()
 
@@ -67,17 +73,26 @@ Deno.serve(async (req) => {
   if (game.player_x_id !== userId && game.player_o_id !== userId) {
     return new Response('Not a participant', { status: 403, headers: corsHeaders })
   }
-  if (game.rewards_status === 'processing') {
+
+  // Each player processes their own rewards independently — use per-player columns so
+  // the second player is not blocked by the first player's rewards_status.
+  const myMarker = game.player_x_id === userId ? 'X' : 'O'
+  const myRewardsStatus = myMarker === 'X' ? game.player_x_rewards_status : game.player_o_rewards_status
+  const myRewardsRetryCount = myMarker === 'X' ? game.player_x_rewards_retry_count : game.player_o_rewards_retry_count
+  const statusCol = myMarker === 'X' ? 'player_x_rewards_status' : 'player_o_rewards_status'
+  const retryCol = myMarker === 'X' ? 'player_x_rewards_retry_count' : 'player_o_rewards_retry_count'
+
+  if (myRewardsStatus === 'processing') {
     return new Response(JSON.stringify({ processing: true }), { status: 202, headers: corsHeaders })
   }
-  if (game.rewards_status === 'complete') {
+  if (myRewardsStatus === 'complete') {
     return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200, headers: corsHeaders })
   }
-  if (game.rewards_status === 'failed') {
+  if (myRewardsStatus === 'failed') {
     return new Response('Permanently failed', { status: 422, headers: corsHeaders })
   }
 
-  await supabase.from('games').update({ rewards_status: 'processing' }).eq('id', gameId)
+  await supabase.from('games').update({ [statusCol]: 'processing' }).eq('id', gameId)
 
   try {
     const { count: moveCount } = await supabase
@@ -94,7 +109,7 @@ Deno.serve(async (req) => {
     const realLevel = earlyProgression?.level ?? 1
 
     if ((moveCount ?? 0) < MIN_MOVES) {
-      await supabase.from('games').update({ rewards_status: 'complete' }).eq('id', gameId)
+      await supabase.from('games').update({ [statusCol]: 'complete' }).eq('id', gameId)
       return new Response(JSON.stringify({
         xpAwarded: 0, creditsAwarded: 0,
         previousLevel: realLevel, newLevel: realLevel, leveledUp: false, newAchievements: []
@@ -105,7 +120,6 @@ Deno.serve(async (req) => {
     const config: Record<string, number> = {}
     for (const row of configRows ?? []) config[row.key] = row.value
 
-    const myMarker = game.player_x_id === userId ? 'X' : 'O'
     const isWin = game.winner === myMarker
     const isDraw = game.winner === 'draw'
     const isHardAI = game.match_type === HARD_AI_MATCH_TYPE
@@ -270,7 +284,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    await supabase.from('games').update({ rewards_status: 'complete' }).eq('id', gameId)
+    await supabase.from('games').update({ [statusCol]: 'complete' }).eq('id', gameId)
 
     return new Response(JSON.stringify({
       xpAwarded: xpEarned,
@@ -300,15 +314,17 @@ Deno.serve(async (req) => {
     // Re-fetch current retry count to avoid stale read
     const { data: currentGame } = await supabase
       .from('games')
-      .select('rewards_retry_count')
+      .select('player_x_rewards_retry_count, player_o_rewards_retry_count')
       .eq('id', gameId)
       .single()
-    const currentRetryCount = currentGame?.rewards_retry_count ?? game.rewards_retry_count ?? 0
+    const currentRetryCount = (myMarker === 'X'
+      ? currentGame?.player_x_rewards_retry_count
+      : currentGame?.player_o_rewards_retry_count) ?? myRewardsRetryCount ?? 0
     const retryCount = currentRetryCount + 1
     const newStatus = retryCount >= 3 ? 'failed' : 'pending'
     await supabase.from('games').update({
-      rewards_status: newStatus,
-      rewards_retry_count: retryCount
+      [statusCol]: newStatus,
+      [retryCol]: retryCount
     }).eq('id', gameId)
     return new Response('Internal error', { status: 500, headers: corsHeaders })
   }

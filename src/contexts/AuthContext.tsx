@@ -21,19 +21,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   async function processMissedRewards(userId: string) {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    // Query games where THIS player's per-player rewards column is still pending/processing.
+    // Two passes: once as player_x, once as player_o.
+    const [{ data: asX }, { data: asO }] = await Promise.all([
+      supabase.from('games').select('id')
+        .eq('status', 'complete')
+        .eq('player_x_id', userId)
+        .in('player_x_rewards_status', ['pending', 'processing'])
+        .lt('player_x_rewards_retry_count', 3),
+      supabase.from('games').select('id')
+        .eq('status', 'complete')
+        .eq('player_o_id', userId)
+        .in('player_o_rewards_status', ['pending', 'processing'])
+        .lt('player_o_rewards_retry_count', 3),
+    ]);
 
-    const { data: missed } = await supabase
-      .from('games')
-      .select('id, rewards_status, updated_at')
-      .or(`player_x_id.eq.${userId},player_o_id.eq.${userId}`)
-      .eq('status', 'complete')
-      .or(
-        `rewards_status.eq.pending,and(rewards_status.eq.processing,updated_at.lt.${tenMinutesAgo})`
-      )
-      .lt('rewards_retry_count', 3);
-
-    if (!missed || missed.length === 0) return;
+    const missed = [...(asX ?? []), ...(asO ?? [])];
+    if (missed.length === 0) return;
 
     for (const game of missed) {
       await callPostGameHandler(game.id).catch(() => {

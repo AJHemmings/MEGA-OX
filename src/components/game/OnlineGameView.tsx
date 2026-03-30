@@ -105,6 +105,8 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   // Post-game reward state — result from the edge function, cleared on dismiss or new game
   const [postGameResult, setPostGameResult] = useState<PostGameResult | null>(null);
+  // True while the edge function call is in-flight — hides Play Again / Back to Menu until resolved
+  const [postGameLoading, setPostGameLoading] = useState(false);
   // Guards against calling the edge function more than once per game
   const postGameCalledRef = useRef(false);
 
@@ -135,8 +137,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   useEffect(() => {
     if (status !== 'complete' || postGameCalledRef.current) return;
     postGameCalledRef.current = true;
+    setPostGameLoading(true);
 
     callPostGameHandler(gameId).then(result => {
+      setPostGameLoading(false);
       if (result && !result.alreadyProcessed) {
         setPostGameResult(result);
         refreshProgression(); // re-fetch so PostGameModal shows updated XP
@@ -156,6 +160,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     rematchNavFiredRef.current = false;
     postGameCalledRef.current = false;
     setPostGameResult(null);
+    setPostGameLoading(false);
   }, [gameId]);
 
   // Auto-navigate when rematch game is ready — suppressed while the 'agreed' overlay is
@@ -502,6 +507,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
               >
                 Back to Menu
               </button>
+            </div>
+          ) : postGameLoading ? (
+            <div style={{ color: '#a0aec0', fontSize: '14px', marginTop: '12px' }}>
+              Loading rewards...
             </div>
           ) : (
             <>

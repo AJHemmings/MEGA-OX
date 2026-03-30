@@ -207,6 +207,10 @@ export type Database = {
           rematch_game_id: string | null
           rematch_o_intent: string | null
           rematch_x_intent: string | null
+          player_x_rewards_status: string
+          player_x_rewards_retry_count: number
+          player_o_rewards_status: string
+          player_o_rewards_retry_count: number
           rewards_retry_count: number
           rewards_status: string
           rps_creator_pick: string | null
@@ -231,6 +235,10 @@ export type Database = {
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
+          player_x_rewards_status?: string
+          player_x_rewards_retry_count?: number
+          player_o_rewards_status?: string
+          player_o_rewards_retry_count?: number
           rewards_retry_count?: number
           rewards_status?: string
           rps_creator_pick?: string | null
@@ -255,6 +263,10 @@ export type Database = {
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
+          player_x_rewards_status?: string
+          player_x_rewards_retry_count?: number
+          player_o_rewards_status?: string
+          player_o_rewards_retry_count?: number
           rewards_retry_count?: number
           rewards_status?: string
           rps_creator_pick?: string | null
