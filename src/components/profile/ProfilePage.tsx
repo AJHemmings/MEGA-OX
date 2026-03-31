@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { LevelBadge } from '../progression/LevelBadge';
+import { XPProgressBar } from '../progression/XPProgressBar';
+import { useProgression } from '../../hooks/useProgression';
 
 interface ProfileData {
   player_id: string;
   username: string;
   avatar_url: string | null;
+  level: number;
   rank_tier: string;
   wins: number;
   losses: number;
@@ -49,10 +53,18 @@ const ProfilePage: React.FC = () => {
       const stats = (profileData as any).player_stats;
       const pid = profileData.id;
 
+      // Fetch level from player_progression (Phase 3 table; gracefully defaults to 1 if not yet migrated)
+      const { data: prog } = await supabase
+        .from('player_progression')
+        .select('level')
+        .eq('user_id', pid)
+        .single();
+
       setProfile({
         player_id: pid,
         username: profileData.username,
         avatar_url: profileData.avatar_url,
+        level: prog?.level ?? 1,
         rank_tier: stats?.rank_tier ?? 'Challenger',
         wins: stats?.wins ?? 0,
         losses: stats?.losses ?? 0,
@@ -96,6 +108,7 @@ const ProfilePage: React.FC = () => {
   }, [username]);
 
   const isOwnProfile = user && profile && user.id === profile.player_id;
+  const progression = useProgression(isOwnProfile ? user?.id : undefined);
 
   const resultColour = { Win: '#00d4aa', Loss: '#ff6b35', Draw: '#a0aec0' };
 
@@ -139,11 +152,44 @@ const ProfilePage: React.FC = () => {
             }
           </div>
           <div>
-            <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{profile.username}</div>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {profile.username}
+              <LevelBadge level={profile.level} size="md" />
+            </div>
             <div style={{ color: tierColour[profile.rank_tier] ?? '#a0aec0', fontSize: '14px', marginTop: '4px' }}>{profile.rank_tier}</div>
             {leaderboardPos && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
           </div>
         </div>
+
+        {/* XP progress — own profile only */}
+        {isOwnProfile && !progression.loading && (
+          <div style={{ background: '#2a3441', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' }}>
+            <XPProgressBar
+              level={progression.level}
+              xpIntoLevel={progression.xpIntoLevel}
+              xpNeededForLevel={progression.xpNeededForLevel}
+              xpToNext={progression.xpToNext}
+            />
+          </div>
+        )}
+
+        {/* Achievements link — own profile only */}
+        {isOwnProfile && (
+          <div style={{ marginBottom: '16px' }}>
+            <button
+              onClick={() => navigate('/achievements')}
+              style={{
+                width: '100%', background: '#2a3441', border: '1px solid #4a5568',
+                borderRadius: '10px', padding: '14px 20px', color: '#fff',
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', fontSize: '14px', fontWeight: 500,
+              }}
+            >
+              <span>Achievements</span>
+              <span style={{ color: '#a0aec0' }}>›</span>
+            </button>
+          </div>
+        )}
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>

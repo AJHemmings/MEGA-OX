@@ -27,6 +27,9 @@ import {
   playGameLost,
   resumeAudio,
 } from '../../lib/sounds';
+import { callPostGameHandler } from '../../lib/postGame';
+import { PostGameModal, PostGameResult } from '../progression/PostGameModal';
+import { useProgression } from '../../hooks/useProgression';
 
 const defaultGameSkins: GameSkins = {
   boardSkin:      DEFAULT_BOARD_SKIN,
@@ -100,6 +103,17 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // Prevents the rematch navigation from firing twice (effect + dismiss handler)
   const rematchNavFiredRef = useRef(false);
 
+  // Post-game reward state — result from the edge function, cleared on dismiss or new game
+  const [postGameResult, setPostGameResult] = useState<PostGameResult | null>(null);
+  // True while the edge function call is in-flight — hides Play Again / Back to Menu until resolved
+  const [postGameLoading, setPostGameLoading] = useState(false);
+  // Guards against calling the edge function more than once per game
+  const postGameCalledRef = useRef(false);
+
+  // Progression data for the XP bar displayed in PostGameModal
+  const progression = useProgression(user?.id);
+  const { refresh: refreshProgression } = progression;
+
   // Derived from DB — not from presence, so no race condition when opponent navigates away after game ends
   const wonByForfeit = forfeitPlayerId !== null;
   const opponentForfeited = forfeitPlayerId !== null && forfeitPlayerId !== user?.id;
@@ -119,6 +133,21 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // Keep rematchGameIdRef current so dismiss callbacks always have the latest value
   useEffect(() => { rematchGameIdRef.current = rematchGameId; }, [rematchGameId]);
 
+  // Fire the post-game edge function exactly once when status reaches 'complete'.
+  useEffect(() => {
+    if (status !== 'complete' || postGameCalledRef.current) return;
+    postGameCalledRef.current = true;
+    setPostGameLoading(true);
+
+    callPostGameHandler(gameId).then(result => {
+      setPostGameLoading(false);
+      if (result && !result.alreadyProcessed) {
+        setPostGameResult(result);
+        refreshProgression(); // re-fetch so PostGameModal shows updated XP
+      }
+    });
+  }, [status, gameId, refreshProgression]);
+
   // Reset RPS guard AND all rematch overlay state when gameId changes.
   // React Router reuses this component instance across /game/:id navigations (Play Again),
   // so every piece of per-game state must be explicitly reset here.
@@ -129,6 +158,9 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     overlayShownRef.current = false;
     countdownStartedRef.current = false;
     rematchNavFiredRef.current = false;
+    postGameCalledRef.current = false;
+    setPostGameResult(null);
+    setPostGameLoading(false);
   }, [gameId]);
 
   // Auto-navigate when rematch game is ready — suppressed while the 'agreed' overlay is
@@ -476,6 +508,10 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
                 Back to Menu
               </button>
             </div>
+          ) : postGameLoading ? (
+            <div style={{ color: '#a0aec0', fontSize: '14px', marginTop: '12px' }}>
+              Loading rewards...
+            </div>
           ) : (
             <>
               {/* Readiness dots — green = play again, red = leaving, grey = undecided */}
@@ -515,6 +551,16 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         <RematchOutcomeOverlay
           type={rematchOverlay}
           onDismiss={rematchOverlay === 'agreed' ? handleAgreedDismiss : handleOptedOutDismiss}
+        />
+      )}
+      {postGameResult && (
+        <PostGameModal
+          result={postGameResult}
+          level={progression.level}
+          xpIntoLevel={progression.xpIntoLevel}
+          xpNeededForLevel={progression.xpNeededForLevel}
+          xpToNext={progression.xpToNext}
+          onContinue={() => setPostGameResult(null)}
         />
       )}
     </div>

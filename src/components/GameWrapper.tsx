@@ -87,6 +87,15 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameOver]); // intentionally omit winner/onGameOver: winner is stable when gameOver flips, and including onGameOver would cause double-firing as DemoGamePage re-renders
 
+  // TODO (Phase 3 — post-game rewards): AI/local games do not write a row to
+  // the `games` table in Supabase, so the post-game-handler edge function
+  // cannot be called here yet.  Once AI games are persisted (i.e. GameWrapper
+  // inserts a games row and receives a gameId), wire up post-game rewards the
+  // same way as OnlineGameView: add `useProgression`, a `postGameCalledRef`
+  // guard, a useEffect watching `gameOver` (the same derived value used
+  // above), call `postGameResult`, and render `<PostGameModal>`.
+  // Until then this component intentionally has no progression side-effects.
+
   useEffect(() => {
     if (!game) return;
     const currentWinners = game.macroBoard.microBoards.map(mb => mb.winner);

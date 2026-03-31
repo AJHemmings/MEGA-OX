@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { LevelBadge } from '../progression/LevelBadge';
 
 interface LeaderboardEntry {
   position: number;
   player_id: string;
   username: string;
   avatar_url: string | null;
+  level: number;
   rank_tier: string;
   wins: number;
   losses: number;
@@ -44,7 +46,10 @@ const LeaderboardPage: React.FC = () => {
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 16px', marginBottom: '8px', background: '#2a3441', borderRadius: '8px', cursor: 'pointer' }}>
                 <span style={{ width: '40px', color: entry.position <= 3 ? '#ffd700' : '#a0aec0', fontWeight: 'bold', fontSize: '18px' }}>#{entry.position}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold' }}>{entry.username}</div>
+                  <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {entry.username}
+                    <LevelBadge level={entry.level ?? 1} size="sm" />
+                  </div>
                   <div style={{ fontSize: '12px', color: tierColour[entry.rank_tier] ?? '#a0aec0' }}>{entry.rank_tier}</div>
                 </div>
                 <div style={{ textAlign: 'right', fontSize: '13px', color: '#a0aec0' }}>
