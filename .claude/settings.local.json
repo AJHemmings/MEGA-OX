@@ -83,7 +83,24 @@
       "mcp__jcodemunch-mcp__resolve_repo",
       "mcp__jcodemunch-mcp__get_file_tree",
       "mcp__jcodemunch-mcp__index_repo",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(grep:*)",
+      "Bash(CI=true npm test -- --testPathPattern=progression --watchAll=false)",
+      "Bash(CI=true npm test)",
+      "mcp__jcodemunch-mcp__index_file",
+      "Bash(node test-progression.js)",
+      "Bash(find F:/Projects/MEGA-OX/.worktrees/feat-phase3-progression/src -name Leaderboard* -o -name *leaderboard*)",
+      "Bash(find F:/Projects/MEGA-OX/.worktrees/feat-phase3-progression/src -name MatchmakingPage* -o -name *matchmaking*)",
+      "Bash(find F:/Projects/MEGA-OX/.worktrees/feat-phase3-progression/src -name ProfilePage* -o -name *profile*)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__list_migrations",
+      "mcp__plugin_supabase_supabase__deploy_edge_function",
+      "mcp__plugin_supabase_supabase__get_logs",
+      "mcp__plugin_supabase_supabase__list_tables",
+      "Bash(npx supabase:*)",
+      "mcp__plugin_supabase_supabase__list_edge_functions",
+      "mcp__plugin_supabase_supabase__get_project",
+      "Bash(cmd /c \"rmdir /s /q F:\\\\Projects\\\\MEGA-OX\\\\.worktrees\\\\feat-phase3-progression\")"
     ]
   }
 }
