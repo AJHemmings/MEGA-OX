@@ -7,22 +7,28 @@ const corsHeaders = {
 }
 
 const MAX_LEVEL = 250
-const MIN_MOVES = 5
 
 function xpForLevel(level: number): number {
   return Math.round(100 * Math.pow(level, 1.5))
 }
 
-function cumulativeXPToLevel(targetLevel: number): number {
-  let total = 0
-  for (let l = 1; l < targetLevel; l++) total += xpForLevel(l)
-  return total
-}
+// LEVEL_THRESHOLDS[i] = total XP required to reach level (i + 1).
+// Precomputed once at startup so levelFromXP is a single O(n) scan
+// rather than an O(n²) nested loop.
+//   LEVEL_THRESHOLDS[0] = 0   → level 1 starts at 0 XP
+//   LEVEL_THRESHOLDS[1] = 100 → 100 XP needed to reach level 2
+//   LEVEL_THRESHOLDS[2] = 383 → 383 XP needed to reach level 3, etc.
+const LEVEL_THRESHOLDS: number[] = (() => {
+  const thresholds = [0]
+  for (let l = 1; l < MAX_LEVEL; l++) {
+    thresholds.push(thresholds[l - 1] + xpForLevel(l))
+  }
+  return thresholds
+})()
 
 function levelFromXP(totalXP: number): number {
   let level = 1
-  while (level < MAX_LEVEL) {
-    if (totalXP < cumulativeXPToLevel(level + 1)) break
+  while (level < MAX_LEVEL && totalXP >= LEVEL_THRESHOLDS[level]) {
     level++
   }
   return level
@@ -83,10 +89,10 @@ Deno.serve(async (req) => {
   const retryCol = myMarker === 'X' ? 'player_x_rewards_retry_count' : 'player_o_rewards_retry_count'
 
   if (myRewardsStatus === 'processing') {
-    return new Response(JSON.stringify({ processing: true }), { status: 202, headers: corsHeaders })
+    return new Response(JSON.stringify({ processing: true }), { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
   if (myRewardsStatus === 'complete') {
-    return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200, headers: corsHeaders })
+    return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
   if (myRewardsStatus === 'failed') {
     return new Response('Permanently failed', { status: 422, headers: corsHeaders })
@@ -95,26 +101,10 @@ Deno.serve(async (req) => {
   await supabase.from('games').update({ [statusCol]: 'processing' }).eq('id', gameId)
 
   try {
-    const { count: moveCount } = await supabase
-      .from('game_moves')
-      .select('id', { count: 'exact', head: true })
-      .eq('game_id', gameId)
-
-    // Fetch actual level for the early return case
-    const { data: earlyProgression } = await supabase
-      .from('player_progression')
-      .select('level')
-      .eq('user_id', userId)
-      .single()
-    const realLevel = earlyProgression?.level ?? 1
-
-    if ((moveCount ?? 0) < MIN_MOVES) {
-      await supabase.from('games').update({ [statusCol]: 'complete' }).eq('id', gameId)
-      return new Response(JSON.stringify({
-        xpAwarded: 0, creditsAwarded: 0,
-        previousLevel: realLevel, newLevel: realLevel, leveledUp: false, newAchievements: []
-      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
+    // NOTE: game_moves currently only records the final move (1 row per game), so a
+    // count-based MIN_MOVES guard would block rewards for every game. Guard removed.
+    // If a minimum-game-length check is needed in future, query the game.state cell
+    // count directly rather than game_moves rows.
 
     const { data: configRows } = await supabase.from('reward_config').select('key, value')
     const config: Record<string, number> = {}
@@ -166,11 +156,20 @@ Deno.serve(async (req) => {
       .eq('player_id', userId)
       .single()
 
-    const totalWins = stats?.wins ?? 0
-    const totalGames = (stats?.wins ?? 0) + (stats?.losses ?? 0) + (stats?.draws ?? 0)
+    // Increment the correct counter for this game outcome
+    const newWins   = (stats?.wins   ?? 0) + (isWin              ? 1 : 0)
+    const newLosses = (stats?.losses ?? 0) + (!isWin && !isDraw  ? 1 : 0)
+    const newDraws  = (stats?.draws  ?? 0) + (isDraw             ? 1 : 0)
+
+    await supabase
+      .from('player_stats')
+      .update({ wins: newWins, losses: newLosses, draws: newDraws })
+      .eq('player_id', userId)
+
+    const totalGames = newWins + newLosses + newDraws
 
     const statMap: Record<string, number> = {
-      total_wins: totalWins,
+      total_wins: newWins,
       total_games: totalGames,
       total_credits_earned: newTotalCredits
     }
