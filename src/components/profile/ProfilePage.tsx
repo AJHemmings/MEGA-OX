@@ -134,9 +134,9 @@ const ProfilePage: React.FC = () => {
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '20px' }}>←</button>
           <h1 style={{ margin: 0, color: '#fff' }}>Profile</h1>
           {isOwnProfile && (
-            <button onClick={() => navigate('/settings')}
+            <button onClick={() => navigate('/customise')}
               style={{ marginLeft: 'auto', background: '#2a3441', border: '1px solid #4a5568', color: '#a0aec0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}>
-              Edit Profile
+              Customise
             </button>
           )}
         </div>

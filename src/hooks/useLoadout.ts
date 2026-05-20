@@ -18,19 +18,20 @@ export function useLoadout(playerId: string | undefined) {
   useEffect(() => {
     if (!playerId) { setLoading(false); return; }
 
-    supabase
-      .from('profiles')
-      .select('active_avatar_id, active_badge_id, active_banner_id')
-      .eq('id', playerId)
-      .single()
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('active_avatar_id, active_badge_id, active_banner_id')
+          .eq('id', playerId)
+          .single();
         if (data) setLoadout(data);
-        setLoading(false);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('useLoadout fetch failed:', err);
+      } finally {
         setLoading(false);
-      });
+      }
+    })();
   }, [playerId]);
 
   const equip = useCallback(async (
