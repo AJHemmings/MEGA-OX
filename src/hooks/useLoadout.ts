@@ -39,8 +39,8 @@ export function useLoadout(playerId: string | undefined) {
     itemId: string
   ) => {
     if (!playerId) return;
-    const prev = loadout[slot];
-    setLoadout(l => ({ ...l, [slot]: itemId })); // optimistic
+    let prev: string | null = null;
+    setLoadout(l => { prev = l[slot]; return { ...l, [slot]: itemId }; }); // optimistic + capture prev atomically
     const { error } = await supabase
       .from('profiles')
       .update({ [slot]: itemId })
@@ -49,7 +49,7 @@ export function useLoadout(playerId: string | undefined) {
       setLoadout(l => ({ ...l, [slot]: prev })); // roll back on failure
       console.error('equip failed:', error.message);
     }
-  }, [playerId, loadout]);
+  }, [playerId]); // loadout intentionally omitted — prev captured inside setter to avoid stale closure
 
   return { loadout, loading, equip };
 }

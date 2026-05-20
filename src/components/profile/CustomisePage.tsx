@@ -46,7 +46,7 @@ const CustomisePage: React.FC = () => {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <button onClick={() => navigate(-1)}
+          <button aria-label="Go back" onClick={() => navigate(-1)}
             style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '20px' }}>←</button>
           <h1 style={{ margin: 0, fontSize: '22px' }}>Customise</h1>
         </div>
@@ -73,12 +73,22 @@ const CustomisePage: React.FC = () => {
           <div style={{ color: '#4a5568', textAlign: 'center', padding: '40px 0' }}>No items yet.</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-            {tabItems.map(item => (
-              <button key={item.item_id} onClick={() => handleSelect(item)}
+            {tabItems.map(item => tab === 'emoji' ? (
+              <div key={item.item_id}
+                style={{
+                  background: '#2a3441', border: '2px solid #4a5568',
+                  borderRadius: '10px', padding: '12px 8px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                }}>
+                <ItemPreview item={item} />
+                <span style={{ fontSize: '11px', color: '#a0aec0', textAlign: 'center' }}>{item.name}</span>
+              </div>
+            ) : (
+              <button key={item.item_id} aria-pressed={isEquipped(item)} onClick={() => handleSelect(item)}
                 style={{
                   background: isEquipped(item) ? '#1a3a3a' : '#2a3441',
                   border: `2px solid ${isEquipped(item) ? '#00d4aa' : '#4a5568'}`,
-                  borderRadius: '10px', padding: '12px 8px', cursor: tab === 'emoji' ? 'default' : 'pointer',
+                  borderRadius: '10px', padding: '12px 8px', cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
                 }}>
                 <ItemPreview item={item} />
@@ -101,16 +111,22 @@ const ItemPreview: React.FC<{ item: OwnedItem }> = ({ item }) => {
   }
   if (item.type === 'banner') {
     return (
-      <div style={{ width: '100%', height: '30px', borderRadius: '4px', overflow: 'hidden' }}>
-        <img src={item.asset_url ?? ''} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div style={{ width: '100%', height: '30px', borderRadius: '4px', overflow: 'hidden', background: '#1a2332' }}>
+        {item.asset_url && (
+          <img src={item.asset_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        )}
       </div>
     );
   }
   // avatar, badge
   const size = item.type === 'avatar' ? 48 : 32;
+  const radius = item.type === 'avatar' ? '50%' : '4px';
+  if (!item.asset_url) {
+    return <div aria-label={item.name} style={{ width: size, height: size, borderRadius: radius, background: '#1a2332' }} />;
+  }
   return (
-    <img src={item.asset_url ?? ''} alt={item.name}
-      style={{ width: size, height: size, borderRadius: item.type === 'avatar' ? '50%' : '4px' }} />
+    <img src={item.asset_url} alt={item.name}
+      style={{ width: size, height: size, borderRadius: radius }} />
   );
 };
 
