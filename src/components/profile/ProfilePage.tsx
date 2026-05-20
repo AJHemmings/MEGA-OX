@@ -158,32 +158,39 @@ const ProfilePage: React.FC = () => {
 
         {/* Avatar + name */}
         <div style={{
+          position: 'relative', overflow: 'hidden',
           background: '#2a3441', borderRadius: '12px', padding: '24px', marginBottom: '16px',
-          display: 'flex', alignItems: 'center', gap: '20px',
-          ...(profile.bannerUrl ? {
-            backgroundImage: `linear-gradient(rgba(26,35,50,0.65), rgba(26,35,50,0.65)), url(${profile.bannerUrl})`,
-            backgroundSize: 'cover', backgroundPosition: 'center',
-          } : {}),
         }}>
-          <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#1a2332', overflow: 'hidden', border: '2px solid #4a5568', flexShrink: 0 }}>
-            {profile.avatarUrl
-              ? <img src={profile.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: '#a0aec0' }}>
-                  {profile.username[0]?.toUpperCase()}
-                </div>
-            }
-          </div>
-          <div>
-            <div style={{ fontSize: '22px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {profile.username}
-              <LevelBadge level={profile.level} size="md" />
-              {profile.badgeUrl && (
-                <img src={profile.badgeUrl} alt={profile.badgeName ?? 'badge'}
-                  style={{ width: '20px', height: '20px' }} title={profile.badgeName ?? ''} />
-              )}
+          {/* Banner: use <img> not background-image — SVG data URIs with url(#id) refs break CSS url() parsing */}
+          {profile.bannerUrl && (
+            <>
+              <img src={profile.bannerUrl} alt="" aria-hidden style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+              }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,35,50,0.65)' }} />
+            </>
+          )}
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#1a2332', overflow: 'hidden', border: '2px solid #4a5568', flexShrink: 0 }}>
+              {profile.avatarUrl
+                ? <img src={profile.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: '#a0aec0' }}>
+                    {profile.username[0]?.toUpperCase()}
+                  </div>
+              }
             </div>
-            <div style={{ color: tierColour[profile.rank_tier] ?? '#a0aec0', fontSize: '14px', marginTop: '4px' }}>{profile.rank_tier}</div>
-            {leaderboardPos !== null && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
+            <div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {profile.username}
+                <LevelBadge level={profile.level} size="md" />
+                {profile.badgeUrl && (
+                  <img src={profile.badgeUrl} alt={profile.badgeName ?? 'badge'}
+                    style={{ width: '20px', height: '20px' }} title={profile.badgeName ?? ''} />
+                )}
+              </div>
+              <div style={{ color: tierColour[profile.rank_tier] ?? '#a0aec0', fontSize: '14px', marginTop: '4px' }}>{profile.rank_tier}</div>
+              {leaderboardPos !== null && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
+            </div>
           </div>
         </div>
 
