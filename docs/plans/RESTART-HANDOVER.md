@@ -4,9 +4,9 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phase 3 is complete and merged into local `main`.** Edge function is at v9. All smoke tests passed 2026-03-31. `main` has not yet been pushed to `private` — push when ready to deploy.
+> "I've read the handover. **Phase 4 is complete on `feat/phase4-customisation-emoji`.** Not yet merged to main. All 8 tasks implemented and reviewed.
 >
-> Next up is **Phase 4: Profile customisation + emoji communication**. Read the approved roadmap before starting."
+> Next: smoke-test Phase 4 in the browser, then merge `feat/phase4-customisation-emoji` into `main` and push to `private`. Next phase after that is **Phase 5: Visual redesign**."
 
 ---
 
@@ -19,7 +19,8 @@ Read this file in full, then say:
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy: `git push private main` from project root
 — Deployment protection: **disabled** (for testing)
-— Latest production commit: `d4b94b5` (Fix 12 — chained rematch stale ref). **Phase 3 not yet deployed — push `main` to deploy.**
+— Latest production commit: `16cd6bc` (Phase 3 complete). Phase 3 deployed.
+— Edge function: **v10** deployed 2026-03-31. `verify_jwt: false` locked in `config.toml`.
 
 **Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone. Do NOT push to `origin/main` without explicit instruction.
 
@@ -29,7 +30,7 @@ Read this file in full, then say:
 
 **Design doc:** `docs/superpowers/specs/2026-03-28-phase3-progression-design.md`
 **Implementation plan:** `docs/superpowers/plans/2026-03-28-phase3-progression.md`
-**Edge function:** v9 deployed (2026-03-31) — `verify_jwt: false`, precomputed level thresholds
+**Edge function:** v10 deployed (2026-03-31) — `verify_jwt: false` (locked in `config.toml`), precomputed level thresholds
 
 **What was built:**
 - 5 SQL migrations (schema, seed, triggers, RPC, leaderboard view update)
@@ -97,7 +98,58 @@ Read this file in full, then say:
 
 **Fix:** Replaced with `LEVEL_THRESHOLDS` — a 250-element array precomputed once at cold-start. `levelFromXP` is now a single O(n) scan. Behaviour is identical; same curve, same level outputs.
 
-**Status:** ✅ Deployed in v9.
+**Status:** ✅ Deployed in v9. ⚠️ See below — v9 silently broke the function.
+
+---
+
+### Fix: Post-game modal not appearing + no progression recorded after live game (v10, 2026-03-31)
+
+**Problem:** After Phase 3 merged and `main` pushed to private Vercel, post-game modal did not appear in live testing. No XP, credits, W/L/D, or achievements recorded for either player. Games remained with `player_x_rewards_status = 'pending'` and retry count = 0.
+
+**Root cause:** When v9 was deployed (the O(n²) optimization, commit `2854227`), `verify_jwt` was not set in `config.toml`. Without it, the Supabase CLI defaults `verify_jwt` to `true` on every deploy, silently reverting the v8 fix. All POST requests to the function returned 401 before the function body ran — same failure mode as v7. The smoke tests had run against v8 (`verify_jwt: false`), not v9, so this regression was not caught before merge.
+
+**Evidence from Supabase edge function logs:**
+- v8 calls: all `POST | 200` ✓
+- v9 calls: all `POST | 401` ✗ — confirmed via Supabase MCP log query
+
+**Attempted fix that did NOT work:**
+- Initial diagnosis: missing DB columns (`player_x_rewards_status` etc.) from an uncommitted migration. A migration was written (`20260331000003_per_player_rewards_columns.sql`) and the apply attempt was made — but failed with "column already exists." The columns had been added manually earlier. Wrong diagnosis.
+
+**Fix (v10):**
+1. Added `[functions.post-game-handler] verify_jwt = false` to `supabase/config.toml` so the setting persists across all future deploys.
+2. Redeployed via Supabase MCP — v10 is now live with `verify_jwt: false`.
+
+**Note on stuck games:** Two games from today are stuck at `player_x_rewards_status = 'pending'` with retry count 0 (game IDs `60f0fa13` and `48d7050b`). These will be retried automatically when the affected players next log in (`processMissedRewards` in `AuthContext`).
+
+**Status:** ✅ Resolved in v10.
+
+**Critical lesson:** Always set `verify_jwt = false` in `config.toml` before deploying any new version of `post-game-handler`. Without it, every deploy silently breaks the function. Never deploy this function without checking `config.toml` first.
+
+---
+
+## Housekeeping fixes (2026-05-20)
+
+### Fix: False-diagnosis migration deleted
+
+**What:** `supabase/migrations/20260331000003_per_player_rewards_columns.sql` was deleted.
+
+**Why it existed:** During the v10 incident, the wrong diagnosis was made — it was thought the per-player rewards columns (`player_x_rewards_status` etc.) were missing. A migration was written to drop the old shared columns and add the per-player ones. The apply attempt failed with "column already exists" because the columns had been added manually earlier. The real problem was `verify_jwt` reverting to `true` on the v9 deploy.
+
+**Why it was dangerous to leave:** Supabase CLI tracks applied migrations in `schema_migrations`. This file was in the `migrations/` directory but never applied — so it wasn't tracked. The next `supabase db push` would have tried to apply it, hit "column already exists", and blocked all future migrations.
+
+**Fix:** File deleted. DB schema is correct; nothing needed applying.
+
+---
+
+### Fix: `lottie-react` not installed
+
+**What:** `npm install lottie-react` run 2026-05-20.
+
+**Why:** Three skin components (`BoardSkin.tsx`, `MarkerSkin.tsx`, `WonBoardSkin.tsx`) import `lottie-react` but it was missing from `package.json`. The dev server failed to compile with "Module not found: Can't resolve 'lottie-react'".
+
+**Why it was missing:** The skin system scaffolding (Phase 2) added Lottie imports but the package install was either never done or lost — it wasn't in `node_modules`. No user-facing feature was broken in production (Vercel installs from `package.json`, not `node_modules`) — this only blocked the local dev server.
+
+**Fix:** Package installed. Dev server compiles and runs cleanly.
 
 ---
 
@@ -124,7 +176,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 2     | Skin system code refactor                                 | **Complete**     |
 | 2.5   | Disconnect handling + broadcast sync + audio + Play Again | **Complete**     |
 | 3     | Player progression + achievements + virtual currency      | **Complete**     |
-| 4     | Profile customisation + emoji communication               | Not started — next |
+| 4     | Profile customisation + emoji communication               | **Complete** (branch, not merged) |
 | 5     | Visual redesign                                           | Not started      |
 | 6     | Cash shop                                                 | Not started      |
 | 7     | Admin dashboard                                           | Not started      |
@@ -156,6 +208,9 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | Virtual currency (credits)                 | Done — Phase 3    |
 | Achievements                               | Done — Phase 3    |
 | Post-game modal                            | Done — Phase 3    |
+| Avatar / badge / banner equip (CustomisePage) | Done — Phase 4 (branch) |
+| Profile cosmetics display (ProfilePage)    | Done — Phase 4 (branch) |
+| In-game emoji communication                | Done — Phase 4 (branch) |
 
 ---
 
@@ -180,6 +235,17 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 - W/L/D increments in DB and UI after game ✅ (Phase 3, 2026-03-31)
 - Credits balance updates in real-time ✅ (Phase 3, 2026-03-31)
 - Profile XP + level updates after game ✅ (Phase 3, 2026-03-31)
+
+**Phase 4 — pending smoke test on branch:**
+- [ ] Profile shows default avatar (Classic Blue), badge (Newcomer), banner (Night Sky)
+- [ ] Go to `/customise` from profile — 4 tabs load, 2 items each
+- [ ] Equip "Classic Orange" avatar → back to profile → avatar updated
+- [ ] Equip "Ocean" banner → profile card shows gradient background with text still readable
+- [ ] Online game: emoji button visible during active game only
+- [ ] Click 😊 → panel opens showing 👍 🔥
+- [ ] Click 👍 → bubble appears left side, disappears after 3s
+- [ ] Other player sees 👍 on right side, disappears after 3s
+- [ ] Emoji button hidden after game ends
 
 ---
 
@@ -285,6 +351,8 @@ All attempted to patch the event-based system. Approaches tried: reordering hand
 
 ## Known issues / deferred
 
+- **Phase 4 — EmojiBubble overflow on mobile** — bubbles positioned at `-60px` from board edge will go off-screen on viewports narrower than ~520px. No crash; bubble is invisible on those devices. Fix: adjust offset or use board-relative positioning. Deferred to Phase 5 visual redesign.
+- **Phase 4 — New users have null loadout columns** — the migration sets defaults for existing users but not for sign-ups after migration. New users see no equipped cosmetics until they visit `/customise`. `ProfilePage` handles null gracefully (falls back to letter avatar, omits badge/banner). Fix: add a DB trigger or default values on columns. Deferred.
 - **`useLoginStreak.ts` line 31** — swap `.single()` to `.maybeSingle()` to silence 406 errors. Low priority, no user-facing impact.
 - **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not yet passed to `GameWrapper`. Phase 6.
 - **Skins tables have no RLS policies** — fine for Phase 2, needed before Phase 6.
@@ -339,6 +407,12 @@ All attempted to patch the event-based system. Approaches tried: reordering hand
 | `src/contexts/AuthContext.tsx`                    | Auth state + deferred post-game retry on login                                                                                                                                       |
 | `src/lib/rps.ts`                                  | RPS logic — pure functions                                                                                                                                                           |
 | `supabase/functions/post-game-handler/index.ts`   | Edge function — XP, credits, achievements, W/L/D, idempotency, precomputed level thresholds                                                                                         |
+| `src/hooks/useInventory.ts`                       | Fetches player-owned cosmetic items from `player_inventory` joined with `cosmetic_items`; filters by type client-side                                                               |
+| `src/hooks/useLoadout.ts`                         | Reads/writes equipped avatar/badge/banner on `profiles`; optimistic update + server rollback                                                                                        |
+| `src/components/profile/CustomisePage.tsx`        | `/customise` — 4 tabs (Avatar/Badge/Banner/Emoji), click-to-equip                                                                                                                  |
+| `src/components/game/EmojiPanel.tsx`              | In-game emoji picker — shows owned emojis, sends via `sendEmoji`                                                                                                                   |
+| `src/components/game/EmojiBubble.tsx`             | Floating emoji bubble, positioned absolute left/right of board                                                                                                                      |
+| `supabase/migrations/20260520000001_phase4_schema.sql` | Loadout columns on profiles, cosmetic_items seed (2 each: avatar/badge/banner/emoji), inventory grants, RLS                                                              |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap                                                                                                                                                        |
 | `docs/plans/2026-03-19-testing-benchmarks.md`     | Live testing checklist                                                                                                                                                               |
 
