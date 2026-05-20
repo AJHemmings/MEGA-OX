@@ -4,22 +4,22 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phase 4 is complete on `feat/phase4-customisation-emoji`.** Not yet merged to main. All 8 tasks implemented and reviewed.
+> "I've read the handover. **Phase 4 is complete and merged to `main`.** Pushed to private Vercel (2026-05-20). All 8 tasks built, reviewed, and deployed.
 >
-> Next: smoke-test Phase 4 in the browser, then merge `feat/phase4-customisation-emoji` into `main` and push to `private`. Next phase after that is **Phase 5: Visual redesign**."
+> Next phase is **Phase 5: Visual redesign**. Smoke tests for Phase 4 are still pending full browser verification — check the 'Confirmed working' section for what to verify first."
 
 ---
 
 ## Current state
 
-`main` branch: Phase 3 complete and merged (2026-03-31).
+`main` branch: Phase 4 complete and merged (2026-05-20).
 
 **Private Vercel (`mega-ox-dev`):** Testing environment
 — Project ID: `prj_ax0KSF6QTW1EMnAdtDa9HesZWCub`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy: `git push private main` from project root
 — Deployment protection: **disabled** (for testing)
-— Latest production commit: `16cd6bc` (Phase 3 complete). Phase 3 deployed.
+— Latest production commit: `9d0d991` (Phase 4 merged 2026-05-20).
 — Edge function: **v10** deployed 2026-03-31. `verify_jwt: false` locked in `config.toml`.
 
 **Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone. Do NOT push to `origin/main` without explicit instruction.
@@ -127,6 +127,34 @@ Read this file in full, then say:
 
 ---
 
+## Phase 4 — complete ✅ (merged 2026-05-20)
+
+**Design doc / retrospective:** `docs/qa/phase4-design-retrospective.md`
+**Implementation plan:** `docs/superpowers/plans/2026-05-20-phase4-customisation-emoji.md`
+
+**What was built:**
+- 2 SQL migrations: `20260520000001_phase4_schema.sql` (loadout columns, cosmetic catalogue, inventory grants, RLS), `20260520000002_progression_public_read.sql` (allow cross-user progression reads)
+- `useInventory` hook — fetches owned cosmetic items, client-side type filter (PostgREST limitation)
+- `useLoadout` hook — reads/writes equipped loadout with optimistic update + stale-closure-safe rollback
+- `CustomisePage` at `/customise` — 4-tab equip UI (Avatar/Badge/Banner/Emoji)
+- `ProfilePage` extended — FK joins for equipped cosmetics, banner as `<img>` (SVG fix), badge in username row
+- `EmojiPanel` + `EmojiBubble` components — in-game emoji picker + floating bubble with `emojiBounce` animation
+- `useOnlineGame` extended — `myEmoji`, `opponentEmoji`, `sendEmoji` (guarded by `status !== 'active'`)
+- `OnlineGameView` extended — board wrapper for emoji bubble positioning
+
+**Key bugs caught in review (12 total before merge):**
+- `useLoadout` stale closure: `prev` captured outside setter could restore wrong value on rapid equips. Fixed: captured atomically inside setter.
+- `.then().catch()` on PromiseLike: Supabase returns PromiseLike not Promise. Fixed: async IIFE with try/catch/finally.
+- `EmojiBubble` missing `animations.css` import: bounce animation silently failed. Fixed.
+- `sendEmoji` no status guard: could fire after game ends. Fixed.
+- PostgREST `.eq()` on embedded columns silently returns nothing. Fixed: fetch all, filter client-side.
+
+**Post-smoke-test bug fixes (committed 2026-05-20, commit `c7699ab`):**
+- Banner not displaying: SVG `fill="url(#g)"` contains unencoded `()` which breaks CSS `url()` parser. Fixed: switched to absolutely-positioned `<img>` element with an overlay div.
+- Other players' levels showing as 1: `player_progression` RLS policy was `USING (auth.uid() = user_id)` — own row only. Fixed: migration `20260520000002` drops old policy, creates `USING (true)` for authenticated users.
+
+---
+
 ## Housekeeping fixes (2026-05-20)
 
 ### Fix: False-diagnosis migration deleted
@@ -176,7 +204,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 2     | Skin system code refactor                                 | **Complete**     |
 | 2.5   | Disconnect handling + broadcast sync + audio + Play Again | **Complete**     |
 | 3     | Player progression + achievements + virtual currency      | **Complete**     |
-| 4     | Profile customisation + emoji communication               | **Complete** (branch, not merged) |
+| 4     | Profile customisation + emoji communication               | **Complete** (merged 2026-05-20)  |
 | 5     | Visual redesign                                           | Not started      |
 | 6     | Cash shop                                                 | Not started      |
 | 7     | Admin dashboard                                           | Not started      |
@@ -208,9 +236,9 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | Virtual currency (credits)                 | Done — Phase 3    |
 | Achievements                               | Done — Phase 3    |
 | Post-game modal                            | Done — Phase 3    |
-| Avatar / badge / banner equip (CustomisePage) | Done — Phase 4 (branch) |
-| Profile cosmetics display (ProfilePage)    | Done — Phase 4 (branch) |
-| In-game emoji communication                | Done — Phase 4 (branch) |
+| Avatar / badge / banner equip (CustomisePage) | Done — Phase 4           |
+| Profile cosmetics display (ProfilePage)    | Done — Phase 4            |
+| In-game emoji communication                | Done — Phase 4            |
 
 ---
 
@@ -236,11 +264,12 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 - Credits balance updates in real-time ✅ (Phase 3, 2026-03-31)
 - Profile XP + level updates after game ✅ (Phase 3, 2026-03-31)
 
-**Phase 4 — pending smoke test on branch:**
+**Phase 4 — smoke test (pending full browser verification on deployed build):**
 - [ ] Profile shows default avatar (Classic Blue), badge (Newcomer), banner (Night Sky)
 - [ ] Go to `/customise` from profile — 4 tabs load, 2 items each
 - [ ] Equip "Classic Orange" avatar → back to profile → avatar updated
 - [ ] Equip "Ocean" banner → profile card shows gradient background with text still readable
+- [ ] Viewing another player's profile shows their correct level (not always 1)
 - [ ] Online game: emoji button visible during active game only
 - [ ] Click 😊 → panel opens showing 👍 🔥
 - [ ] Click 👍 → bubble appears left side, disappears after 3s
@@ -444,6 +473,8 @@ Supabase project ref: **`qioxtkcjtvvkzcoupdfk`**
 **Kill by PID, not taskkill /F /IM node.exe:** When stopping the dev server, kill by PID (`taskkill //F //PID <pid>`) rather than killing all node processes.
 
 **Deploy by push, not Vercel CLI:** Vercel CLI is not available in the shell. Deploy by pushing to `AJHemmings/MEGA-OX-private` — `git push private main` from project root.
+
+**Supabase MCP wrong account (2026-05-20):** The MCP OAuth token was bound to `adamjh84@outlook.com` (personal account), not the MEGA-OX project account. Every `apply_migration` and `execute_sql` call returned "permission denied". Fix: clear `accessToken`, `refreshToken`, and `expiresAt` in `C:\Users\ajhem\.claude\.credentials.json` under the `plugin:supabase:supabase` key, then run `/mcp` in Claude Code to re-authenticate via the OAuth browser flow with the correct account. The correct account owns project `qioxtkcjtvvkzcoupdfk`.
 
 **RPS event-based system (Fixes 1–6) is a dead end:** Six separate attempts to fix RPS using broadcast + CDC refs all failed due to a non-deterministic race between broadcast delivery, CDC delivery, and draw-clear nulls. Do not attempt to revive this approach. The polling architecture (Fix 7) is the correct solution.
 
