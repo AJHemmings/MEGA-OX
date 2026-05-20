@@ -161,7 +161,7 @@ const ProfilePage: React.FC = () => {
           background: '#2a3441', borderRadius: '12px', padding: '24px', marginBottom: '16px',
           display: 'flex', alignItems: 'center', gap: '20px',
           ...(profile.bannerUrl ? {
-            backgroundImage: `url(${profile.bannerUrl})`,
+            backgroundImage: `linear-gradient(rgba(26,35,50,0.65), rgba(26,35,50,0.65)), url(${profile.bannerUrl})`,
             backgroundSize: 'cover', backgroundPosition: 'center',
           } : {}),
         }}>
@@ -183,7 +183,7 @@ const ProfilePage: React.FC = () => {
               )}
             </div>
             <div style={{ color: tierColour[profile.rank_tier] ?? '#a0aec0', fontSize: '14px', marginTop: '4px' }}>{profile.rank_tier}</div>
-            {leaderboardPos && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
+            {leaderboardPos !== null && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
           </div>
         </div>
 
