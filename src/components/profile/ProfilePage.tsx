@@ -10,6 +10,10 @@ interface ProfileData {
   player_id: string;
   username: string;
   avatar_url: string | null;
+  avatarUrl:  string | null;
+  badgeUrl:   string | null;
+  badgeName:  string | null;
+  bannerUrl:  string | null;
   level: number;
   rank_tier: string;
   wins: number;
@@ -44,7 +48,14 @@ const ProfilePage: React.FC = () => {
     const loadProfile = async () => {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, player_stats(rank_tier, wins, losses, draws)')
+        .select(`
+          id, username, avatar_url,
+          active_avatar_id, active_badge_id, active_banner_id,
+          avatar_item:cosmetic_items!active_avatar_id(asset_url),
+          badge_item:cosmetic_items!active_badge_id(asset_url, name),
+          banner_item:cosmetic_items!active_banner_id(asset_url),
+          player_stats(rank_tier, wins, losses, draws)
+        `)
         .eq('username', username)
         .single();
 
@@ -64,6 +75,10 @@ const ProfilePage: React.FC = () => {
         player_id: pid,
         username: profileData.username,
         avatar_url: profileData.avatar_url,
+        avatarUrl:  (profileData as any).avatar_item?.asset_url ?? profileData.avatar_url ?? null,
+        badgeUrl:   (profileData as any).badge_item?.asset_url ?? null,
+        badgeName:  (profileData as any).badge_item?.name ?? null,
+        bannerUrl:  (profileData as any).banner_item?.asset_url ?? null,
         level: prog?.level ?? 1,
         rank_tier: stats?.rank_tier ?? 'Challenger',
         wins: stats?.wins ?? 0,
@@ -134,30 +149,48 @@ const ProfilePage: React.FC = () => {
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '20px' }}>←</button>
           <h1 style={{ margin: 0, color: '#fff' }}>Profile</h1>
           {isOwnProfile && (
-            <button onClick={() => navigate('/settings')}
+            <button onClick={() => navigate('/customise')}
               style={{ marginLeft: 'auto', background: '#2a3441', border: '1px solid #4a5568', color: '#a0aec0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}>
-              Edit Profile
+              Customise
             </button>
           )}
         </div>
 
         {/* Avatar + name */}
-        <div style={{ background: '#2a3441', borderRadius: '12px', padding: '24px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#1a2332', overflow: 'hidden', border: '2px solid #4a5568', flexShrink: 0 }}>
-            {profile.avatar_url
-              ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: '#a0aec0' }}>
-                  {profile.username[0]?.toUpperCase()}
-                </div>
-            }
-          </div>
-          <div>
-            <div style={{ fontSize: '22px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {profile.username}
-              <LevelBadge level={profile.level} size="md" />
+        <div style={{
+          position: 'relative', overflow: 'hidden',
+          background: '#2a3441', borderRadius: '12px', padding: '24px', marginBottom: '16px',
+        }}>
+          {/* Banner: use <img> not background-image — SVG data URIs with url(#id) refs break CSS url() parsing */}
+          {profile.bannerUrl && (
+            <>
+              <img src={profile.bannerUrl} alt="" aria-hidden style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+              }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,35,50,0.65)' }} />
+            </>
+          )}
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#1a2332', overflow: 'hidden', border: '2px solid #4a5568', flexShrink: 0 }}>
+              {profile.avatarUrl
+                ? <img src={profile.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: '#a0aec0' }}>
+                    {profile.username[0]?.toUpperCase()}
+                  </div>
+              }
             </div>
-            <div style={{ color: tierColour[profile.rank_tier] ?? '#a0aec0', fontSize: '14px', marginTop: '4px' }}>{profile.rank_tier}</div>
-            {leaderboardPos && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
+            <div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {profile.username}
+                <LevelBadge level={profile.level} size="md" />
+                {profile.badgeUrl && (
+                  <img src={profile.badgeUrl} alt={profile.badgeName ?? 'badge'}
+                    style={{ width: '20px', height: '20px' }} title={profile.badgeName ?? ''} />
+                )}
+              </div>
+              <div style={{ color: tierColour[profile.rank_tier] ?? '#a0aec0', fontSize: '14px', marginTop: '4px' }}>{profile.rank_tier}</div>
+              {leaderboardPos !== null && <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>Rank #{leaderboardPos}</div>}
+            </div>
           </div>
         </div>
 

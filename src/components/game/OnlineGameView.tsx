@@ -29,6 +29,8 @@ import {
 } from '../../lib/sounds';
 import { callPostGameHandler } from '../../lib/postGame';
 import { PostGameModal, PostGameResult } from '../progression/PostGameModal';
+import EmojiPanel from './EmojiPanel';
+import EmojiBubble from './EmojiBubble';
 import { useProgression } from '../../hooks/useProgression';
 
 const defaultGameSkins: GameSkins = {
@@ -86,7 +88,7 @@ interface OnlineGameViewProps {
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, status, myMarker, winner, placeMarker, rpsResultPicks, rpsRound, dismissRPSResult, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent, submitRPSPick } = useOnlineGame(gameId);
+  const { game, status, myMarker, winner, placeMarker, rpsResultPicks, rpsRound, dismissRPSResult, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent, submitRPSPick, myEmoji, opponentEmoji, sendEmoji } = useOnlineGame(gameId);
 
   const [showForfeitModal, setShowForfeitModal] = useState(false);
 
@@ -486,13 +488,23 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         drawCount={game.drawCount}
       />
 
-      <MacroBoard
-        microBoards={microBoardsData}
-        onPlaceMarker={placeMarker}
-        nextMicroBoardIndex={game.nextMicroBoardIndex}
-        macroWinner={macroWinner}
-        lastMove={null}
-      />
+      <div style={{ position: 'relative' }}>
+        {myEmoji       && <EmojiBubble emoji={myEmoji}       side="left"  />}
+        {opponentEmoji && <EmojiBubble emoji={opponentEmoji} side="right" />}
+        <MacroBoard
+          microBoards={microBoardsData}
+          onPlaceMarker={placeMarker}
+          nextMicroBoardIndex={game.nextMicroBoardIndex}
+          macroWinner={macroWinner}
+          lastMove={null}
+        />
+      </div>
+
+      {status === 'active' && (
+        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
+          <EmojiPanel onSend={sendEmoji} />
+        </div>
+      )}
 
       {status === 'complete' && (
         <div style={{ marginTop: 20, fontWeight: 'bold', fontSize: '20px', padding: '25px', backgroundColor: '#2a3441', borderRadius: '16px', border: '3px solid #00d4aa', color: '#00d4aa', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>

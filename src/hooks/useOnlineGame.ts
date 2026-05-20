@@ -43,6 +43,10 @@ export const useOnlineGame = (gameId: string) => {
   const [forfeitPlayerId, setForfeitPlayerId] = useState<string | null>(null);
   const [myRematchIntent, setMyRematchIntent] = useState<RematchIntent | null>(null);
   const [opponentRematchIntent, setOpponentRematchIntent] = useState<RematchIntent | null>(null);
+  const [myEmoji, setMyEmoji] = useState<string | null>(null);
+  const [opponentEmoji, setOpponentEmoji] = useState<string | null>(null);
+  const myEmojiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opponentEmojiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const localMoveCountRef = useRef(0);
   const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -313,6 +317,13 @@ export const useOnlineGame = (gameId: string) => {
           setOpponentRematchIntent(payload.payload.intent);
         }
       })
+      .on('broadcast', { event: 'emoji' }, ({ payload }: { payload: { player_id: string; emoji: string } }) => {
+        if (payload.player_id !== user?.id) {
+          if (opponentEmojiTimerRef.current) clearTimeout(opponentEmojiTimerRef.current);
+          setOpponentEmoji(payload.emoji);
+          opponentEmojiTimerRef.current = setTimeout(() => setOpponentEmoji(null), 3000);
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ user_id: user.id });
@@ -326,6 +337,8 @@ export const useOnlineGame = (gameId: string) => {
       channelRef.current = null;
       if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (myEmojiTimerRef.current) clearTimeout(myEmojiTimerRef.current);
+      if (opponentEmojiTimerRef.current) clearTimeout(opponentEmojiTimerRef.current);
     };
   }, [gameId, user, fetchGameState]);
 
@@ -538,6 +551,18 @@ export const useOnlineGame = (gameId: string) => {
     channelRef.current?.send({ type: 'broadcast', event: 'rematch_intent', payload: { intent } });
   }, [user, myMarker, gameId]);
 
+  const sendEmoji = useCallback((emoji: string) => {
+    if (!channelRef.current || !user || status !== 'active') return;
+    if (myEmojiTimerRef.current) clearTimeout(myEmojiTimerRef.current);
+    setMyEmoji(emoji);
+    myEmojiTimerRef.current = setTimeout(() => setMyEmoji(null), 3000);
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'emoji',
+      payload: { player_id: user.id, emoji },
+    });
+  }, [user, status]);
+
   return {
     game, status, myMarker, winner, placeMarker,
     rpsResultPicks, rpsRound, dismissRPSResult, isCreator,
@@ -545,5 +570,6 @@ export const useOnlineGame = (gameId: string) => {
     rematchGameId, forfeitPlayerId,
     myRematchIntent, opponentRematchIntent, signalRematchIntent,
     submitRPSPick,
+    myEmoji, opponentEmoji, sendEmoji,
   };
 };
