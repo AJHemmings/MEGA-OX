@@ -552,7 +552,7 @@ export const useOnlineGame = (gameId: string) => {
   }, [user, myMarker, gameId]);
 
   const sendEmoji = useCallback((emoji: string) => {
-    if (!channelRef.current || !user) return;
+    if (!channelRef.current || !user || status !== 'active') return;
     if (myEmojiTimerRef.current) clearTimeout(myEmojiTimerRef.current);
     setMyEmoji(emoji);
     myEmojiTimerRef.current = setTimeout(() => setMyEmoji(null), 3000);
@@ -561,7 +561,7 @@ export const useOnlineGame = (gameId: string) => {
       event: 'emoji',
       payload: { player_id: user.id, emoji },
     });
-  }, [user]);
+  }, [user, status]);
 
   return {
     game, status, myMarker, winner, placeMarker,
