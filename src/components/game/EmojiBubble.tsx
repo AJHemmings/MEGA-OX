@@ -1,5 +1,6 @@
 // src/components/game/EmojiBubble.tsx
 import React from 'react';
+import '../animations.css';
 
 interface Props {
   emoji: string;
