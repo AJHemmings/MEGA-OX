@@ -40,6 +40,7 @@ const EmojiPanel: React.FC<Props> = ({ onSend }) => {
           display: 'flex', gap: '6px', zIndex: 20,
         }}>
           {items.map(item => (
+            // asset_url for emoji items stores the raw unicode glyph (e.g. '👍'), not a URL
             <button
               key={item.item_id}
               onClick={() => handleSend(item.asset_url)}
