@@ -1,0 +1,50 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+
+export interface Loadout {
+  active_avatar_id: string | null;
+  active_badge_id:  string | null;
+  active_banner_id: string | null;
+}
+
+export function useLoadout(playerId: string | undefined) {
+  const [loadout, setLoadout] = useState<Loadout>({
+    active_avatar_id: null,
+    active_badge_id:  null,
+    active_banner_id: null,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!playerId) { setLoading(false); return; }
+
+    supabase
+      .from('profiles')
+      .select('active_avatar_id, active_badge_id, active_banner_id')
+      .eq('id', playerId)
+      .single()
+      .then(({ data }) => {
+        if (data) setLoadout(data);
+        setLoading(false);
+      });
+  }, [playerId]);
+
+  const equip = useCallback(async (
+    slot: 'active_avatar_id' | 'active_badge_id' | 'active_banner_id',
+    itemId: string
+  ) => {
+    if (!playerId) return;
+    const prev = loadout[slot];
+    setLoadout(l => ({ ...l, [slot]: itemId })); // optimistic
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [slot]: itemId })
+      .eq('id', playerId);
+    if (error) {
+      setLoadout(l => ({ ...l, [slot]: prev })); // roll back on failure
+      console.error('equip failed:', error.message);
+    }
+  }, [playerId, loadout]);
+
+  return { loadout, loading, equip };
+}
