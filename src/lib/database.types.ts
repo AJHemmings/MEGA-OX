@@ -552,6 +552,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_avatar_id: string | null
+          active_badge_id: string | null
+          active_banner_id: string | null
           active_board_id: string | null
           active_marker_id: string | null
           active_theme_id: string | null
@@ -563,6 +566,9 @@ export type Database = {
           username: string
         }
         Insert: {
+          active_avatar_id?: string | null
+          active_badge_id?: string | null
+          active_banner_id?: string | null
           active_board_id?: string | null
           active_marker_id?: string | null
           active_theme_id?: string | null
@@ -574,6 +580,9 @@ export type Database = {
           username: string
         }
         Update: {
+          active_avatar_id?: string | null
+          active_badge_id?: string | null
+          active_banner_id?: string | null
           active_board_id?: string | null
           active_marker_id?: string | null
           active_theme_id?: string | null
@@ -585,6 +594,27 @@ export type Database = {
           username?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_active_avatar"
+            columns: ["active_avatar_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_active_badge"
+            columns: ["active_badge_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_active_banner"
+            columns: ["active_banner_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_active_board"
             columns: ["active_board_id"]
