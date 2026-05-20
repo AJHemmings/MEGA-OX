@@ -26,6 +26,10 @@ export function useLoadout(playerId: string | undefined) {
       .then(({ data }) => {
         if (data) setLoadout(data);
         setLoading(false);
+      })
+      .catch(err => {
+        console.error('useLoadout fetch failed:', err);
+        setLoading(false);
       });
   }, [playerId]);
 
