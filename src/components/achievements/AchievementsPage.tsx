@@ -1,81 +1,169 @@
 // src/components/achievements/AchievementsPage.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAchievements } from '../../hooks/useAchievements';
+import { useAchievements, Achievement } from '../../hooks/useAchievements';
+import { usePlayerProfile } from '../../hooks/usePlayerProfile';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { tokens } from '../../styles/tokens';
+import PageBackground from '../common/PageBackground';
+import Glass from '../common/Glass';
+import Pill from '../common/Pill';
+import TabBar from '../common/TabBar';
+import { ChevronLeft } from '../icons';
 
-export const AchievementsPage: React.FC = () => {
-  const { user } = useAuth();
-  const { achievements, loading } = useAchievements(user?.id);
-  const navigate = useNavigate();
+type AchCategory = 'All' | 'Wins' | 'Streaks' | 'Skill' | 'Social';
 
-  if (loading) return <div style={{ color: '#fff', padding: 32 }}>Loading...</div>;
+const CATEGORY_KEYS: Record<AchCategory, string[]> = {
+  All:     [],
+  Wins:    ['win'],
+  Streaks: ['streak'],
+  Skill:   ['skill', 'board', 'draw'],
+  Social:  ['social', 'friend', 'game'],
+};
 
-  const unlocked = achievements.filter(a => a.unlocked);
-  const locked = achievements.filter(a => !a.unlocked);
+const AchCard: React.FC<{ a: Achievement }> = ({ a }) => {
+  const rewardLabel = [
+    a.reward_xp > 0      ? `+${a.reward_xp} XP`             : '',
+    a.reward_credits > 0 ? `+${a.reward_credits} Credits`    : '',
+    a.reward_skin_id     ? 'LEGENDARY SKIN'                   : '',
+  ].filter(Boolean).join(' · ') || '—';
 
-  const AchievementCard = ({ a, dim }: { a: typeof achievements[0]; dim?: boolean }) => (
-    <div style={{
-      background: '#1a1a2e', border: '1px solid #2a2a4e', borderRadius: 10,
-      padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start',
-      opacity: dim ? 0.5 : 1
-    }}>
-      <span style={{ fontSize: 28, lineHeight: 1 }}>🏆</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: '#fff' }}>{a.name}</div>
-        <div style={{ fontSize: 13, color: '#aaa', marginTop: 2 }}>{a.description}</div>
-        <div style={{ fontSize: 12, color: '#7c7cff', marginTop: 4 }}>
-          {a.reward_xp > 0 && `+${a.reward_xp} XP  `}
-          {a.reward_credits > 0 && `+${a.reward_credits} Credits`}
+  const tileBg = a.unlocked
+    ? 'linear-gradient(135deg, rgba(0,212,170,0.2), rgba(124,77,255,0.13))'
+    : 'rgba(255,255,255,0.04)';
+  const tileBorder = a.unlocked
+    ? `1.5px solid ${tokens.accent}`
+    : '1px solid rgba(255,255,255,0.06)';
+
+  return (
+    <Glass padding={14}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Icon tile */}
+        <div style={{
+          width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden', background: tileBg, border: tileBorder,
+        }}>
+          {a.icon_url
+            ? <img src={a.icon_url} alt={a.name} style={{ width: 32, height: 32, objectFit: 'contain' }} />
+            : <span style={{ fontSize: 24, opacity: a.unlocked ? 1 : 0.4 }}>{a.unlocked ? '🏆' : '🔒'}</span>
+          }
         </div>
-        {a.unlocked && a.unlocked_at && (
-          <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
-            Unlocked {new Date(a.unlocked_at).toLocaleDateString()}
+
+        {/* Text */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text }}>{a.name}</div>
+          <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2 }}>{a.description}</div>
+          {a.unlocked
+            ? <div style={{ fontSize: 10, color: tokens.accent, marginTop: 4, fontWeight: 700 }}>Reward claimed: {rewardLabel}</div>
+            : <div style={{ fontSize: 10, color: tokens.textDim, marginTop: 4, fontWeight: 600 }}>Reward: {rewardLabel}</div>
+          }
+        </div>
+
+        {/* UNLOCKED badge */}
+        {a.unlocked && (
+          <div style={{
+            flexShrink: 0, padding: '3px 8px', borderRadius: 6,
+            background: 'rgba(0,212,170,0.15)', border: '1px solid rgba(0,212,170,0.35)',
+            fontSize: 9, fontWeight: 800, color: tokens.accent, letterSpacing: 0.8,
+          }}>
+            UNLOCKED
           </div>
         )}
       </div>
+    </Glass>
+  );
+};
+
+export const AchievementsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const profile = usePlayerProfile();
+  const isMobile = useIsMobile();
+  const { achievements, loading } = useAchievements(user?.id);
+  const [category, setCategory] = useState<AchCategory>('All');
+
+  const filtered = category === 'All'
+    ? achievements
+    : achievements.filter(a =>
+        CATEGORY_KEYS[category].some(k => (a.condition_key ?? '').toLowerCase().includes(k))
+      );
+
+  const unlockedCount = achievements.filter(a => a.unlocked).length;
+  const totalCount    = achievements.length;
+  const progressPct   = totalCount > 0 ? (unlockedCount / totalCount) * 100 : 0;
+
+  const content = (
+    <div style={{
+      fontFamily: tokens.font, color: tokens.text,
+      maxWidth: 600, margin: '0 auto',
+      padding: '0 16px', paddingBottom: isMobile ? 100 : 60,
+    }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
+        <button
+          onClick={() => navigate(-1)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Achievements</span>
+        {!loading && totalCount > 0 && (
+          <Pill variant="teal">{unlockedCount} / {totalCount}</Pill>
+        )}
+      </div>
+
+      {/* Total progress card */}
+      {!loading && totalCount > 0 && (
+        <Glass style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>Total progress</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: tokens.accent }}>{Math.round(progressPct)}%</span>
+          </div>
+          <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: tokens.rPill, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', width: `${progressPct}%`,
+              background: `linear-gradient(90deg, ${tokens.accent}, ${tokens.xp})`,
+              borderRadius: tokens.rPill, boxShadow: '0 0 8px rgba(0,212,170,0.45)',
+            }} />
+          </div>
+        </Glass>
+      )}
+
+      {/* Category scroll */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4, scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'] }}>
+        {(['All', 'Wins', 'Streaks', 'Skill', 'Social'] as AchCategory[]).map(cat => (
+          <button key={cat} onClick={() => setCategory(cat)} style={{
+            flexShrink: 0, padding: '6px 14px', borderRadius: tokens.rPill, border: 'none', cursor: 'pointer',
+            background: category === cat ? tokens.accent : 'rgba(255,255,255,0.06)',
+            color: category === cat ? '#060d1f' : tokens.textMuted,
+            fontWeight: 700, fontSize: 12, fontFamily: tokens.font,
+            transition: 'background 0.15s, color 0.15s',
+          }}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Achievement list */}
+      {loading ? (
+        <div style={{ color: tokens.textMuted, textAlign: 'center', padding: 40 }}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>No achievements in this category.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(a => <AchCard key={a.id} a={a} />)}
+        </div>
+      )}
     </div>
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1a2332', padding: 24, color: '#fff' }}>
-    <div style={{ maxWidth: 600, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: 24 }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '20px', padding: 0 }}
-        >←</button>
-        <h1 style={{ margin: 0 }}>Achievements</h1>
-      </div>
-
-      {unlocked.length > 0 && (
-        <>
-          <h2 style={{ fontSize: 16, color: '#aaa', marginBottom: 12 }}>
-            Unlocked ({unlocked.length})
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
-            {unlocked.map(a => <AchievementCard key={a.id} a={a} />)}
-          </div>
-        </>
-      )}
-
-      {locked.length > 0 && (
-        <>
-          <h2 style={{ fontSize: 16, color: '#aaa', marginBottom: 12 }}>
-            Locked ({locked.length})
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {locked.map(a => <AchievementCard key={a.id} a={a} dim />)}
-          </div>
-        </>
-      )}
-
-      {!loading && achievements.length === 0 && (
-        <div style={{ color: '#4a5568', fontSize: 14, marginTop: 16 }}>
-          No achievements available yet.
-        </div>
-      )}
-    </div>
-    </div>
+    <PageBackground>
+      {content}
+      {isMobile && <TabBar username={profile?.username ?? undefined} />}
+    </PageBackground>
   );
 };

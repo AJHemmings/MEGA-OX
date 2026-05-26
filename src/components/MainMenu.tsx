@@ -2,28 +2,581 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
-import { useRecentGames } from '../hooks/useRecentGames';
+import { useRecentGames, RecentGame } from '../hooks/useRecentGames';
+import { useProgression } from '../hooks/useProgression';
+import { useLoginStreak } from '../hooks/useLoginStreak';
+import { useTutorial } from '../hooks/useTutorial';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { supabase } from '../lib/supabase';
 import introJs from 'intro.js';
 import 'intro.js/introjs.css';
-import NewsSlideshow from './layout/NewsSlideshow';
-import { CreditsBalance } from './layout/CreditsBalance';
-import { useTutorial } from '../hooks/useTutorial';
-import { useLoginStreak } from '../hooks/useLoginStreak';
-import { Modal } from './modal';
+import { tokens } from '../styles/tokens';
+import PageBackground from './common/PageBackground';
+import Glass from './common/Glass';
+import PrimaryButton from './common/PrimaryButton';
+import SecondaryButton from './common/SecondaryButton';
+import { Coin, Flame } from './icons';
+import TabBar from './common/TabBar';
 import { LevelBadge } from './progression/LevelBadge';
+import { XPProgressBar } from './progression/XPProgressBar';
+import NewsSlideshow from './layout/NewsSlideshow';
+import { Modal } from './modal';
+
+// ── helpers ───────────────────────────────────────────────────
+
+const RESULT_CONFIG = {
+  Win:  { label: 'W', color: tokens.win,  bg: 'rgba(0,212,170,0.18)',   border: 'rgba(0,212,170,0.35)' },
+  Loss: { label: 'L', color: tokens.loss, bg: 'rgba(255,107,107,0.18)', border: 'rgba(255,107,107,0.35)' },
+  Draw: { label: 'D', color: tokens.draw, bg: 'rgba(255,255,255,0.10)', border: 'rgba(255,255,255,0.18)' },
+} as const;
+
+const MODE_TILES_MOBILE = [
+  { emoji: '🤖', label: 'Training', sub: 'vs AI', bg: 'rgba(247,147,30,0.14)', border: 'rgba(247,147,30,0.30)', action: 'difficulty' },
+  { emoji: '🌐', label: 'Multiplayer', sub: 'Online & local', bg: 'rgba(66,153,225,0.14)', border: 'rgba(66,153,225,0.30)', action: '/multiplayer' },
+  { emoji: '📖', label: 'Tutorial', sub: 'How to play', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.12)', action: '/how-to-play' },
+  { emoji: '🏆', label: 'Season',   sub: 'Ranked ladder', bg: 'rgba(124,77,255,0.14)', border: 'rgba(124,77,255,0.30)', action: '/season' },
+] as const;
+
+const MODE_TILES_DESKTOP = MODE_TILES_MOBILE.slice(0, 3);
+
+const DESKTOP_NAV = [
+  { label: 'Home',         path: '/menu' },
+  { label: 'Leaderboard',  path: '/leaderboard' },
+  { label: 'Achievements', path: '/achievements' },
+  { label: 'Season',       path: '/season' },
+];
+
+// ── sub-components ────────────────────────────────────────────
+
+const Avatar: React.FC<{ initial: string; size: number }> = ({ initial, size }) => (
+  <div style={{
+    width: size, height: size, borderRadius: '50%', flexShrink: 0,
+    background: `linear-gradient(135deg, ${tokens.accent}, ${tokens.xp})`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontWeight: 900, fontSize: size * 0.38,
+    border: '2px solid rgba(255,255,255,0.15)',
+    boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+  }}>
+    {initial}
+  </div>
+);
+
+const CreditChip: React.FC<{ amount: number }> = ({ amount }) => (
+  <span style={{
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    padding: '5px 12px',
+    background: 'rgba(249,168,37,0.12)',
+    border: '1px solid rgba(249,168,37,0.35)',
+    borderRadius: tokens.rPill,
+    color: tokens.credits, fontWeight: 800, fontSize: 13,
+    fontFamily: tokens.font,
+  }}>
+    <Coin size={13} />
+    {amount.toLocaleString()}
+  </span>
+);
+
+const RecentGameRow: React.FC<{ game: RecentGame }> = ({ game }) => {
+  const cfg = RESULT_CONFIG[game.result];
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '10px 0',
+      borderBottom: `1px solid ${tokens.innerBorder.replace('1px solid ', '')}`,
+    }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+        background: cfg.bg, border: `1px solid ${cfg.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: cfg.color, fontWeight: 900, fontSize: 12,
+      }}>
+        {cfg.label}
+      </div>
+      <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: tokens.text }}>
+        vs {game.opponentUsername}
+      </span>
+      <span style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+        color: tokens.textDim, textTransform: 'uppercase',
+      }}>
+        {game.match_type}
+      </span>
+    </div>
+  );
+};
+
+const HeroCard: React.FC<{ onPlay: () => void }> = ({ onPlay }) => (
+  <Glass style={{ position: 'relative', overflow: 'hidden', padding: 20 }} padding={0}>
+    <div style={{
+      position: 'absolute', inset: 0, pointerEvents: 'none',
+      background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.12))',
+      borderRadius: tokens.glassRadius,
+    }} />
+    {/* corner glow */}
+    <div style={{
+      position: 'absolute', top: -30, right: -30,
+      width: 140, height: 140, borderRadius: '50%',
+      background: 'rgba(0,212,170,0.22)',
+      filter: 'blur(40px)', pointerEvents: 'none',
+    }} />
+    <div style={{ position: 'relative', padding: 20 }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+        color: tokens.accent, textTransform: 'uppercase', marginBottom: 6,
+      }}>
+        Quick Play
+      </div>
+      <div style={{ fontSize: 19, fontWeight: 900, color: tokens.text, marginBottom: 16 }}>
+        Multiplayer
+      </div>
+      <PrimaryButton fullWidth onClick={onPlay} style={{ fontSize: 15 }}>
+        ▶&nbsp;&nbsp;Play Now
+      </PrimaryButton>
+    </div>
+  </Glass>
+);
+
+interface StreakModalProps {
+  current: number;
+  rewardText: string;
+  onClaim: () => void;
+}
+
+const StreakModal: React.FC<StreakModalProps> = ({ current, rewardText, onClaim }) => {
+  const today = Math.min(current, 7);
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      background: 'rgba(6,13,31,0.80)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20,
+    }}>
+      <Glass style={{ maxWidth: 380, width: '100%', overflow: 'hidden', padding: 0 }}>
+        {/* gold radial glow */}
+        <div style={{
+          position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
+          width: 180, height: 180, borderRadius: '50%',
+          background: 'rgba(249,168,37,0.20)',
+          filter: 'blur(50px)', pointerEvents: 'none',
+        }} />
+        <div style={{ position: 'relative', padding: 28, textAlign: 'center' }}>
+          <Flame size={52} />
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: tokens.credits,
+            textTransform: 'uppercase', marginTop: 12, marginBottom: 6,
+          }}>
+            Daily Login
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: tokens.text, marginBottom: 20 }}>
+            Day {current} Streak!
+          </div>
+
+          {/* 7-day strip */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
+            {Array.from({ length: 7 }, (_, i) => i + 1).map(day => {
+              const isPast   = day < today;
+              const isToday  = day === today;
+              return (
+                <div key={day} style={{
+                  flex: 1, height: 48, borderRadius: 8,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 2,
+                  background: isToday
+                    ? 'linear-gradient(135deg, #f9a825, #f57c00)'
+                    : isPast
+                    ? 'rgba(249,168,37,0.18)'
+                    : tokens.innerBg,
+                  border: isToday ? 'none' : isPast
+                    ? '1px solid rgba(249,168,37,0.35)'
+                    : tokens.innerBorder,
+                }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 800,
+                    color: isToday ? '#fff' : isPast ? tokens.credits : tokens.textDim,
+                  }}>
+                    {isPast ? '✓' : day}
+                  </span>
+                  <span style={{
+                    fontSize: 8, fontWeight: 700, letterSpacing: 0.3,
+                    color: isToday ? 'rgba(255,255,255,0.75)' : tokens.textDim,
+                    textTransform: 'uppercase',
+                  }}>
+                    Day {day}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* reward chip */}
+          <div style={{ marginBottom: 20 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px',
+              background: 'rgba(249,168,37,0.15)',
+              border: '1px solid rgba(249,168,37,0.40)',
+              borderRadius: tokens.rPill,
+              color: tokens.credits, fontWeight: 800, fontSize: 14,
+            }}>
+              <Coin size={16} />
+              {rewardText}
+            </span>
+          </div>
+
+          <PrimaryButton fullWidth onClick={onClaim}>
+            Claim Reward
+          </PrimaryButton>
+        </div>
+      </Glass>
+    </div>
+  );
+};
+
+// ── mobile layout ─────────────────────────────────────────────
+
+interface LayoutProps {
+  profile: ReturnType<typeof usePlayerProfile>;
+  progression: ReturnType<typeof useProgression>;
+  recentGames: RecentGame[];
+  initial: string;
+  onPlay: () => void;
+  onMode: (action: string) => void;
+  onSignOut: () => void;
+  navigate: ReturnType<typeof useNavigate>;
+}
+
+const MobileLayout: React.FC<LayoutProps> = ({
+  profile, progression, recentGames, initial, onPlay, onMode, navigate,
+}) => (
+  <div style={{
+    minHeight: '100vh',
+    padding: '0 16px',
+    paddingBottom: 88, // tab bar clearance
+    fontFamily: tokens.font,
+  }}>
+    {/* Top bar */}
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '52px 0 16px',
+    }}>
+      <span style={{
+        fontSize: 22, fontWeight: 900, letterSpacing: 2,
+        background: `linear-gradient(90deg, ${tokens.text} 30%, ${tokens.accent} 100%)`,
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      }}>
+        MEGA OX
+      </span>
+      <CreditChip amount={progression.credits} />
+    </div>
+
+    {/* Player card */}
+    <Glass style={{ marginBottom: 12 }} padding={16}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Avatar initial={initial} size={56} />
+          <div style={{ position: 'absolute', bottom: -4, right: -4 }}>
+            <LevelBadge level={profile?.level ?? 1} size="sm" />
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div id="menu-profile" style={{
+            fontSize: 17, fontWeight: 800, color: tokens.text,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {profile?.username ?? '—'}
+          </div>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: 0.4,
+            color: tokens.accent, textTransform: 'uppercase', marginBottom: 8,
+          }}>
+            {profile?.rank_tier ?? 'Challenger'}
+          </div>
+          {!progression.loading && (
+            <XPProgressBar
+              level={progression.level}
+              xpIntoLevel={progression.xpIntoLevel}
+              xpNeededForLevel={progression.xpNeededForLevel}
+              xpToNext={progression.xpToNext}
+              height={6}
+            />
+          )}
+        </div>
+      </div>
+    </Glass>
+
+    {/* Hero CTA */}
+    <div id="menu-play" style={{ marginBottom: 12 }}>
+      <HeroCard onPlay={onPlay} />
+    </div>
+
+    {/* Mode tiles 2×2 */}
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1fr 1fr',
+      gap: 8, marginBottom: 12,
+    }}>
+      {MODE_TILES_MOBILE.map(t => (
+        <button
+          key={t.label}
+          onClick={() => onMode(t.action)}
+          style={{
+            background: t.bg, border: `1px solid ${t.border}`,
+            borderRadius: 14, padding: 14,
+            textAlign: 'left', cursor: 'pointer', fontFamily: tokens.font,
+          }}
+          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <div style={{ fontSize: 22, marginBottom: 6 }}>{t.emoji}</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text }}>{t.label}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: tokens.textMuted }}>{t.sub}</div>
+        </button>
+      ))}
+    </div>
+
+    {/* Recent games */}
+    <Glass id="menu-recent-games" style={{ marginBottom: 12 }} padding={16}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: 1, color: tokens.textMuted,
+        textTransform: 'uppercase', marginBottom: 12,
+      }}>
+        Last 5 Games
+      </div>
+      {recentGames.length === 0 ? (
+        <div style={{ fontSize: 13, color: tokens.textMuted }}>No games yet — play your first!</div>
+      ) : (
+        recentGames.map(g => <RecentGameRow key={g.id} game={g} />)
+      )}
+    </Glass>
+
+    {/* News */}
+    <Glass id="menu-news" padding={16}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: 1, color: tokens.textMuted,
+        textTransform: 'uppercase', marginBottom: 12,
+      }}>
+        News
+      </div>
+      <NewsSlideshow />
+    </Glass>
+  </div>
+);
+
+// ── desktop layout ────────────────────────────────────────────
+
+const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
+  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate,
+}) => (
+  <div style={{ minHeight: '100vh', fontFamily: tokens.font }}>
+    {/* Header */}
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '20px 60px',
+      borderBottom: `1px solid ${tokens.innerBorder.replace('1px solid ', '')}`,
+    }}>
+      <span style={{
+        fontSize: 22, fontWeight: 900, letterSpacing: 2, flexShrink: 0,
+        background: `linear-gradient(90deg, ${tokens.text} 30%, ${tokens.accent} 100%)`,
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+      }}>
+        MEGA OX
+      </span>
+
+      {/* Nav */}
+      <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+        {DESKTOP_NAV.map(n => (
+          <button
+            key={n.path}
+            onClick={() => navigate(n.path)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: tokens.font, fontWeight: 700, fontSize: 14,
+              color: n.path === '/menu' ? tokens.text : tokens.textMuted,
+              padding: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = tokens.text; }}
+            onMouseLeave={e => { e.currentTarget.style.color = n.path === '/menu' ? tokens.text : tokens.textMuted; }}
+          >
+            {n.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Right cluster */}
+      <div id="menu-profile" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <CreditChip amount={progression.credits} />
+        <button
+          onClick={() => profile && navigate(`/profile/${profile.username}`)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          }}
+        >
+          <Avatar initial={initial} size={36} />
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text }}>
+              {profile?.username ?? '—'}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: tokens.accent }}>
+              {profile?.rank_tier ?? 'Challenger'}
+            </div>
+          </div>
+          <LevelBadge level={profile?.level ?? 1} size="sm" />
+        </button>
+        <SecondaryButton size="sm" onClick={onSignOut}>Sign out</SecondaryButton>
+      </div>
+    </div>
+
+    {/* Body */}
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1.4fr 1fr',
+      gap: 28, maxWidth: 1100, margin: '0 auto',
+      padding: '28px 60px',
+    }}>
+      {/* Left column */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div id="menu-play">
+          <HeroCard onPlay={onPlay} />
+        </div>
+
+        {/* 3-col mode tiles */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+          {MODE_TILES_DESKTOP.map(t => (
+            <button
+              key={t.label}
+              onClick={() => onMode(t.action)}
+              style={{
+                background: t.bg, border: `1px solid ${t.border}`,
+                borderRadius: 14, padding: '14px 12px',
+                textAlign: 'left', cursor: 'pointer', fontFamily: tokens.font,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
+            >
+              <div style={{ fontSize: 20, marginBottom: 6 }}>{t.emoji}</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: tokens.text }}>{t.label}</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: tokens.textMuted }}>{t.sub}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* News */}
+        <Glass id="menu-news" padding={16}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: 1, color: tokens.textMuted,
+            textTransform: 'uppercase', marginBottom: 12,
+          }}>
+            News
+          </div>
+          <NewsSlideshow />
+        </Glass>
+      </div>
+
+      {/* Right column */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Player card */}
+        <Glass padding={20}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <Avatar initial={initial} size={52} />
+              <div style={{ position: 'absolute', bottom: -4, right: -4 }}>
+                <LevelBadge level={profile?.level ?? 1} size="sm" />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: tokens.text }}>
+                {profile?.username ?? '—'}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: tokens.accent, letterSpacing: 0.4 }}>
+                {profile?.rank_tier ?? 'Challenger'}
+              </div>
+            </div>
+          </div>
+          {!progression.loading && (
+            <XPProgressBar
+              level={progression.level}
+              xpIntoLevel={progression.xpIntoLevel}
+              xpNeededForLevel={progression.xpNeededForLevel}
+              xpToNext={progression.xpToNext}
+            />
+          )}
+          {/* W / L / D stat trio */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 16 }}>
+            {([
+              { label: 'Wins',   value: profile?.wins ?? 0,   color: tokens.win },
+              { label: 'Losses', value: profile?.losses ?? 0, color: tokens.loss },
+              { label: 'Draws',  value: profile?.draws ?? 0,  color: tokens.draw },
+            ] as const).map(s => (
+              <div key={s.label} style={{
+                background: tokens.innerBg, border: tokens.innerBorder,
+                borderRadius: 10, padding: '10px 0', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                  color: tokens.textMuted, textTransform: 'uppercase', marginTop: 2,
+                }}>
+                  {s.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Glass>
+
+        {/* Last 5 games */}
+        <Glass id="menu-recent-games" padding={16}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 12,
+          }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 1,
+              color: tokens.textMuted, textTransform: 'uppercase',
+            }}>
+              Last 5 Games
+            </div>
+            <button
+              id="menu-leaderboard-btn"
+              onClick={() => navigate('/leaderboard')}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: tokens.font, fontSize: 11, fontWeight: 700,
+                color: tokens.accent,
+              }}
+            >
+              Leaderboard →
+            </button>
+          </div>
+          {recentGames.length === 0 ? (
+            <div style={{ fontSize: 13, color: tokens.textMuted }}>No games yet!</div>
+          ) : (
+            recentGames.map(g => <RecentGameRow key={g.id} game={g} />)
+          )}
+        </Glass>
+      </div>
+    </div>
+  </div>
+);
+
+// ── main component ────────────────────────────────────────────
 
 const MainMenu: React.FC = () => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const profile = usePlayerProfile();
   const recentGames = useRecentGames();
+  const progression = useProgression(user?.id);
+  const streakData = useLoginStreak();
+  const { shouldAutoStart, markComplete } = useTutorial('home');
+  const isMobile = useIsMobile();
+
+  const [showDifficulty, setShowDifficulty] = useState(false);
+  const [streakDismissed, setStreakDismissed] = useState(false);
   const [_activeSeason, setActiveSeason] = useState(false);
   const [_activeTournament, setActiveTournament] = useState(false);
-  const [showDifficulty, setShowDifficulty] = useState(false);
-  const { shouldAutoStart, markComplete } = useTutorial('home');
-  const streakData = useLoginStreak();
-  const [streakDismissed, setStreakDismissed] = useState(false);
 
   useEffect(() => {
     supabase.from('seasons').select('id').eq('status', 'active').limit(1)
@@ -36,37 +589,14 @@ const MainMenu: React.FC = () => {
     introJs()
       .setOptions({
         steps: [
-          {
-            element: document.querySelector('#menu-play') as Element,
-            intro: 'This is the <b>Play area</b>. Train against the AI, challenge a friend locally or online, join a league, play in a tournament, or compete in a season.',
-            title: 'Play',
-          },
-          {
-            element: document.querySelector('#menu-recent-games') as Element,
-            intro: 'Your <b>last 5 games</b> are shown here. Win/Loss/Draw and who you played.',
-            title: 'Recent Games',
-          },
-          {
-            element: document.querySelector('#menu-news') as Element,
-            intro: 'Stay up to date with <b>news</b> — updates, events, and announcements.',
-            title: 'News',
-          },
-          {
-            element: document.querySelector('#menu-leaderboard-btn') as Element,
-            intro: 'Check the <b>Leaderboard</b> to see the top-ranked players.',
-            title: 'Leaderboard',
-          },
-          {
-            element: document.querySelector('#menu-profile') as Element,
-            intro: 'Your <b>profile</b>, <b>rank tier</b>, and <b>settings</b> live up here. Click your name to view your full profile.',
-            title: 'Your Profile',
-          },
+          { element: document.querySelector('#menu-play') as Element,         title: 'Play',          intro: 'Your main play area — ranked multiplayer, training, local and more.' },
+          { element: document.querySelector('#menu-recent-games') as Element, title: 'Recent Games',  intro: 'Your <b>last 5 games</b> — win/loss/draw and opponent.' },
+          { element: document.querySelector('#menu-news') as Element,         title: 'News',          intro: 'Updates, events and announcements.' },
+          { element: document.querySelector('#menu-leaderboard-btn') as Element, title: 'Leaderboard', intro: 'Check the top-ranked players.' },
+          { element: document.querySelector('#menu-profile') as Element,      title: 'Your Profile',  intro: 'Your profile, rank tier and settings.' },
         ],
-        nextLabel: 'Next →',
-        prevLabel: '← Back',
-        doneLabel: 'Got it!',
-        showBullets: false,
-        exitOnOverlayClick: false,
+        nextLabel: 'Next →', prevLabel: '← Back', doneLabel: 'Got it!',
+        showBullets: false, exitOnOverlayClick: false,
       })
       .oncomplete(markComplete)
       .onexit(markComplete)
@@ -75,102 +605,58 @@ const MainMenu: React.FC = () => {
 
   useEffect(() => {
     if (!shouldAutoStart) return;
-    const timer = setTimeout(startIntro, 500);
-    return () => clearTimeout(timer);
+    const t = setTimeout(startIntro, 500);
+    return () => clearTimeout(t);
   }, [shouldAutoStart, startIntro]);
 
-  const container: React.CSSProperties = { minHeight: '100vh', background: '#1a2332', color: '#fff', fontFamily: 'sans-serif' };
-  const header: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #3a4a5a' };
-  const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', padding: '24px', maxWidth: '900px', margin: '0 auto' };
-  const card: React.CSSProperties = { background: '#2a3441', borderRadius: '12px', padding: '24px' };
-  const modeBtn = (disabled: boolean): React.CSSProperties => ({
-    display: 'block', width: '100%', padding: '14px', marginBottom: '10px', borderRadius: '8px',
-    border: `1px solid ${disabled ? '#3a4a5a' : '#00d4aa'}`, background: 'transparent',
-    color: disabled ? '#5a6a7a' : '#fff', cursor: disabled ? 'not-allowed' : 'pointer',
-    fontSize: '15px', textAlign: 'left', opacity: disabled ? 0.5 : 1
-  });
+  const initial = profile?.username?.[0]?.toUpperCase() ?? '?';
+
+  const handleMode = (action: string) => {
+    if (action === 'difficulty') { setShowDifficulty(true); return; }
+    navigate(action);
+  };
+
+  const layoutProps = {
+    profile, progression, recentGames, initial,
+    onPlay: () => navigate('/multiplayer'),
+    onMode: handleMode,
+    onSignOut: signOut,
+    navigate,
+  };
 
   return (
-    <div style={container}>
-      {/* Header */}
-      <div style={header}>
-        <h1 style={{ color: '#00d4aa', margin: 0 }}>MEGA OX</h1>
-        <div id="menu-profile" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {profile && (
-            <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={() => navigate(`/profile/${profile.username}`)}>
-              <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
-                <LevelBadge level={profile.level} size="sm" />
-                {profile.username}
-              </div>
-              <div style={{ fontSize: '12px', color: '#a0aec0' }}>{profile.rank_tier} · W:{profile.wins} L:{profile.losses} D:{profile.draws}</div>
-            </div>
-          )}
-          <CreditsBalance />
-          <button onClick={() => navigate('/settings')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer' }}>Settings</button>
-        </div>
-      </div>
+    <PageBackground>
+      {isMobile
+        ? <MobileLayout {...layoutProps} />
+        : <DesktopLayout {...layoutProps} />
+      }
 
-      <div style={grid}>
-        {/* Play section */}
-        <div id="menu-play" style={card}>
-          <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Play</h2>
-          <button style={modeBtn(false)} onClick={() => setShowDifficulty(true)}>Training (vs AI)</button>
-          <button style={modeBtn(false)} onClick={() => navigate('/multiplayer')}>Multiplayer</button>
-          <button style={modeBtn(false)} onClick={() => navigate('/how-to-play')}>How to Play</button>
-        </div>
+      {isMobile && <TabBar username={profile?.username} />}
 
-        {/* Last 5 games */}
-        <div id="menu-recent-games" style={card}>
-          <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Last 5 Games</h2>
-          {recentGames.length === 0 ? (
-            <div style={{ color: '#a0aec0', fontSize: '14px' }}>No games yet — play your first!</div>
-          ) : (
-            recentGames.map(g => (
-              <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '14px' }}>
-                <span style={{ color: g.result === 'Win' ? '#00d4aa' : g.result === 'Loss' ? '#ff6b35' : '#a0aec0', fontWeight: 'bold', width: '40px' }}>{g.result}</span>
-                <span style={{ color: '#fff' }}>vs {g.opponentUsername}</span>
-                <span style={{ color: '#a0aec0', textTransform: 'capitalize' }}>{g.match_type}</span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* News */}
-        <div id="menu-news" style={{ ...card, gridColumn: '1 / -1' }}>
-          <h2 style={{ color: '#a0aec0', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>News</h2>
-          <NewsSlideshow />
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', padding: '16px', borderTop: '1px solid #3a4a5a' }}>
-        <button id="menu-leaderboard-btn" onClick={() => navigate('/leaderboard')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Leaderboard</button>
-        <button onClick={signOut} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Sign out</button>
-      </div>
-
+      {/* Login streak modal */}
       {streakData?.reward && !streakDismissed && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ background: '#2a3441', borderRadius: '12px', padding: '32px', maxWidth: '380px', width: '100%', textAlign: 'center' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔥</div>
-            <h3 style={{ color: '#00d4aa', margin: '0 0 8px' }}>Day {streakData.current} Streak!</h3>
-            <p style={{ color: '#a0aec0', marginBottom: '20px' }}>You've earned a daily reward: <strong style={{ color: '#fff' }}>{streakData.reward.reward_description ?? streakData.reward.reward_type}</strong></p>
-            <button onClick={() => setStreakDismissed(true)}
-              style={{ background: '#00d4aa', border: 'none', color: '#1a2332', padding: '12px 28px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}>
-              Claim Reward
-            </button>
-          </div>
-        </div>
+        <StreakModal
+          current={streakData.current}
+          rewardText={streakData.reward.reward_description ?? streakData.reward.reward_type}
+          onClaim={() => setStreakDismissed(true)}
+        />
       )}
 
+      {/* Difficulty picker (keep existing pattern) */}
       <Modal isOpen={showDifficulty} onClose={() => setShowDifficulty(false)} title="Select Difficulty">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {(['Easy', 'Medium', 'Hard'] as const).map((level) => {
-            const colors = { Easy: '#00d4aa', Medium: '#f7931e', Hard: '#ff6b35' };
+            const colors = { Easy: tokens.win, Medium: tokens.warn, Hard: tokens.loss };
             return (
               <button
                 key={level}
                 onClick={() => { setShowDifficulty(false); navigate(`/training?difficulty=${level.toLowerCase()}`); }}
-                style={{ padding: '14px', borderRadius: '8px', border: 'none', background: colors[level], color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{
+                  padding: 14, borderRadius: tokens.rBtn, border: 'none',
+                  background: colors[level], color: '#fff',
+                  fontSize: 16, fontWeight: 800, cursor: 'pointer',
+                  fontFamily: tokens.font,
+                }}
               >
                 {level}
               </button>
@@ -178,7 +664,7 @@ const MainMenu: React.FC = () => {
           })}
         </div>
       </Modal>
-    </div>
+    </PageBackground>
   );
 };
 

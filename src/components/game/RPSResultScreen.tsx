@@ -1,13 +1,16 @@
 // src/components/game/RPSResultScreen.tsx
 import React, { useEffect } from 'react';
 import { RPSPick, RPSResult } from '../../lib/rps';
+import { tokens } from '../../styles/tokens';
+import PageBackground from '../common/PageBackground';
+import Glass from '../common/Glass';
 
 interface RPSResultScreenProps {
   creatorPick: RPSPick;
-  joinerPick: RPSPick;
-  isCreator: boolean;
-  result: RPSResult;   // 'p1' = creator wins, 'p2' = joiner wins, 'draw' (should re-pick)
-  onContinue: () => void;
+  joinerPick:  RPSPick;
+  isCreator:   boolean;
+  result:      RPSResult;
+  onContinue:  () => void;
 }
 
 const EMOJI: Record<RPSPick, string> = { rock: '🪨', paper: '📄', scissors: '✂️' };
@@ -16,36 +19,58 @@ const RPSResultScreen: React.FC<RPSResultScreenProps> = ({
   creatorPick, joinerPick, isCreator, result, onContinue,
 }) => {
   const iWin = (result === 'p1' && isCreator) || (result === 'p2' && !isCreator);
-  const outcomeText = result === 'draw' ? "It's a draw — re-picking..." : iWin ? 'You go first!' : 'Opponent goes first — your board will be shown!';
+  const outcomeText = result === 'draw'
+    ? "It's a draw — re-picking…"
+    : iWin ? 'You go first!' : 'Opponent goes first!';
 
-  // Caller must pass a stable onContinue (useCallback or top-level fn) — an unstable reference resets the 3s timer on every parent render
+  // Caller must pass a stable onContinue (useCallback or top-level fn)
   useEffect(() => {
     const t = setTimeout(onContinue, 3000);
     return () => clearTimeout(t);
   }, [onContinue]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: '24px' }}>
-      <div style={{ display: 'flex', gap: '48px', fontSize: '64px' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div>{EMOJI[creatorPick]}</div>
-          <div style={{ fontSize: '14px', color: '#a0aec0', marginTop: '8px' }}>
-            {isCreator ? 'You' : 'Opponent'}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', fontSize: '32px', color: '#a0aec0' }}>vs</div>
-        <div style={{ textAlign: 'center' }}>
-          <div>{EMOJI[joinerPick]}</div>
-          <div style={{ fontSize: '14px', color: '#a0aec0', marginTop: '8px' }}>
-            {isCreator ? 'Opponent' : 'You'}
-          </div>
+    <PageBackground>
+      <div style={{
+        fontFamily: tokens.font, color: tokens.text,
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', padding: '24px',
+      }}>
+        <div style={{ width: '100%', maxWidth: 400 }}>
+          <Glass style={{ textAlign: 'center' }}>
+
+            {/* VS row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, marginBottom: 24 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 56, marginBottom: 8 }}>{EMOJI[creatorPick]}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>
+                  {isCreator ? 'YOU' : 'OPPONENT'}
+                </div>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: tokens.textDim }}>vs</div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 56, marginBottom: 8 }}>{EMOJI[joinerPick]}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>
+                  {isCreator ? 'OPPONENT' : 'YOU'}
+                </div>
+              </div>
+            </div>
+
+            {/* Outcome */}
+            <div style={{
+              fontSize: 22, fontWeight: 900, marginBottom: 8,
+              color: result === 'draw' ? tokens.textMuted : iWin ? tokens.accent : tokens.loss,
+            }}>
+              {outcomeText}
+            </div>
+            <div style={{ fontSize: 13, color: tokens.textDim, fontWeight: 600 }}>
+              Starting game…
+            </div>
+
+          </Glass>
         </div>
       </div>
-      <h3 style={{ fontSize: '24px', margin: 0, color: iWin ? '#00d4aa' : '#a0aec0' }}>
-        {outcomeText}
-      </h3>
-      <p style={{ color: '#a0aec0', fontSize: '14px' }}>Starting game...</p>
-    </div>
+    </PageBackground>
   );
 };
 

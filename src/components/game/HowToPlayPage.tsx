@@ -200,7 +200,7 @@ const HowToPlayPage: React.FC = () => {
   })) ?? Array(9).fill({ cells: Array(9).fill(''), winner: '' });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: '#060d1f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: "'Nunito', system-ui, sans-serif" }}>
 
       {/* Hide the Intro.js Next button on steps where the player must click a cell.
           Using a stylesheet rule + body class so it survives intro.js DOM rebuilds. */}
@@ -209,7 +209,7 @@ const HowToPlayPage: React.FC = () => {
       {/* Exit button */}
       <button
         onClick={() => navigate('/')}
-        style={{ position: 'fixed', top: '16px', left: '16px', background: 'none', border: '1px solid #4a5568', color: '#a0aec0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', zIndex: 99999999 }}
+        style={{ position: 'fixed', top: '16px', left: '16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#a0aec0', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', zIndex: 99999999, fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}
       >
         ← Exit Tutorial
       </button>

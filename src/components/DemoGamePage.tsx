@@ -1,233 +1,105 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GameWrapper from './GameWrapper';
-import { Modal } from './modal';
-import { UNLOCK_FEATURES } from './guestUnlockFeatures';
+import Glass from './common/Glass';
+import PrimaryButton from './common/PrimaryButton';
+import { SparkleIcon } from './icons';
+import { tokens } from '../styles/tokens';
 
 const DemoGamePage: React.FC = () => {
   const navigate = useNavigate();
-  const [gameOverResult, setGameOverResult] = useState<string | null>(null);
-  const [gameKey, setGameKey] = useState(0);
-  const [showWantMore, setShowWantMore] = useState(false);
+  const [gameKey, setGameKey]         = useState(0);
+  const [showNudge, setShowNudge]     = useState(false);
+  const [gameOver, setGameOver]       = useState(false);
 
-  const handleGameOver = (result: string) => {
-    setGameOverResult(result);
+  // Show nudge after 30 s of play, or immediately on game over
+  useEffect(() => {
+    const t = setTimeout(() => setShowNudge(true), 30_000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameKey]);
+
+  const handleGameOver = () => {
+    setGameOver(true);
+    setShowNudge(true);
   };
 
   const handlePlayAgain = () => {
-    setGameOverResult(null);
-    setGameKey((k) => k + 1); // forces GameWrapper remount = fresh game
+    setGameOver(false);
+    setShowNudge(false);
+    setGameKey(k => k + 1);
   };
-
-  const getResultText = () => {
-    if (gameOverResult === 'X') return "You won! 🎉";
-    if (gameOverResult === 'O') return "AI wins! 🤖";
-    return "It's a draw!";
-  };
-
-  const wantMoreButton = (
-    <button
-      onClick={() => setShowWantMore(true)}
-      style={{
-        padding: '8px 14px',
-        fontSize: '13px',
-        cursor: 'pointer',
-        borderRadius: 10,
-        border: '1.5px solid #00d4aa',
-        backgroundColor: 'transparent',
-        color: '#00d4aa',
-        fontWeight: '600',
-        transition: 'all 0.2s ease',
-        letterSpacing: '0.02em',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = '#00d4aa';
-        e.currentTarget.style.color = '#1a2332';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'transparent';
-        e.currentTarget.style.color = '#00d4aa';
-      }}
-    >
-      Want More?
-    </button>
-  );
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#1a2332',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
-      }}
-    >
+    <>
       <GameWrapper
         key={gameKey}
         gameMode="single"
+        demoMode
         onBackToMenu={() => navigate('/')}
         onGameOver={handleGameOver}
-        navExtra={wantMoreButton}
       />
 
-      {/* Want More modal */}
-      <Modal
-        isOpen={showWantMore}
-        onClose={() => setShowWantMore(false)}
-        title="Want More?"
-      >
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#a0aec0', marginBottom: '16px', fontSize: '14px' }}>
-            Create a free account to unlock:
-          </p>
-          <ul
-            style={{
-              textAlign: 'left',
-              margin: '0 auto 24px',
-              padding: '0 0 0 18px',
-              color: '#a0aec0',
-              fontSize: '14px',
-              lineHeight: '2',
-              display: 'inline-block',
-            }}
-          >
-            {UNLOCK_FEATURES.map((f) => (
-              <li key={f}>{f}</li>
-            ))}
-          </ul>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <button
-              onClick={() => navigate('/signup')}
-              style={{
-                padding: '13px',
-                fontWeight: 'bold',
-                fontSize: '15px',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: '#00d4aa',
-                color: '#1a2332',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px #00d4aa40',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              Sign Up — It's Free
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              style={{
-                padding: '11px',
-                fontSize: '14px',
-                borderRadius: '12px',
-                border: '2px solid #4299e1',
-                backgroundColor: 'transparent',
-                color: '#4299e1',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#4299e1';
-                e.currentTarget.style.color = '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#4299e1';
-              }}
-            >
-              Already have an account? Log In
-            </button>
-          </div>
+      {/* Sign-up nudge card — fixed bottom overlay */}
+      {showNudge && (
+        <div style={{
+          position: 'fixed', left: 16, right: 16, bottom: 24,
+          zIndex: 200, maxWidth: 420, margin: '0 auto',
+        }}>
+          <Glass padding={0} style={{ overflow: 'hidden' }}>
+            {/* Gradient overlay strip */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.18))',
+              padding: '16px 20px',
+              display: 'flex', alignItems: 'center', gap: 14,
+            }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                background: 'rgba(0,212,170,0.2)', border: `1px solid ${tokens.accent}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <SparkleIcon size={20} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 2 }}>
+                  {gameOver ? 'Game over!' : 'Enjoying the game?'}
+                </div>
+                <div style={{ fontSize: 12, color: tokens.textMuted }}>
+                  Sign up to save progress and rank up
+                </div>
+              </div>
+              {/* Dismiss */}
+              {!gameOver && (
+                <button
+                  onClick={() => setShowNudge(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, fontSize: 18, padding: 4, lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div style={{ padding: '12px 20px', display: 'flex', gap: 10 }}>
+              <PrimaryButton onClick={() => navigate('/signup')} fullWidth>Sign Up</PrimaryButton>
+              {gameOver && (
+                <button
+                  onClick={handlePlayAgain}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: tokens.rBtn,
+                    border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)',
+                    color: tokens.textMuted, fontFamily: tokens.font, fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                >
+                  Play again
+                </button>
+              )}
+            </div>
+          </Glass>
         </div>
-      </Modal>
-
-      {/* Post-game modal */}
-      <Modal
-        isOpen={gameOverResult !== null}
-        onClose={handlePlayAgain}
-        title={getResultText()}
-      >
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#a0aec0', marginBottom: '24px' }}>
-            Sign up to save your stats, play online, and customise your profile.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <button
-              onClick={() => navigate('/signup')}
-              style={{
-                padding: '13px',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: '#00d4aa',
-                color: '#1a2332',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px #00d4aa40',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Sign Up
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              style={{
-                padding: '11px',
-                fontSize: '15px',
-                borderRadius: '12px',
-                border: '2px solid #4299e1',
-                backgroundColor: 'transparent',
-                color: '#4299e1',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#4299e1';
-                e.currentTarget.style.color = '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#4299e1';
-              }}
-            >
-              Log In
-            </button>
-            <button
-              onClick={handlePlayAgain}
-              style={{
-                padding: '11px',
-                fontSize: '15px',
-                borderRadius: '12px',
-                border: '2px solid #718096',
-                backgroundColor: 'transparent',
-                color: '#718096',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#a0aec0';
-                e.currentTarget.style.color = '#a0aec0';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#718096';
-                e.currentTarget.style.color = '#718096';
-              }}
-            >
-              Play Again
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </div>
+      )}
+    </>
   );
 };
 

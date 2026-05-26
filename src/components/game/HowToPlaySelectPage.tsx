@@ -1,114 +1,74 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { tokens } from '../../styles/tokens';
+import PageBackground from '../common/PageBackground';
+import { ChevronLeft } from '../icons';
+
+const MODES = [
+  {
+    key:  'beginner',
+    icon: '📖',
+    label: 'Beginner',
+    desc: 'Learn the core rule — how every move sends your opponent somewhere.',
+    tint: 'rgba(249,168,37,0.12)',
+    border: 'rgba(249,168,37,0.3)',
+  },
+  {
+    key:  'intermediate',
+    icon: '⚔️',
+    label: 'Intermediate',
+    desc: 'Core rule + a full endgame. Win the middle column to beat X.',
+    tint: `rgba(0,212,170,0.12)`,
+    border: `rgba(0,212,170,0.35)`,
+  },
+];
 
 const HowToPlaySelectPage: React.FC = () => {
   const navigate = useNavigate();
-  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#1a2332',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-      gap: '16px',
-    }}>
-      <h1 style={{ color: '#e2e8f0', fontSize: '28px', fontWeight: 700, marginBottom: '8px' }}>
-        How to Play
-      </h1>
-      <p style={{ color: '#a0aec0', fontSize: '16px', marginBottom: '24px', textAlign: 'center', maxWidth: '400px' }}>
-        Choose your starting point.
-      </p>
+    <PageBackground>
+      <div style={{
+        fontFamily: tokens.font, color: tokens.text,
+        maxWidth: 520, margin: '0 auto', padding: '0 20px',
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
+            <ChevronLeft size={20} />
+          </button>
+          <span style={{ fontSize: 18, fontWeight: 800 }}>How to Play</span>
+        </div>
 
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ fontSize: 14, color: tokens.textMuted, marginBottom: 28, fontWeight: 600 }}>
+          Choose your starting point.
+        </div>
 
-        <button
-          onClick={() => navigate('/how-to-play/beginner')}
-          onMouseEnter={() => setHovered('beginner')}
-          onMouseLeave={() => setHovered(null)}
-          onFocus={() => setHovered('beginner')}
-          onBlur={() => setHovered(null)}
-          style={{
-            width: '200px',
-            padding: '32px 24px',
-            background: hovered === 'beginner' ? '#3d4f64' : '#2d3748',
-            border: '2px solid #4a5568',
-            borderRadius: '16px',
-            color: '#e2e8f0',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px',
-            transition: 'background 0.15s',
-            outline: hovered === 'beginner' ? '2px solid #a0aec0' : 'none',
-            outlineOffset: '2px',
-          }}
-        >
-          <span style={{ fontSize: '36px' }}>📖</span>
-          <span style={{ fontSize: '20px', fontWeight: 700 }}>Beginner</span>
-          <span style={{ fontSize: '13px', color: '#a0aec0', textAlign: 'center' }}>
-            Learn the core rule — how every move sends your opponent somewhere.
-          </span>
-        </button>
-
-        <button
-          onClick={() => navigate('/how-to-play/intermediate')}
-          onMouseEnter={() => setHovered('intermediate')}
-          onMouseLeave={() => setHovered(null)}
-          onFocus={() => setHovered('intermediate')}
-          onBlur={() => setHovered(null)}
-          style={{
-            width: '200px',
-            padding: '32px 24px',
-            background: hovered === 'intermediate' ? '#3d4f64' : '#2d3748',
-            border: '2px solid #00d4aa',
-            borderRadius: '16px',
-            color: '#e2e8f0',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px',
-            transition: 'background 0.15s',
-            outline: hovered === 'intermediate' ? '2px solid #00d4aa' : 'none',
-            outlineOffset: '2px',
-          }}
-        >
-          <span style={{ fontSize: '36px' }}>⚔️</span>
-          <span style={{ fontSize: '20px', fontWeight: 700 }}>Intermediate</span>
-          <span style={{ fontSize: '13px', color: '#a0aec0', textAlign: 'center' }}>
-            Core rule + a full endgame. Win the middle column to beat X.
-          </span>
-        </button>
-
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
+          {MODES.map(m => (
+            <button
+              key={m.key}
+              onClick={() => navigate(`/how-to-play/${m.key}`)}
+              style={{
+                flex: '1 1 160px', padding: '28px 20px', borderRadius: 16,
+                background: m.tint, border: `1px solid ${m.border}`,
+                color: tokens.text, cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                fontFamily: tokens.font,
+                transition: 'transform 0.12s, box-shadow 0.12s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <span style={{ fontSize: 36 }}>{m.icon}</span>
+              <span style={{ fontSize: 17, fontWeight: 800 }}>{m.label}</span>
+              <span style={{ fontSize: 12, color: tokens.textMuted, textAlign: 'center', lineHeight: 1.5 }}>{m.desc}</span>
+            </button>
+          ))}
+        </div>
       </div>
-
-      <button
-        onClick={() => navigate('/')}
-        onMouseEnter={() => setHovered('back')}
-        onMouseLeave={() => setHovered(null)}
-        onFocus={() => setHovered('back')}
-        onBlur={() => setHovered(null)}
-        style={{
-          marginTop: '32px',
-          background: 'none',
-          border: '1px solid #4a5568',
-          color: hovered === 'back' ? '#e2e8f0' : '#a0aec0',
-          padding: '8px 16px',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          transition: 'color 0.15s',
-          outline: hovered === 'back' ? '2px solid #a0aec0' : 'none',
-          outlineOffset: '2px',
-        }}
-      >
-        ← Back
-      </button>
-    </div>
+    </PageBackground>
   );
 };
 

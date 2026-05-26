@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Marker } from '../../models/Game';
 import MacroBoard from '../MacroBoard';
-import PlayerIndicator from '../PlayerIndicator';
 import { useOnlineGame } from '../../hooks/useOnlineGame';
 import { SkinProvider } from '../../contexts/SkinContext';
 import {
@@ -32,6 +31,15 @@ import { PostGameModal, PostGameResult } from '../progression/PostGameModal';
 import EmojiPanel from './EmojiPanel';
 import EmojiBubble from './EmojiBubble';
 import { useProgression } from '../../hooks/useProgression';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { tokens } from '../../styles/tokens';
+import PageBackground from '../common/PageBackground';
+import Glass from '../common/Glass';
+import PrimaryButton from '../common/PrimaryButton';
+import SecondaryButton from '../common/SecondaryButton';
+import Pill from '../common/Pill';
+import { ChevronLeft } from '../icons';
+import { LevelBadge } from '../progression/LevelBadge';
 
 const defaultGameSkins: GameSkins = {
   boardSkin:      DEFAULT_BOARD_SKIN,
@@ -41,118 +49,143 @@ const defaultGameSkins: GameSkins = {
   p2WonBoardSkin: DEFAULT_WON_BOARD_O_SKIN,
 };
 
-// Countdown ring shown while waiting for the opponent to decide on a rematch.
 const RING_RADIUS = 36;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const BOARD_NAMES = ['Top-Left', 'Top', 'Top-Right', 'Left', 'Center', 'Right', 'Bottom-Left', 'Bottom', 'Bottom-Right'];
 
 const CountdownRing: React.FC<{ seconds: number; total: number }> = ({ seconds, total }) => {
   const strokeDashoffset = RING_CIRCUMFERENCE * (1 - seconds / total);
   return (
     <svg width="88" height="88" viewBox="0 0 88 88">
-      {/* Background track */}
-      <circle cx="44" cy="44" r={RING_RADIUS} fill="none" stroke="#3a4a5a" strokeWidth="4" />
-      {/* Depleting arc */}
-      <circle
-        cx="44"
-        cy="44"
-        r={RING_RADIUS}
-        fill="none"
-        stroke="#00d4aa"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeDasharray={RING_CIRCUMFERENCE}
-        strokeDashoffset={strokeDashoffset}
-        transform="rotate(-90 44 44)"
-        style={{ transition: 'stroke-dashoffset 0.9s linear' }}
-      />
-      {/* Countdown number */}
-      <text
-        x="44"
-        y="50"
-        textAnchor="middle"
-        fill="#ffffff"
-        fontSize="22"
-        fontWeight="bold"
-        fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
-      >
+      <circle cx="44" cy="44" r={RING_RADIUS} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+      <circle cx="44" cy="44" r={RING_RADIUS} fill="none" stroke={tokens.accent} strokeWidth="4"
+        strokeLinecap="round" strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={strokeDashoffset}
+        transform="rotate(-90 44 44)" style={{ transition: 'stroke-dashoffset 0.9s linear' }} />
+      <text x="44" y="50" textAnchor="middle" fill={tokens.text} fontSize="22" fontWeight="bold" fontFamily={tokens.font}>
         {seconds}
       </text>
     </svg>
   );
 };
 
+interface ProfileSnippet {
+  username: string;
+  rank_tier: string;
+  level: number;
+  avatar_url: string | null;
+}
+
+const PlayerAvatar: React.FC<{ profile: ProfileSnippet | null; fallback: string; size: number; color: string }> = ({ profile, fallback, size, color }) => (
+  <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', border: `2px solid ${color}44`, overflow: 'hidden', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' as const }}>
+      {profile?.avatar_url
+        ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span style={{ fontSize: size * 0.42, fontWeight: 900, color, fontFamily: tokens.font }}>
+            {(profile?.username ?? fallback)[0]?.toUpperCase()}
+          </span>
+      }
+    </div>
+    <div style={{ position: 'absolute', bottom: -2, right: -2 }}>
+      <LevelBadge level={profile?.level ?? 1} size="sm" />
+    </div>
+  </div>
+);
+
 interface OnlineGameViewProps {
   gameId: string;
 }
 
 const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { game, status, myMarker, winner, placeMarker, rpsResultPicks, rpsRound, dismissRPSResult, isCreator, opponentConnected, disconnectCountdown, rematchGameId, forfeitPlayerId, myRematchIntent, opponentRematchIntent, signalRematchIntent, submitRPSPick, myEmoji, opponentEmoji, sendEmoji } = useOnlineGame(gameId);
+  const navigate  = useNavigate();
+  const { user }  = useAuth();
+  const isMobile  = useIsMobile();
+  const {
+    game, status, myMarker, winner, placeMarker,
+    rpsResultPicks, rpsRound, dismissRPSResult,
+    isCreator, opponentConnected, disconnectCountdown,
+    rematchGameId, forfeitPlayerId,
+    myRematchIntent, opponentRematchIntent, signalRematchIntent,
+    submitRPSPick, myEmoji, opponentEmoji, sendEmoji,
+  } = useOnlineGame(gameId);
 
-  const [showForfeitModal, setShowForfeitModal] = useState(false);
+  const [showForfeitModal, setShowForfeitModal]   = useState(false);
+  const [rematchOverlay, setRematchOverlay]       = useState<'agreed' | 'opted_out' | null>(null);
+  const [waitCountdown, setWaitCountdown]         = useState<number | null>(null);
+  const [postGameResult, setPostGameResult]       = useState<PostGameResult | null>(null);
+  const [postGameLoading, setPostGameLoading]     = useState(false);
+  const [rpsResultShown, setRpsResultShown]       = useState(false);
+  const [matchType, setMatchType]                 = useState<string>('friendly');
+  const [myProfile, setMyProfile]                 = useState<ProfileSnippet | null>(null);
+  const [opponentProfile, setOpponentProfile]     = useState<ProfileSnippet | null>(null);
 
-  // Rematch outcome overlay — 'agreed' (cover screen) or 'opted_out' (modal)
-  const [rematchOverlay, setRematchOverlay] = useState<'agreed' | 'opted_out' | null>(null);
-  // Counts down from 30 while waiting for opponent to decide; null when not waiting
-  const [waitCountdown, setWaitCountdown] = useState<number | null>(null);
-  // Keeps rematchGameId accessible in dismiss callbacks without stale closures
-  const rematchGameIdRef = useRef<string | null>(null);
-  // Guards against showing the overlay more than once per game
-  const overlayShownRef = useRef(false);
-  // Prevents countdown from being started more than once per game
-  const countdownStartedRef = useRef(false);
-  // Prevents the rematch navigation from firing twice (effect + dismiss handler)
-  const rematchNavFiredRef = useRef(false);
+  const rematchGameIdRef      = useRef<string | null>(null);
+  const overlayShownRef       = useRef(false);
+  const countdownStartedRef   = useRef(false);
+  const rematchNavFiredRef    = useRef(false);
+  const postGameCalledRef     = useRef(false);
 
-  // Post-game reward state — result from the edge function, cleared on dismiss or new game
-  const [postGameResult, setPostGameResult] = useState<PostGameResult | null>(null);
-  // True while the edge function call is in-flight — hides Play Again / Back to Menu until resolved
-  const [postGameLoading, setPostGameLoading] = useState(false);
-  // Guards against calling the edge function more than once per game
-  const postGameCalledRef = useRef(false);
+  const prevMicroWinnersRef   = useRef<string[]>([]);
+  const prevIsMyTurnRef       = useRef<boolean>(false);
+  const prevStatusRef         = useRef<string>('loading');
+  const prevCellCountRef      = useRef<number>(0);
+  const hasGameStartedRef     = useRef<boolean>(false);
 
-  // Progression data for the XP bar displayed in PostGameModal
   const progression = useProgression(user?.id);
   const { refresh: refreshProgression } = progression;
 
-  // Derived from DB — not from presence, so no race condition when opponent navigates away after game ends
-  const wonByForfeit = forfeitPlayerId !== null;
+  const wonByForfeit      = forfeitPlayerId !== null;
   const opponentForfeited = forfeitPlayerId !== null && forfeitPlayerId !== user?.id;
 
-  const prevMicroWinnersRef = useRef<string[]>([]);
-  const prevIsMyTurnRef = useRef<boolean>(false);
-  const prevStatusRef = useRef<string>('loading');
-  const prevCellCountRef = useRef<number>(0);
-  const hasGameStartedRef = useRef<boolean>(false);
-  // True once the result screen has been shown and dismissed for a non-draw round.
-  // Prevents RPSScreen flashing back during the 'rps'→'active' status gap (race condition
-  // where the result screen auto-continues before postgres_changes delivers status='active').
-  // Must be state (not a ref) so that resetting it on gameId change triggers a re-render —
-  // a ref reset is silent and the RPSScreen would never re-appear for the new game.
-  const [rpsResultShown, setRpsResultShown] = useState(false);
+  // ── Load opponent + my profiles & match type ──
+  useEffect(() => {
+    if (!user || !myMarker) return;
+    (async () => {
+      const { data: gameRow } = await supabase.from('games')
+        .select('player_x_id, player_o_id, match_type')
+        .eq('id', gameId).single();
+      if (!gameRow) return;
+      if (gameRow.match_type) setMatchType(gameRow.match_type);
 
-  // Keep rematchGameIdRef current so dismiss callbacks always have the latest value
+      const opponentId = myMarker === 'X' ? gameRow.player_o_id : gameRow.player_x_id;
+      if (!opponentId) return;
+
+      const loadProfile = async (uid: string): Promise<ProfileSnippet | null> => {
+        const [{ data: p }, { data: prog }] = await Promise.all([
+          supabase.from('profiles').select('username, avatar_url, player_stats(rank_tier)').eq('id', uid).single(),
+          supabase.from('player_progression').select('level').eq('user_id', uid).single(),
+        ]);
+        if (!p) return null;
+        return {
+          username:  p.username,
+          rank_tier: (p as any).player_stats?.rank_tier ?? 'Challenger',
+          level:     prog?.level ?? 1,
+          avatar_url: p.avatar_url,
+        };
+      };
+
+      const [me, opp] = await Promise.all([loadProfile(user.id), loadProfile(opponentId)]);
+      setMyProfile(me);
+      setOpponentProfile(opp);
+    })();
+  }, [gameId, user, myMarker]);
+
+  // ── Preserved logic ──
+
   useEffect(() => { rematchGameIdRef.current = rematchGameId; }, [rematchGameId]);
 
-  // Fire the post-game edge function exactly once when status reaches 'complete'.
   useEffect(() => {
     if (status !== 'complete' || postGameCalledRef.current) return;
     postGameCalledRef.current = true;
     setPostGameLoading(true);
-
     callPostGameHandler(gameId).then(result => {
       setPostGameLoading(false);
       if (result && !result.alreadyProcessed) {
         setPostGameResult(result);
-        refreshProgression(); // re-fetch so PostGameModal shows updated XP
+        refreshProgression();
       }
     });
   }, [status, gameId, refreshProgression]);
 
-  // Reset RPS guard AND all rematch overlay state when gameId changes.
-  // React Router reuses this component instance across /game/:id navigations (Play Again),
-  // so every piece of per-game state must be explicitly reset here.
   useEffect(() => {
     setRpsResultShown(false);
     setRematchOverlay(null);
@@ -165,20 +198,11 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     setPostGameLoading(false);
   }, [gameId]);
 
-  // Auto-navigate when rematch game is ready — suppressed while the 'agreed' overlay is
-  // showing so the overlay can navigate on dismiss instead. rematchNavFiredRef prevents the
-  // effect and the dismiss handler from both firing a navigate.
   useEffect(() => {
     if (!rematchGameId) return;
-    // Guard: rematchGameId still holds the previous game's ID during the async gap between
-    // gameId changing (React Router navigate) and setRematchGameId(null) applying. Treating
-    // a self-ID as a real rematch would show a spurious overlay and poison rematchNavFiredRef,
-    // blocking navigation when the *real* rematch is created later.
     if (rematchGameId === gameId) return;
     if (rematchNavFiredRef.current) return;
     if (rematchOverlay === 'agreed') return;
-    // If this player already clicked Play Again, show the overlay before navigating.
-    // Closes the race where rematchGameId arrives before the intent watcher fires.
     if (myRematchIntent === 'play_again' && !overlayShownRef.current) {
       overlayShownRef.current = true;
       setWaitCountdown(null);
@@ -189,12 +213,9 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     navigate(`/game/${rematchGameId}`);
   }, [rematchGameId, gameId, navigate, rematchOverlay, myRematchIntent]);
 
-  // Show overlay when both intents are known — or immediately if opponent already decided.
-  // Runs on every intent change so it catches the case where opponent decided before I clicked.
   useEffect(() => {
     if (myRematchIntent !== 'play_again') return;
     if (overlayShownRef.current) return;
-
     if (opponentRematchIntent === 'play_again') {
       overlayShownRef.current = true;
       setWaitCountdown(null);
@@ -206,16 +227,14 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     }
   }, [myRematchIntent, opponentRematchIntent]);
 
-  // Start the 30-second countdown the first time I click Play Again and opponent is undecided.
   useEffect(() => {
     if (myRematchIntent !== 'play_again') return;
     if (countdownStartedRef.current) return;
-    if (opponentRematchIntent !== null) return; // opponent already decided — overlay handles it
+    if (opponentRematchIntent !== null) return;
     countdownStartedRef.current = true;
     setWaitCountdown(30);
   }, [myRematchIntent, opponentRematchIntent]);
 
-  // Countdown tick — triggers 'opted_out' overlay when it reaches zero.
   useEffect(() => {
     if (waitCountdown === null) return;
     if (waitCountdown <= 0) {
@@ -223,9 +242,6 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       if (!overlayShownRef.current) {
         overlayShownRef.current = true;
         setRematchOverlay('opted_out');
-        // Write 'back_to_menu' to DB so the opponent can't trigger a rematch
-        // after the countdown expires — without this, a late Play Again click
-        // from the opponent would find both intents = 'play_again' and create a game.
         signalRematchIntent('back_to_menu');
       }
       return;
@@ -244,7 +260,6 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     navigate('/menu');
   }, [myMarker, user, gameId, navigate]);
 
-  // Intercept browser back button — push a dummy state so popstate fires instead of navigating away
   useEffect(() => {
     if (status !== 'active') return;
     window.history.pushState(null, '', window.location.href);
@@ -258,148 +273,93 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   useEffect(() => {
     if (status !== 'active') return;
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [status]);
 
   useEffect(() => {
     if (!game || !myMarker) return;
-
-    // Seed initial state on first active render so sounds don't fire on mount
     const currentIsMyTurn =
       (myMarker === 'X' && game.currentPlayerIndex === 0) ||
       (myMarker === 'O' && game.currentPlayerIndex === 1);
 
     if (status === 'active' && !hasGameStartedRef.current) {
       hasGameStartedRef.current = true;
-      prevIsMyTurnRef.current = currentIsMyTurn; // seed so first turn doesn't fire
+      prevIsMyTurnRef.current = currentIsMyTurn;
       prevCellCountRef.current = game.macroBoard.microBoards
-        .reduce((total, mb) => total + mb.cells.filter(c => c.marker !== Marker.None).length, 0);
+        .reduce((t, mb) => t + mb.cells.filter(c => c.marker !== Marker.None).length, 0);
     }
 
-    // Marker placed — only fire when total filled cells increases by exactly 1
     const currentCellCount = game.macroBoard.microBoards
-      .reduce((total, mb) => total + mb.cells.filter(c => c.marker !== Marker.None).length, 0);
-    if (status === 'active' && currentCellCount === prevCellCountRef.current + 1) {
-      playMarkerPlaced();
-    }
+      .reduce((t, mb) => t + mb.cells.filter(c => c.marker !== Marker.None).length, 0);
+    if (status === 'active' && currentCellCount === prevCellCountRef.current + 1) playMarkerPlaced();
     prevCellCountRef.current = currentCellCount;
 
-    // Micro board won — check if any new winners appeared
     const currentWinners = game.macroBoard.microBoards.map(mb => mb.winner);
-    currentWinners.forEach((w, i) => {
-      if (w && w !== prevMicroWinnersRef.current[i]) {
-        playMicroBoardWon();
-      }
-    });
+    currentWinners.forEach((w, i) => { if (w && w !== prevMicroWinnersRef.current[i]) playMicroBoardWon(); });
     prevMicroWinnersRef.current = currentWinners;
 
-    // Your turn — only fire after game has started (not on mount)
-    if (hasGameStartedRef.current && currentIsMyTurn && !prevIsMyTurnRef.current && status === 'active') {
-      playYourTurn();
-    }
+    if (hasGameStartedRef.current && currentIsMyTurn && !prevIsMyTurnRef.current && status === 'active') playYourTurn();
     prevIsMyTurnRef.current = currentIsMyTurn;
 
-    // Game over
     if (status === 'complete' && prevStatusRef.current !== 'complete') {
-      if (winner === myMarker) {
-        playGameWon();
-      } else if (winner && winner !== 'draw') {
-        playGameLost();
-      }
+      if (winner === myMarker) playGameWon();
+      else if (winner && winner !== 'draw') playGameLost();
     }
-
     prevStatusRef.current = status;
   }, [game, status, myMarker, winner]);
 
   const handleRPSContinue = useCallback(() => {
     if (rpsResultPicks) {
       const result = resolveRPS(rpsResultPicks.creator, rpsResultPicks.joiner);
-      // Only set the guard on a decisive result. For draws, the re-pick screen must show
-      // again, so we leave rpsResultShownRef as-is (dismissRPSResult resets it via rpsRound).
-      if (result !== 'draw') {
-        setRpsResultShown(true);
-      }
+      if (result !== 'draw') setRpsResultShown(true);
       dismissRPSResult(result === 'draw');
     }
   }, [rpsResultPicks, dismissRPSResult]);
 
-  // Navigate to the agreed rematch game — called by the 'agreed' overlay on dismiss.
-  // Uses rematchGameIdRef so the callback is never stale even if rematchGameId arrived late.
   const handleAgreedDismiss = useCallback(() => {
     setRematchOverlay(null);
     if (!rematchNavFiredRef.current) {
       const targetId = rematchGameIdRef.current;
       if (targetId && targetId !== gameId) {
-        // Navigate now and lock the flag so the auto-navigate effect doesn't double-fire.
         rematchNavFiredRef.current = true;
         navigate(`/game/${targetId}`);
       }
-      // If targetId === gameId, rematchGameId is stale (async clear hasn't applied yet).
-      // Don't poison rematchNavFiredRef — the real rematch will arrive later and the
-      // auto-navigate effect will handle it then.
-      // If rematchGameId hasn't arrived yet (e.g. Player O polling lag), leave the flag
-      // unset. The auto-navigate effect will fire the moment rematchGameId lands, and by
-      // then rematchOverlay is null so its guard won't block it.
     }
   }, [navigate, gameId]);
 
-  // Navigate to menu when the 'opted_out' overlay (or countdown timeout) dismisses.
-  const handleOptedOutDismiss = useCallback(() => {
-    setRematchOverlay(null);
-    navigate('/menu');
-  }, [navigate]);
+  const handleOptedOutDismiss = useCallback(() => { setRematchOverlay(null); navigate('/menu'); }, [navigate]);
 
-  // RPS result screen — shown for the full 3s timer regardless of status/pick changes.
-  // rpsResultPicks is captured synchronously in the hook's event handlers, so it is immune
-  // to the React 18 batching race where DB null-clear can arrive in the same batch as the
-  // "both picks in" event and prevent the result screen from ever showing.
+  // ── Early returns (RPS, loading, waiting) ──
+
   if (rpsResultPicks) {
     const result: RPSResult = resolveRPS(rpsResultPicks.creator, rpsResultPicks.joiner);
-    return (
-      <RPSResultScreen
-        creatorPick={rpsResultPicks.creator}
-        joinerPick={rpsResultPicks.joiner}
-        isCreator={isCreator}
-        result={result}
-        onContinue={handleRPSContinue}
-      />
-    );
+    return <RPSResultScreen creatorPick={rpsResultPicks.creator} joinerPick={rpsResultPicks.joiner} isCreator={isCreator} result={result} onContinue={handleRPSContinue} />;
   }
 
-  // RPS pick screen (no picks submitted yet, or draw re-pick).
-  // key={rpsRound} forces a full remount on each draw round, clearing RPSScreen's internal
-  // myPick/waiting state so the player gets a clean pick UI for the next round.
-  // Guard: if the result screen was already shown and dismissed, don't flash RPSScreen
-  // during the brief gap before status advances from 'rps' to 'active'.
   if (status === 'rps' && !rpsResultShown) {
-    return (
-      <RPSScreen key={rpsRound} onSubmitPick={submitRPSPick} />
-    );
+    return <RPSScreen key={rpsRound} onSubmitPick={submitRPSPick} />;
   }
 
-  if (status === 'loading' || !game) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-        <p>Loading game...</p>
+  if (status === 'loading' || !game) return (
+    <PageBackground>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: tokens.textMuted, fontFamily: tokens.font }}>
+        Loading game…
       </div>
-    );
-  }
+    </PageBackground>
+  );
 
-  if (status === 'waiting') {
-    return (
-      <div style={{ minHeight: '100vh', background: '#1a2332', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexDirection: 'column', gap: '16px' }}>
-        <p>Waiting for opponent to join...</p>
-        <button onClick={() => navigate('/menu')} style={{ background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer' }}>
-          Cancel
-        </button>
+  if (status === 'waiting') return (
+    <PageBackground>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: tokens.font }}>
+        <div style={{ color: tokens.textMuted, fontSize: 16 }}>Waiting for opponent to join…</div>
+        <SecondaryButton onClick={() => navigate('/menu')}>Cancel</SecondaryButton>
       </div>
-    );
-  }
+    </PageBackground>
+  );
+
+  // ── Derived values ──
 
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
@@ -419,163 +379,311 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   const macroWinner = game.macroBoard.winner === Marker.None ? '' : game.macroBoard.winner;
 
-  return (
-    <SkinProvider skins={defaultGameSkins}>
-    <div onClick={resumeAudio} style={{ maxWidth: 480, margin: '20px auto', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', textAlign: 'center', userSelect: 'none', padding: '20px', minHeight: '100vh', background: '#1a2332', color: '#ffffff' }}>
-      {showForfeitModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-          <div style={{ background: '#2a3441', borderRadius: '16px', padding: '32px', maxWidth: '320px', textAlign: 'center', border: '1px solid #ff6b35' }}>
-            <h3 style={{ color: '#fff', margin: '0 0 12px' }}>Leave game?</h3>
-            <p style={{ color: '#a0aec0', margin: '0 0 24px', fontSize: '14px' }}>
-              Leaving this game will forfeit it. Your opponent wins.
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button
-                onClick={() => setShowForfeitModal(false)}
-                style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #3a4a5a', background: 'transparent', color: '#a0aec0', cursor: 'pointer' }}
-              >
-                Stay
-              </button>
-              <button
-                onClick={handleForfeit}
-                style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#ff6b35', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Forfeit & Leave
-              </button>
-            </div>
-          </div>
+  const boardConstraint = game.nextMicroBoardIndex !== null
+    ? `▪ PLAY IN ${BOARD_NAMES[game.nextMicroBoardIndex].toUpperCase()} BOARD`
+    : '▪ FREE CHOICE';
+
+  const matchTypePillVariant = matchType === 'ranked' ? 'red' : matchType === 'friendly' ? 'teal' : 'gold';
+
+  const myColor  = myMarker === 'X' ? tokens.accent : tokens.loss;
+  const oppColor = myMarker === 'X' ? tokens.loss : tokens.accent;
+  const myName   = myProfile?.username ?? (myMarker === 'X' ? 'Player X' : 'Player O');
+  const oppName  = opponentProfile?.username ?? (myMarker === 'X' ? 'Player O' : 'Player X');
+
+  // ── Forfeit modal ──
+  const forfeitModal = showForfeitModal && (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,13,31,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, fontFamily: tokens.font }}>
+      <Glass style={{ maxWidth: 320, width: 'calc(100% - 40px)', padding: 28, textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 900, color: tokens.text, marginBottom: 8 }}>Leave game?</div>
+        <div style={{ color: tokens.textMuted, fontSize: 14, marginBottom: 24 }}>Leaving will forfeit the game. Your opponent wins.</div>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <SecondaryButton onClick={() => setShowForfeitModal(false)}>Stay</SecondaryButton>
+          <PrimaryButton onClick={handleForfeit}>Forfeit & Leave</PrimaryButton>
         </div>
-      )}
+      </Glass>
+    </div>
+  );
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', backgroundColor: '#2a3441', padding: '15px 20px', borderRadius: '16px', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
-        <button
-          onClick={() => {
-            if (status === 'active') {
-              setShowForfeitModal(true);
-            } else {
-              navigate('/menu');
-            }
-          }}
-          style={{ padding: '10px 16px', fontSize: '14px', cursor: 'pointer', borderRadius: 12, border: '2px solid #ff6b35', backgroundColor: 'transparent', color: '#ff6b35', fontWeight: 'bold' }}
-        >
-          ← Menu
-        </button>
-        <h1 style={{ margin: 0, fontSize: '2em', color: '#ffffff' }}>Mega OX</h1>
-        <div style={{ width: 72 }} />
-      </div>
+  // ── Disconnect warning ──
+  const disconnectWarning = !opponentConnected && disconnectCountdown !== null && status === 'active' && (
+    <div style={{ padding: '10px 16px', background: 'rgba(255,107,107,0.12)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 10, color: tokens.loss, fontSize: 13, marginBottom: 10 }}>
+      Opponent disconnected — forfeiting in {disconnectCountdown}s
+    </div>
+  );
 
-      {/* Turn indicator */}
-      <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#00d4aa20', borderRadius: '12px', border: '2px solid #00d4aa', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '56px' }}>
-        <strong style={{ color: '#00d4aa', fontSize: '16px' }}>
-          {status === 'complete'
-            ? getWinnerText()
-            : isMyTurn
-            ? `Your turn (${myMarker})`
-            : "Opponent's turn..."}
-        </strong>
-      </div>
-
-      {!opponentConnected && disconnectCountdown !== null && status === 'active' && (
-        <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#ff6b3520', border: '1px solid #ff6b35', borderRadius: '10px', color: '#ff6b35', fontSize: '14px' }}>
-          Opponent disconnected — forfeiting in {disconnectCountdown}s
-        </div>
-      )}
-
-      <PlayerIndicator
-        currentPlayer={isMyTurn ? `You (${myMarker})` : `Opponent (${myMarker === 'X' ? 'O' : 'X'})`}
-        playerScores={{ X: game.winCounts[Marker.X], O: game.winCounts[Marker.O] }}
-        drawCount={game.drawCount}
-      />
-
-      <div style={{ position: 'relative' }}>
-        {myEmoji       && <EmojiBubble emoji={myEmoji}       side="left"  />}
-        {opponentEmoji && <EmojiBubble emoji={opponentEmoji} side="right" />}
-        <MacroBoard
-          microBoards={microBoardsData}
-          onPlaceMarker={placeMarker}
-          nextMicroBoardIndex={game.nextMicroBoardIndex}
-          macroWinner={macroWinner}
-          lastMove={null}
-        />
-      </div>
-
-      {status === 'active' && (
-        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
-          <EmojiPanel onSend={sendEmoji} />
-        </div>
-      )}
-
-      {status === 'complete' && (
-        <div style={{ marginTop: 20, fontWeight: 'bold', fontSize: '20px', padding: '25px', backgroundColor: '#2a3441', borderRadius: '16px', border: '3px solid #00d4aa', color: '#00d4aa', boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
-          {opponentForfeited
-            ? 'Your opponent disconnected. You win!'
-            : getWinnerText()}
-          {wonByForfeit ? (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-              <button
-                onClick={() => navigate('/menu')}
-                style={{ padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
-              >
-                Back to Menu
-              </button>
+  // ── VS player strip ──
+  const vsStrip = (
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, marginBottom: 10 }}>
+      {/* My card */}
+      <div style={{
+        flex: 1, padding: '8px 10px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+        background: isMyTurn ? `linear-gradient(135deg, ${myColor}33, ${myColor}0d)` : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${isMyTurn ? myColor : 'rgba(255,255,255,0.08)'}`,
+        boxShadow: isMyTurn ? `0 0 20px ${myColor}4d` : 'none',
+        transition: 'all 0.3s ease',
+      }}>
+        <PlayerAvatar profile={myProfile} fallback={myMarker ?? 'X'} size={36} color={myColor} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{myName}</div>
+          {isMyTurn && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: myColor }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: myColor, letterSpacing: 0.3 }}>YOUR TURN</span>
             </div>
-          ) : postGameLoading ? (
-            <div style={{ color: '#a0aec0', fontSize: '14px', marginTop: '12px' }}>
-              Loading rewards...
-            </div>
-          ) : (
-            <>
-              {/* Readiness dots — green = play again, red = leaving, grey = undecided */}
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '14px 0 6px' }}>
-                <span title="You" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: myRematchIntent === 'play_again' ? '#00d4aa' : myRematchIntent === 'back_to_menu' ? '#ff6b35' : '#3a4a5a' }} />
-                <span title="Opponent" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: opponentRematchIntent === 'play_again' ? '#00d4aa' : opponentRematchIntent === 'back_to_menu' ? '#ff6b35' : '#3a4a5a' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
-                {myRematchIntent === 'play_again' && waitCountdown !== null ? (
-                  // Countdown ring replaces the disabled "Waiting..." button
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
-                    <CountdownRing seconds={waitCountdown} total={30} />
-                    <span style={{ color: '#a0aec0', fontSize: '13px' }}>Waiting for opponent...</span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => signalRematchIntent('play_again')}
-                    disabled={myRematchIntent !== null}
-                    style={{ marginTop: '10px', padding: '12px 24px', fontSize: '15px', cursor: myRematchIntent !== null ? 'default' : 'pointer', borderRadius: 10, border: '2px solid #00d4aa', backgroundColor: 'transparent', color: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa', fontWeight: 'bold', borderColor: myRematchIntent !== null ? '#3a4a5a' : '#00d4aa' }}
-                  >
-                    {myRematchIntent === 'play_again' ? 'Waiting...' : 'Play Again'}
-                  </button>
-                )}
-                <button
-                  onClick={() => { signalRematchIntent('back_to_menu'); navigate('/menu'); }}
-                  style={{ marginTop: '10px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer', borderRadius: 10, border: 'none', backgroundColor: '#00d4aa', color: '#fff', fontWeight: 'bold' }}
-                >
-                  Back to Menu
-                </button>
-              </div>
-            </>
+          )}
+          {!isMyTurn && myProfile?.rank_tier && (
+            <div style={{ fontSize: 10, color: tokens.textDim, marginTop: 2 }}>{myProfile.rank_tier}</div>
           )}
         </div>
-      )}
-      {/* Rematch outcome overlays — rendered outside the scroll container so they cover everything */}
-      {rematchOverlay && (
-        <RematchOutcomeOverlay
-          type={rematchOverlay}
-          onDismiss={rematchOverlay === 'agreed' ? handleAgreedDismiss : handleOptedOutDismiss}
-        />
-      )}
-      {postGameResult && (
-        <PostGameModal
-          result={postGameResult}
-          level={progression.level}
-          xpIntoLevel={progression.xpIntoLevel}
-          xpNeededForLevel={progression.xpNeededForLevel}
-          xpToNext={progression.xpToNext}
-          onContinue={() => setPostGameResult(null)}
-        />
-      )}
+      </div>
+
+      {/* Score chip */}
+      <div style={{ padding: '4px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', fontSize: 13, fontWeight: 900, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, color: tokens.text }}>
+        <span style={{ color: tokens.accent }}>{game.winCounts[Marker.X]}</span>
+        <span style={{ color: tokens.textMuted }}>:</span>
+        <span style={{ color: tokens.loss }}>{game.winCounts[Marker.O]}</span>
+      </div>
+
+      {/* Opponent card */}
+      <div style={{
+        flex: 1, padding: '8px 10px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+        background: !isMyTurn ? `linear-gradient(135deg, ${oppColor}33, ${oppColor}0d)` : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${!isMyTurn ? oppColor : 'rgba(255,255,255,0.08)'}`,
+        boxShadow: !isMyTurn ? `0 0 20px ${oppColor}4d` : 'none',
+        transition: 'all 0.3s ease',
+        flexDirection: 'row-reverse' as const,
+      }}>
+        <PlayerAvatar profile={opponentProfile} fallback={myMarker === 'X' ? 'O' : 'X'} size={36} color={oppColor} />
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'right' as const }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{oppName}</div>
+          {!isMyTurn && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: oppColor, letterSpacing: 0.3 }}>THEIR TURN</span>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: oppColor }} />
+            </div>
+          )}
+          {isMyTurn && opponentProfile?.rank_tier && (
+            <div style={{ fontSize: 10, color: tokens.textDim, marginTop: 2 }}>{opponentProfile.rank_tier}</div>
+          )}
+        </div>
+      </div>
     </div>
+  );
+
+  // ── Turn pill ──
+  const turnPill = status === 'active' && (
+    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+      {isMyTurn
+        ? <div style={{ padding: '6px 14px', borderRadius: tokens.rPill, background: 'rgba(0,212,170,0.15)', border: '1px solid rgba(0,212,170,0.35)', color: tokens.accent, fontSize: 11, fontWeight: 800, letterSpacing: 0.4 }}>
+            {boardConstraint}
+          </div>
+        : <div style={{ padding: '6px 14px', borderRadius: tokens.rPill, background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.35)', color: tokens.loss, fontSize: 11, fontWeight: 800, letterSpacing: 0.4 }}>
+            Opponent thinking
+          </div>
+      }
+    </div>
+  );
+
+  // ── Complete state ──
+  const completeState = status === 'complete' && (
+    <Glass style={{ marginTop: 20, textAlign: 'center' }}>
+      <div style={{ fontSize: 22, fontWeight: 900, color: winner === myMarker ? tokens.win : winner === 'draw' ? tokens.textMuted : tokens.loss, marginBottom: 12 }}>
+        {opponentForfeited ? 'Your opponent disconnected. You win!' : getWinnerText()}
+      </div>
+      {wonByForfeit ? (
+        <PrimaryButton onClick={() => navigate('/menu')} fullWidth>Back to Menu</PrimaryButton>
+      ) : postGameLoading ? (
+        <div style={{ color: tokens.textMuted, fontSize: 14 }}>Loading rewards…</div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '10px 0' }}>
+            <span title="You" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: myRematchIntent === 'play_again' ? tokens.accent : myRematchIntent === 'back_to_menu' ? tokens.loss : tokens.textDim }} />
+            <span title="Opponent" style={{ width: 10, height: 10, borderRadius: '50%', display: 'inline-block', background: opponentRematchIntent === 'play_again' ? tokens.accent : opponentRematchIntent === 'back_to_menu' ? tokens.loss : tokens.textDim }} />
+          </div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' as const, alignItems: 'center' }}>
+            {myRematchIntent === 'play_again' && waitCountdown !== null ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                <CountdownRing seconds={waitCountdown} total={30} />
+                <span style={{ color: tokens.textMuted, fontSize: 13 }}>Waiting for opponent…</span>
+              </div>
+            ) : (
+              <SecondaryButton onClick={() => signalRematchIntent('play_again')} disabled={myRematchIntent !== null}>
+                {myRematchIntent === 'play_again' ? 'Waiting…' : 'Play Again'}
+              </SecondaryButton>
+            )}
+            <PrimaryButton onClick={() => { signalRematchIntent('back_to_menu'); navigate('/menu'); }}>
+              Back to Menu
+            </PrimaryButton>
+          </div>
+        </>
+      )}
+    </Glass>
+  );
+
+  // ── Mobile layout ──
+  if (isMobile) {
+    return (
+      <SkinProvider skins={defaultGameSkins}>
+        <PageBackground>
+          <div onClick={resumeAudio} style={{ fontFamily: tokens.font, color: tokens.text, maxWidth: 520, margin: '0 auto', padding: '0 14px', userSelect: 'none', paddingBottom: 40 }}>
+            {forfeitModal}
+
+            {/* Header strip */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0 12px' }}>
+              <button onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
+                <ChevronLeft size={20} />
+              </button>
+              <Pill variant={matchTypePillVariant as any}>{matchType.toUpperCase()}</Pill>
+              <div style={{ marginLeft: 'auto' }}>
+                <SecondaryButton size="sm" onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}>⋯</SecondaryButton>
+              </div>
+            </div>
+
+            {vsStrip}
+            {turnPill}
+            {disconnectWarning}
+
+            {/* Board — do not style */}
+            <div style={{ position: 'relative' }}>
+              {myEmoji       && <EmojiBubble emoji={myEmoji}       side="left"  />}
+              {opponentEmoji && <EmojiBubble emoji={opponentEmoji} side="right" />}
+              <MacroBoard
+                microBoards={microBoardsData}
+                onPlaceMarker={placeMarker}
+                nextMicroBoardIndex={game.nextMicroBoardIndex}
+                macroWinner={macroWinner}
+                lastMove={null}
+              />
+            </div>
+
+            {status === 'active' && (
+              <div style={{ marginTop: 12 }}>
+                <EmojiPanel onSend={sendEmoji} />
+              </div>
+            )}
+
+            {completeState}
+          </div>
+
+          {rematchOverlay && <RematchOutcomeOverlay type={rematchOverlay} onDismiss={rematchOverlay === 'agreed' ? handleAgreedDismiss : handleOptedOutDismiss} />}
+          {postGameResult && (
+            <PostGameModal
+              result={postGameResult}
+              level={progression.level}
+              xpIntoLevel={progression.xpIntoLevel}
+              xpNeededForLevel={progression.xpNeededForLevel}
+              xpToNext={progression.xpToNext}
+              onContinue={() => setPostGameResult(null)}
+            />
+          )}
+        </PageBackground>
+      </SkinProvider>
+    );
+  }
+
+  // ── Desktop layout ──
+  const DesktopPanel: React.FC<{ profile: ProfileSnippet | null; marker: 'X' | 'O'; isSelf: boolean; isActive: boolean }> = ({ profile, marker, isSelf, isActive }) => {
+    const color = marker === 'X' ? tokens.accent : tokens.loss;
+    const microWins = game.macroBoard.microBoards.filter(mb => mb.winner === marker).length;
+    return (
+      <Glass style={{
+        border: isActive ? `1px solid ${color}` : tokens.glassBorder,
+        boxShadow: isActive ? `0 0 20px ${color}4d` : 'none',
+        transition: 'box-shadow 0.3s ease',
+        position: 'sticky' as const, top: 20,
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+          <div style={{ position: 'relative', width: 68, height: 68 }}>
+            <div style={{ width: 68, height: 68, borderRadius: '50%', border: `2px solid ${color}44`, overflow: 'hidden', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' as const }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: 26, fontWeight: 900, color, fontFamily: tokens.font }}>{(profile?.username ?? marker)[0]?.toUpperCase()}</span>
+              }
+            </div>
+            <div style={{ position: 'absolute', bottom: 0, right: 0 }}>
+              <LevelBadge level={profile?.level ?? 1} size="sm" />
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800 }}>{profile?.username ?? (isSelf ? 'You' : 'Opponent')}{isSelf ? ' (You)' : ''}</div>
+            <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2 }}>{profile?.rank_tier ?? ''}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>Micro Boards Won</div>
+            <div style={{ fontSize: 36, fontWeight: 900, color }}>{microWins}</div>
+          </div>
+          {isSelf && status === 'active' && (
+            <div style={{ marginTop: 4, width: '100%' }}>
+              <EmojiPanel onSend={sendEmoji} />
+            </div>
+          )}
+        </div>
+      </Glass>
+    );
+  };
+
+  const leftMarker  = myMarker === 'X' ? 'X' : 'O';
+  const rightMarker = myMarker === 'X' ? 'O' : 'X';
+
+  return (
+    <SkinProvider skins={defaultGameSkins}>
+      <PageBackground>
+        <div onClick={resumeAudio} style={{ fontFamily: tokens.font, color: tokens.text, maxWidth: 1200, margin: '0 auto', padding: '20px 32px 60px', userSelect: 'none' }}>
+          {forfeitModal}
+
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <button onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
+              <ChevronLeft size={20} />
+            </button>
+            <Pill variant={matchTypePillVariant as any}>{matchType.toUpperCase()}</Pill>
+            <div style={{ marginLeft: 'auto' }}>
+              <SecondaryButton size="sm" onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}>⋯</SecondaryButton>
+            </div>
+          </div>
+
+          {/* Three-column layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 520px 1fr', gap: 24, alignItems: 'start' }}>
+            {/* Left — my panel */}
+            <DesktopPanel profile={myProfile} marker={leftMarker as 'X' | 'O'} isSelf={true} isActive={isMyTurn} />
+
+            {/* Center — turn pill + board + disconnect */}
+            <div>
+              {disconnectWarning}
+              {turnPill}
+              <div style={{ position: 'relative' }}>
+                {myEmoji       && <EmojiBubble emoji={myEmoji}       side="left"  />}
+                {opponentEmoji && <EmojiBubble emoji={opponentEmoji} side="right" />}
+                <MacroBoard
+                  microBoards={microBoardsData}
+                  onPlaceMarker={placeMarker}
+                  nextMicroBoardIndex={game.nextMicroBoardIndex}
+                  macroWinner={macroWinner}
+                  lastMove={null}
+                />
+              </div>
+              {completeState}
+            </div>
+
+            {/* Right — opponent panel */}
+            <DesktopPanel profile={opponentProfile} marker={rightMarker as 'X' | 'O'} isSelf={false} isActive={!isMyTurn} />
+          </div>
+        </div>
+
+        {rematchOverlay && <RematchOutcomeOverlay type={rematchOverlay} onDismiss={rematchOverlay === 'agreed' ? handleAgreedDismiss : handleOptedOutDismiss} />}
+        {postGameResult && (
+          <PostGameModal
+            result={postGameResult}
+            level={progression.level}
+            xpIntoLevel={progression.xpIntoLevel}
+            xpNeededForLevel={progression.xpNeededForLevel}
+            xpToNext={progression.xpToNext}
+            onContinue={() => setPostGameResult(null)}
+          />
+        )}
+      </PageBackground>
     </SkinProvider>
   );
 };

@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { serializeGame } from '../../lib/gameSerializer';
 import { Game } from '../../models/Game';
+import { usePlayerProfile } from '../../hooks/usePlayerProfile';
+import { tokens } from '../../styles/tokens';
+import PageBackground from '../common/PageBackground';
+import Glass from '../common/Glass';
+import PrimaryButton from '../common/PrimaryButton';
+import SecondaryButton from '../common/SecondaryButton';
+import Pill from '../common/Pill';
+import { ChevronLeft, SearchIcon } from '../icons';
 
 const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -11,21 +19,34 @@ const MatchmakingPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const mode = searchParams.get('mode') ?? 'friendly';
+  const profile = usePlayerProfile();
 
-  const [view, setView] = useState<'choose' | 'create' | 'join' | 'searching'>('choose');
-  const [code, setCode] = useState('');
+  const mode = searchParams.get('mode') ?? 'friendly';
+  const viewParam = searchParams.get('view') as 'create' | 'join' | 'searching' | null;
+
+  const [view, setView]         = useState<'searching' | 'create' | 'join'>(viewParam ?? 'join');
+  const [code, setCode]         = useState('');
   const [joinCode, setJoinCode] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [elapsed, setElapsed]   = useState(0);
+  const hasAutoCreated          = useRef(false);
+  const joinInputRef            = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (view !== 'searching') return;
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [view]);
 
   const createGame = async () => {
     if (!user) return;
     setLoading(true);
+    setError('');
     const newCode = generateCode();
     const initialState = serializeGame(new Game());
 
-    const { data, error } = await supabase.from('games').insert({
+    const { data, error: err } = await supabase.from('games').insert({
       player_x_id: user.id,
       state: initialState as any,
       match_type: mode,
@@ -34,31 +55,24 @@ const MatchmakingPage: React.FC = () => {
     }).select('id').single();
 
     setLoading(false);
-    if (error || !data) { setError('Could not create game'); return; }
+    if (err || !data) { setError('Could not create game'); return; }
 
     setCode(newCode);
     setView('create');
 
-    // Wait for opponent to join via realtime
     const channel = supabase
       .channel(`lobby:${data.id}`)
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${data.id}`
       }, (payload) => {
-        if ((payload.new as any).status === 'rps' || (payload.new as any).status === 'active') {
+        if (['rps', 'active'].includes((payload.new as any).status)) {
           supabase.removeChannel(channel);
           navigate(`/game/${data.id}`);
         }
       }).subscribe(async (subStatus) => {
         if (subStatus === 'SUBSCRIBED') {
-          // Fallback: if the joiner arrived before our subscription was confirmed, the
-          // postgres_changes event would have been missed. Check DB status now.
-          const { data: current } = await supabase
-            .from('games')
-            .select('status')
-            .eq('id', data.id)
-            .single();
-          if (current && (current.status === 'rps' || current.status === 'active')) {
+          const { data: current } = await supabase.from('games').select('status').eq('id', data.id).single();
+          if (current && ['rps', 'active'].includes(current.status)) {
             supabase.removeChannel(channel);
             navigate(`/game/${data.id}`);
           }
@@ -74,69 +88,279 @@ const MatchmakingPage: React.FC = () => {
     const { data: game } = await supabase.from('games')
       .select('*').eq('game_code', joinCode.toUpperCase()).eq('status', 'waiting').single();
 
-    if (!game) { setLoading(false); setError('Game not found or already started'); return; }
+    if (!game)                    { setLoading(false); setError('Game not found or already started'); return; }
     if (game.player_x_id === user.id) { setLoading(false); setError('Cannot join your own game'); return; }
 
-    const { error } = await supabase.from('games').update({
+    const { error: err } = await supabase.from('games').update({
       player_o_id: user.id,
       status: 'rps',
     }).eq('id', game.id);
 
     setLoading(false);
-    if (error) { setError('Could not join game'); return; }
+    if (err) { setError('Could not join game'); return; }
     navigate(`/game/${game.id}`);
   };
 
-  const pageStyle: React.CSSProperties = {
-    minHeight: '100vh', background: '#1a2332', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', color: '#fff'
-  };
-  const card: React.CSSProperties = {
-    background: '#2a3441', borderRadius: '12px', padding: '40px',
-    maxWidth: '400px', width: '100%', textAlign: 'center'
-  };
+  // Auto-trigger create when landing on the create view from MultiplayerMenu
+  useEffect(() => {
+    if (viewParam === 'create' && !hasAutoCreated.current) {
+      hasAutoCreated.current = true;
+      createGame();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (view === 'create') return (
-    <div style={pageStyle}>
-      <div style={card}>
-        <h2>Waiting for opponent</h2>
-        <p style={{ color: '#a0aec0' }}>Share this code:</p>
-        <div style={{ fontSize: '36px', letterSpacing: '8px', color: '#00d4aa', fontWeight: 'bold', margin: '16px 0' }}>{code}</div>
-        <p style={{ color: '#a0aec0', fontSize: '14px' }}>Game will start automatically when they join.</p>
-        <button onClick={() => navigate('/menu')} style={{ marginTop: '24px', background: 'none', border: '1px solid #3a4a5a', color: '#a0aec0', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
-      </div>
-    </div>
-  );
+  const elapsedFmt = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px', fontFamily: tokens.font,
+  };
+  const pageWrap: React.CSSProperties = {
+    fontFamily: tokens.font, color: tokens.text,
+    maxWidth: 480, margin: '0 auto', padding: '0 20px 60px',
+  };
 
   return (
-    <div style={pageStyle}>
-      <div style={card}>
-        <h2 style={{ marginBottom: '8px' }}>Friendly Game</h2>
-        {error && <div style={{ color: '#ff6b35', marginBottom: '16px' }}>{error}</div>}
-        {view === 'choose' && (
+    <PageBackground>
+      <div style={pageWrap}>
+
+        {/* Error toast */}
+        {error && (
+          <div style={{ color: tokens.loss, fontSize: 13, fontWeight: 600, padding: '12px 16px', marginTop: 8, background: 'rgba(255,107,107,0.1)', borderRadius: 10, border: `1px solid rgba(255,107,107,0.2)` }}>
+            {error}
+          </div>
+        )}
+
+        {/* ── SEARCHING VIEW ── */}
+        {view === 'searching' && (
           <>
-            <button onClick={createGame} disabled={loading} style={{ display: 'block', width: '100%', padding: '14px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #00d4aa', background: 'transparent', color: '#fff', fontSize: '15px', cursor: 'pointer' }}>
-              Create game (get a code)
-            </button>
-            <button onClick={() => setView('join')} style={{ display: 'block', width: '100%', padding: '14px', borderRadius: '8px', border: '1px solid #4299e1', background: 'transparent', color: '#fff', fontSize: '15px', cursor: 'pointer' }}>
-              Join with code
-            </button>
+            <div style={headerStyle}>
+              <button onClick={() => navigate('/multiplayer')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
+                <ChevronLeft size={20} />
+              </button>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>Searching…</span>
+            </div>
+
+            {/* Pulse rings */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 240, position: 'relative', marginBottom: 24 }}>
+              {[0, 0.4, 0.8].map((delay) => (
+                <div key={delay} style={{
+                  position: 'absolute', width: 220, height: 220, borderRadius: '50%',
+                  border: '1.5px solid rgba(0,212,170,0.35)',
+                  animation: `mxRingPulse 2.4s ease-out ${delay}s infinite`,
+                }} />
+              ))}
+              <div style={{
+                width: 88, height: 88, borderRadius: '50%', background: tokens.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 60px #00d4aa', zIndex: 1, position: 'relative',
+              }}>
+                <SearchIcon size={34} />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 6 }}>Finding opponent</div>
+              <div style={{ fontSize: 14, color: tokens.textMuted }}>Matching you with a nearby-rated player</div>
+            </div>
+
+            {/* VS card */}
+            <Glass style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Your side */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg, rgba(124,77,255,0.5), rgba(0,212,170,0.3))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 16, flexShrink: 0 }}>
+                    {profile?.username?.[0]?.toUpperCase() ?? '?'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800 }}>{profile?.username ?? 'You'}</div>
+                    <div style={{ fontSize: 11, color: tokens.textMuted }}>{profile?.rank_tier ?? ''}</div>
+                  </div>
+                </div>
+                {/* VS */}
+                <div style={{ fontSize: 13, fontWeight: 900, color: tokens.textMuted, flexShrink: 0 }}>VS</div>
+                {/* Opponent placeholder */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: tokens.textMuted }}>
+                      Searching
+                      <span style={{ animation: 'mxBlink 1.2s step-end infinite' }}> · · ·</span>
+                    </div>
+                  </div>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', border: `2px dashed rgba(255,255,255,0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: tokens.textDim, fontSize: 18 }}>
+                    ?
+                  </div>
+                </div>
+              </div>
+            </Glass>
+
+            <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: tokens.textDim, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 16 }}>
+              ELAPSED · {elapsedFmt}
+            </div>
+
+            <SecondaryButton onClick={() => navigate('/multiplayer')} fullWidth>Cancel</SecondaryButton>
           </>
         )}
+
+        {/* ── CREATE (HOST) VIEW ── */}
+        {view === 'create' && (
+          <>
+            <div style={headerStyle}>
+              <button onClick={() => navigate('/multiplayer')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
+                <ChevronLeft size={20} />
+              </button>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>Friendly game</span>
+            </div>
+
+            {loading && !code ? (
+              <Glass style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ color: tokens.textMuted, fontSize: 14 }}>Creating game…</div>
+              </Glass>
+            ) : (
+              <Glass style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: tokens.accent, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 16, textAlign: 'center' }}>
+                  Share this code
+                </div>
+                {/* Individual letter cells */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+                  {(code || '      ').split('').slice(0, 6).map((char, i) => (
+                    <div key={i} style={{
+                      width: 38, height: 50, borderRadius: 10,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(0,212,170,0.10)', border: '1px solid rgba(0,212,170,0.30)',
+                      fontSize: 26, fontWeight: 900, color: tokens.accent, fontFamily: 'monospace',
+                    }}>
+                      {char.trim() || ''}
+                    </div>
+                  ))}
+                </div>
+                <SecondaryButton onClick={() => navigator.clipboard.writeText(code)} fullWidth>
+                  📋 Copy code
+                </SecondaryButton>
+              </Glass>
+            )}
+
+            {/* Status row */}
+            <Glass style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%', background: tokens.accent, marginTop: 4, flexShrink: 0,
+                  boxShadow: `0 0 6px ${tokens.accent}`, animation: 'mxPulse 1.5s ease-in-out infinite',
+                }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>Waiting for opponent</div>
+                  <div style={{ fontSize: 12, color: tokens.textMuted }}>Game starts automatically when they join.</div>
+                </div>
+              </div>
+            </Glass>
+
+            {/* Share via */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              {['Link', 'iMessage', 'WhatsApp', 'More'].map((label) => (
+                <button key={label} onClick={() => {
+                  if (label === 'Link' || label === 'More') navigator.clipboard.writeText(code);
+                }} style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 10, fontSize: 11, fontWeight: 700,
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                  color: tokens.textMuted, cursor: 'pointer', fontFamily: tokens.font, textAlign: 'center',
+                }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <SecondaryButton onClick={() => navigate('/multiplayer')} fullWidth>Cancel</SecondaryButton>
+          </>
+        )}
+
+        {/* ── JOIN VIEW ── */}
         {view === 'join' && (
           <>
-            <input value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="Enter 6-digit code"
-              style={{ width: '100%', padding: '14px', borderRadius: '8px', border: '1px solid #3a4a5a', background: '#1a2332', color: '#fff', fontSize: '20px', letterSpacing: '4px', textAlign: 'center', boxSizing: 'border-box', marginBottom: '16px' }} />
-            <button onClick={joinGame} disabled={loading || joinCode.length < 6}
-              style={{ width: '100%', padding: '14px', borderRadius: '8px', border: 'none', background: '#4299e1', color: '#fff', fontSize: '15px', cursor: 'pointer' }}>
-              {loading ? 'Joining...' : 'Join Game'}
-            </button>
-            <button onClick={() => setView('choose')} style={{ marginTop: '12px', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer' }}>← Back</button>
+            <div style={headerStyle}>
+              <button onClick={() => navigate('/multiplayer')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
+                <ChevronLeft size={20} />
+              </button>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>Join a game</span>
+            </div>
+
+            <Glass style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: tokens.accent, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                Enter code
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 24 }}>Got a code from a friend?</div>
+
+              {/* 6-cell code input */}
+              <div style={{ position: 'relative', marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                  {Array.from({ length: 6 }, (_, i) => {
+                    const char = joinCode[i] ?? '';
+                    const isActive = i === joinCode.length && joinCode.length < 6;
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => joinInputRef.current?.focus()}
+                        style={{
+                          width: 42, height: 56, borderRadius: 12, cursor: 'text',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: char ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.04)',
+                          border: isActive
+                            ? `1.5px solid ${tokens.accent}`
+                            : char
+                              ? '1px solid rgba(0,212,170,0.35)'
+                              : '1px solid rgba(255,255,255,0.12)',
+                          boxShadow: isActive ? '0 0 0 3px rgba(0,212,170,0.20)' : 'none',
+                          fontSize: 26, fontWeight: 900, color: tokens.text, fontFamily: 'monospace',
+                          position: 'relative',
+                        }}
+                      >
+                        {char || (isActive
+                          ? <span style={{ width: 2, height: 28, background: tokens.accent, borderRadius: 1, animation: 'mxBlink 1s step-end infinite' }} />
+                          : null
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Hidden input captures keyboard */}
+                <input
+                  ref={joinInputRef}
+                  autoFocus
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && joinCode.length === 6) joinGame(); }}
+                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'text', fontSize: 0 }}
+                />
+              </div>
+
+              <PrimaryButton
+                onClick={joinGame}
+                fullWidth
+                disabled={loading || joinCode.length < 6}
+              >
+                {loading ? 'Joining…' : 'Join Game'}
+              </PrimaryButton>
+            </Glass>
+
+            <SecondaryButton
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  setJoinCode(text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
+                } catch (_) {}
+              }}
+              fullWidth
+            >
+              Paste from clipboard
+            </SecondaryButton>
+
+            <div style={{ marginTop: 12 }}>
+              <SecondaryButton onClick={() => navigate('/multiplayer')} fullWidth>← Back</SecondaryButton>
+            </div>
           </>
         )}
-        <button onClick={() => navigate('/menu')} style={{ marginTop: '24px', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', display: 'block' }}>← Back to menu</button>
+
       </div>
-    </div>
+    </PageBackground>
   );
 };
 

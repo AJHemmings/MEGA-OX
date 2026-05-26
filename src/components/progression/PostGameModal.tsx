@@ -1,6 +1,12 @@
 // src/components/progression/PostGameModal.tsx
-import React from 'react';
-import { XPProgressBar } from './XPProgressBar';
+import React, { useState, useEffect } from 'react';
+import { tokens } from '../../styles/tokens';
+import { MAX_LEVEL } from '../../lib/progression';
+import { LevelBadge } from './LevelBadge';
+import Glass from '../common/Glass';
+import PrimaryButton from '../common/PrimaryButton';
+import SecondaryButton from '../common/SecondaryButton';
+import { Coin, SparkleIcon } from '../icons';
 
 export interface PostGameResult {
   xpAwarded: number;
@@ -17,7 +23,6 @@ export interface PostGameResult {
     reward_credits: number;
     reward_skin_id: string | null;
   }[];
-  /** True when the game was already processed — returned by the early-exit path */
   alreadyProcessed?: boolean;
 }
 
@@ -28,90 +33,166 @@ interface PostGameModalProps {
   xpNeededForLevel: number;
   xpToNext: number;
   onContinue: () => void;
+  gameResult?: 'win' | 'loss' | 'draw';
+  opponent?: string;
+  matchType?: string;
+  onRematch?: () => void;
 }
 
+const RESULT_CONFIG = {
+  win:  { eyebrow: 'VICTORY', headline: 'You Win!',  color: tokens.win,  bg: 'linear-gradient(135deg, rgba(0,212,170,0.25), rgba(124,77,255,0.20))' },
+  loss: { eyebrow: 'DEFEAT',  headline: 'You Lose',  color: tokens.loss, bg: 'linear-gradient(135deg, rgba(255,107,107,0.25), rgba(124,77,255,0.20))' },
+  draw: { eyebrow: 'DRAW',    headline: 'Draw',      color: tokens.draw, bg: 'linear-gradient(135deg, rgba(160,174,192,0.20), rgba(124,77,255,0.15))' },
+} as const;
+
 export const PostGameModal: React.FC<PostGameModalProps> = ({
-  result, level, xpIntoLevel, xpNeededForLevel, xpToNext, onContinue
+  result, level, xpIntoLevel, xpNeededForLevel, xpToNext,
+  onContinue, gameResult, opponent, matchType, onRematch,
 }) => {
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-    }}>
-      <div style={{
-        background: '#1a1a2e', border: '1px solid #333', borderRadius: 12,
-        padding: 32, minWidth: 320, maxWidth: 440, width: '90%', color: '#fff'
-      }}>
-        {result.leveledUp && (
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>⬆️</div>
-            <h2 style={{ margin: 0, fontSize: 22 }}>Level Up!</h2>
-            <p style={{ margin: '4px 0 0', color: '#aaa', fontSize: 14 }}>
-              {result.previousLevel} → {result.newLevel}
-            </p>
+  // Animate XP bar fill from 0 → actual on mount
+  const [animatedXp, setAnimatedXp] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setAnimatedXp(xpIntoLevel), 120);
+    return () => clearTimeout(t);
+  }, [xpIntoLevel]);
+
+  const fillPct = level >= MAX_LEVEL ? 100 : Math.min(100, (animatedXp / xpNeededForLevel) * 100);
+  const cfg = gameResult ? RESULT_CONFIG[gameResult] : null;
+
+  const cardWidth = { maxWidth: 440, width: 'calc(100% - 40px)' };
+
+  // ── alreadyProcessed fallback ──────────────────────────────────
+  if (result.alreadyProcessed) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,13,31,0.85)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, fontFamily: tokens.font }}>
+        <Glass padding={0} style={{ ...cardWidth, overflow: 'hidden' }}>
+          <div style={{ padding: '28px 22px', background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', textAlign: 'center' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 1.5, marginBottom: 8 }}>GAME COMPLETE</div>
+            <div style={{ fontSize: 24, fontWeight: 900 }}>All done!</div>
           </div>
-        )}
-
-        {!result.leveledUp && (
-          <h2 style={{ margin: '0 0 20px', fontSize: 18 }}>Game Complete</h2>
-        )}
-
-        <div style={{ marginBottom: 20 }}>
-          <XPProgressBar
-            level={level}
-            xpIntoLevel={xpIntoLevel}
-            xpNeededForLevel={xpNeededForLevel}
-            xpToNext={xpToNext}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-          <div style={{ flex: 1, background: '#222', borderRadius: 8, padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#7c7cff' }}>+{result.xpAwarded}</div>
-            <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>XP</div>
+          <div style={{ padding: 20 }}>
+            <PrimaryButton onClick={onContinue} fullWidth>Continue</PrimaryButton>
           </div>
-          <div style={{ flex: 1, background: '#222', borderRadius: 8, padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#ffcc00' }}>+{result.creditsAwarded}</div>
-            <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Credits</div>
-          </div>
-        </div>
-
-        {result.newAchievements.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#aaa' }}>Achievements Unlocked</h3>
-            {result.newAchievements.map(a => (
-              <div key={a.key} style={{
-                background: '#222', borderRadius: 8, padding: '10px 12px',
-                marginBottom: 6, display: 'flex', gap: 10, alignItems: 'center'
-              }}>
-                <span style={{ fontSize: 20 }}>🏆</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{a.name}</div>
-                  <div style={{ fontSize: 12, color: '#aaa' }}>{a.description}</div>
-                  {(a.reward_xp > 0 || a.reward_credits > 0) && (
-                    <div style={{ fontSize: 12, color: '#7c7cff', marginTop: 2 }}>
-                      {a.reward_xp > 0 && `+${a.reward_xp} XP`}
-                      {a.reward_xp > 0 && a.reward_credits > 0 && '  '}
-                      {a.reward_credits > 0 && `+${a.reward_credits} Credits`}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <button
-          onClick={onContinue}
-          style={{
-            width: '100%', padding: '12px', background: '#4a4af4',
-            color: '#fff', border: 'none', borderRadius: 8,
-            fontSize: 16, fontWeight: 600, cursor: 'pointer'
-          }}
-        >
-          Continue
-        </button>
+        </Glass>
       </div>
+    );
+  }
+
+  // ── Main modal ─────────────────────────────────────────────────
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,13,31,0.85)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, fontFamily: tokens.font, padding: '20px 0' }}>
+      <Glass padding={0} style={{ ...cardWidth, overflow: 'hidden', overflowY: 'auto', maxHeight: 'calc(100vh - 40px)' }}>
+
+        {/* ── Banner header ── */}
+        <div style={{ position: 'relative', padding: '28px 22px', background: cfg?.bg ?? 'linear-gradient(135deg, rgba(0,212,170,0.25), rgba(124,77,255,0.20))', textAlign: 'center', overflow: 'hidden' }}>
+          {/* Radial glow */}
+          <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, ${cfg?.color ?? tokens.accent}44 0%, transparent 70%)`, pointerEvents: 'none' }} />
+          <div style={{ position: 'relative' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: cfg?.color ?? tokens.accent, letterSpacing: 1.5, marginBottom: 8 }}>
+              {cfg?.eyebrow ?? 'GAME COMPLETE'}
+            </div>
+            <div style={{ fontSize: 30, fontWeight: 900, color: tokens.text, marginBottom: 6 }}>
+              {cfg?.headline ?? 'Game Over'}
+            </div>
+            {(opponent || matchType) && (
+              <div style={{ fontSize: 13, color: tokens.textMuted }}>
+                {opponent ? `vs ${opponent}` : ''}
+                {opponent && matchType ? ' · ' : ''}
+                {matchType ?? ''}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Card body ── */}
+        <div style={{ padding: 20 }}>
+
+          {/* Level-up callout */}
+          {result.leveledUp && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 14, background: 'rgba(124,77,255,0.12)', border: '1px solid rgba(124,77,255,0.25)', marginBottom: 16 }}>
+              <LevelBadge level={result.newLevel} size="lg" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: tokens.xp, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 }}>Level Up</div>
+                <div style={{ fontSize: 15, fontWeight: 900 }}>LVL {result.previousLevel} → {result.newLevel}</div>
+              </div>
+              <SparkleIcon size={22} />
+            </div>
+          )}
+
+          {/* XP bar (animated 0 → current) */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>
+              <span>LVL {level} · {xpIntoLevel.toLocaleString()} / {xpNeededForLevel.toLocaleString()} XP</span>
+              {level < MAX_LEVEL && <span>{xpToNext.toLocaleString()} to go</span>}
+              {level >= MAX_LEVEL && <span>Max Level</span>}
+            </div>
+            <div style={{ height: 10, background: 'rgba(255,255,255,0.08)', borderRadius: tokens.rPill, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${fillPct}%`,
+                background: `linear-gradient(90deg, ${tokens.accent}, ${tokens.xp})`,
+                borderRadius: tokens.rPill,
+                boxShadow: '0 0 8px rgba(0,212,170,0.45)',
+                transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              }} />
+            </div>
+          </div>
+
+          {/* Reward chips */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: result.newAchievements.length > 0 ? 16 : 20 }}>
+            {/* XP chip */}
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(124,77,255,0.10)', border: '1px solid rgba(124,77,255,0.20)', textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 900, background: `linear-gradient(135deg, ${tokens.xp}, #a855f7)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                +{result.xpAwarded}
+              </div>
+              <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2, fontWeight: 700 }}>XP</div>
+            </div>
+            {/* Credits chip */}
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(249,168,37,0.10)', border: '1px solid rgba(249,168,37,0.20)', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <Coin size={16} />
+                <span style={{ fontSize: 20, fontWeight: 900, color: tokens.credits }}>+{result.creditsAwarded}</span>
+              </div>
+              <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2, fontWeight: 700 }}>Credits</div>
+            </div>
+          </div>
+
+          {/* Achievements unlocked */}
+          {result.newAchievements.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 10 }}>Achievements Unlocked</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {result.newAchievements.map((a) => (
+                  <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* Trophy tile */}
+                    <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(0,212,170,0.2), rgba(124,77,255,0.15))', border: `1.5px solid ${tokens.accent}`, overflow: 'hidden' }}>
+                      {a.icon_url
+                        ? <img src={a.icon_url} alt={a.name} style={{ width: 30, height: 30, objectFit: 'contain' }} />
+                        : <span style={{ fontSize: 22 }}>🏆</span>
+                      }
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text }}>{a.name}</div>
+                      <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 1 }}>{a.description}</div>
+                    </div>
+                    {a.reward_xp > 0 && (
+                      <div style={{ fontSize: 12, fontWeight: 800, color: tokens.accent, flexShrink: 0 }}>+{a.reward_xp} XP</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Buttons row */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {onRematch && (
+              <SecondaryButton onClick={onRematch} fullWidth>Rematch</SecondaryButton>
+            )}
+            <PrimaryButton onClick={onContinue} fullWidth>Continue</PrimaryButton>
+          </div>
+
+        </div>
+      </Glass>
     </div>
   );
 };

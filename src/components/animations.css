@@ -96,3 +96,28 @@
   70%  { transform: translateY(-50%) scale(1.1); opacity: 1; }
   100% { transform: translateY(-50%) scale(1);   opacity: 1; }
 }
+
+/* Phase 5 — shared motion tokens */
+@keyframes mxPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.4); opacity: 0.3; }
+}
+
+@keyframes mxRingPulse {
+  0%   { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes mxBlink {
+  50% { opacity: 0; }
+}
+
+@keyframes mxSlideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes mxFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}

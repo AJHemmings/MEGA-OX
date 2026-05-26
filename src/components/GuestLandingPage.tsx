@@ -1,163 +1,128 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UNLOCK_FEATURES } from './guestUnlockFeatures';
+import { tokens } from '../styles/tokens';
+import PageBackground from './common/PageBackground';
+import Glass from './common/Glass';
+import PrimaryButton from './common/PrimaryButton';
+import SecondaryButton from './common/SecondaryButton';
+import { SparkleIcon } from './icons';
+
+const UNLOCK_ROWS = [
+  { icon: '🏆', label: 'Ranked multiplayer + leaderboards', tint: 'rgba(0,212,170,0.15)' },
+  { icon: '⚡', label: 'XP system + achievements',          tint: 'rgba(124,77,255,0.15)' },
+  { icon: '🎨', label: 'Skins, avatars + customisation',    tint: 'rgba(249,168,37,0.15)' },
+];
 
 const GuestLandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div
-      style={{
+    <PageBackground>
+      <div style={{
+        fontFamily: tokens.font, color: tokens.text,
+        maxWidth: 420, margin: '0 auto',
+        padding: '60px 20px 40px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
         minHeight: '100vh',
-        background: '#1a2332',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
-        padding: '40px 20px',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 480,
-          width: '100%',
-          textAlign: 'center',
-          color: '#ffffff',
-        }}
-      >
-        {/* Game name */}
-        <h1
-          style={{
-            fontSize: '3.5em',
-            fontWeight: 'bold',
-            margin: '0 0 8px 0',
-            color: '#00d4aa',
-            letterSpacing: '4px',
-          }}
-        >
-          MEGA OX
-        </h1>
+      }}>
 
-        {/* Tagline */}
-        <p
-          style={{
-            fontSize: '1.1em',
-            color: '#a0aec0',
-            margin: '0 0 40px 0',
-          }}
-        >
-          Ultimate Noughts &amp; Crosses. Every move matters.
-        </p>
-
-        {/* Primary CTA */}
-        <button
-          onClick={() => navigate('/demo')}
-          style={{
-            width: '100%',
-            padding: '16px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            borderRadius: '14px',
-            border: 'none',
-            backgroundColor: '#00d4aa',
-            color: '#1a2332',
-            cursor: 'pointer',
-            marginBottom: '32px',
-            boxShadow: '0 8px 25px #00d4aa40',
-            transition: 'all 0.3s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 12px 35px #00d4aa60';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 8px 25px #00d4aa40';
-          }}
-        >
-          Play Demo
-        </button>
-
-        {/* Unlock list */}
-        <div
-          style={{
-            backgroundColor: '#2a3441',
-            borderRadius: '16px',
-            padding: '24px',
-            marginBottom: '28px',
-            textAlign: 'left',
-          }}
-        >
-          <p
-            style={{
-              margin: '0 0 16px 0',
-              fontWeight: 'bold',
-              color: '#ffffff',
-              fontSize: '15px',
-            }}
-          >
-            Create an account to unlock:
-          </p>
-          <ul style={{ margin: 0, padding: '0 0 0 20px', color: '#a0aec0', lineHeight: '2' }}>
-            {UNLOCK_FEATURES.map((f) => (
-              <li key={f}>{f}</li>
-            ))}
-          </ul>
+        {/* Hero logo */}
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+          <div style={{
+            fontSize: 44, fontWeight: 900, letterSpacing: 4, lineHeight: 1.1,
+            background: 'linear-gradient(135deg, #fff 30%, #00d4aa 70%)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>
+            MEGA<br />OX
+          </div>
         </div>
 
-        {/* Auth links */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }}>
+        {/* Tagline */}
+        <div style={{ fontSize: 14, fontWeight: 600, color: tokens.textMuted, textAlign: 'center', marginBottom: 32, lineHeight: 1.7 }}>
+          Ultimate Noughts &amp; Crosses.<br />Every move matters.
+        </div>
+
+        {/* Board preview placeholder */}
+        <div style={{
+          width: 240, height: 240, borderRadius: 20, marginBottom: 28, flexShrink: 0,
+          background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.22))',
+          border: '2px solid rgba(0,212,170,0.35)',
+          boxShadow: 'inset 0 0 40px rgba(0,212,170,0.25), 0 8px 32px rgba(0,0,0,0.4)',
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 3, padding: 12,
+        }}>
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} style={{
+              borderRadius: 8,
+              background: i === 4
+                ? 'rgba(0,212,170,0.15)'
+                : 'rgba(255,255,255,0.04)',
+              border: i === 4
+                ? '1px solid rgba(0,212,170,0.3)'
+                : '1px solid rgba(255,255,255,0.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {i === 4 && <SparkleIcon size={14} />}
+            </div>
+          ))}
+        </div>
+
+        {/* Primary CTA */}
+        <div style={{ width: '100%', marginBottom: 20 }}>
+          <PrimaryButton onClick={() => navigate('/demo')} fullWidth>
+            ▶&nbsp; Play Demo
+          </PrimaryButton>
+        </div>
+
+        {/* Unlock list */}
+        <Glass style={{ width: '100%', marginBottom: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: tokens.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>
+            Create an account to unlock
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {UNLOCK_ROWS.map(r => (
+              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: r.tint, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18,
+                }}>
+                  {r.icon}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: tokens.text }}>{r.label}</span>
+              </div>
+            ))}
+          </div>
+        </Glass>
+
+        {/* Auth row */}
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <SecondaryButton onClick={() => navigate('/login')} fullWidth>Log In</SecondaryButton>
+          {/* Outline / tertiary variant */}
           <button
             onClick={() => navigate('/signup')}
             style={{
-              padding: '12px 28px',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              borderRadius: '12px',
-              border: '2px solid #00d4aa',
-              backgroundColor: 'transparent',
-              color: '#00d4aa',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
+              flex: 1, padding: '12px 0', borderRadius: tokens.rBtn,
+              border: `1.5px solid ${tokens.accent}`,
+              color: tokens.accent, background: 'transparent',
+              fontFamily: tokens.font, fontSize: 14, fontWeight: 800,
+              cursor: 'pointer', transition: 'background 0.15s, color 0.15s',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#00d4aa';
-              e.currentTarget.style.color = '#1a2332';
+            onMouseEnter={e => {
+              e.currentTarget.style.background = tokens.accent;
+              e.currentTarget.style.color = tokens.bgBase;
             }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#00d4aa';
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = tokens.accent;
             }}
           >
             Sign Up
           </button>
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              padding: '12px 28px',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              borderRadius: '12px',
-              border: '2px solid #4299e1',
-              backgroundColor: 'transparent',
-              color: '#4299e1',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#4299e1';
-              e.currentTarget.style.color = '#ffffff';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#4299e1';
-            }}
-          >
-            Log In
-          </button>
         </div>
+
       </div>
-    </div>
+    </PageBackground>
   );
 };
 

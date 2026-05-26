@@ -1,112 +1,138 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { tokens } from '../styles/tokens';
+import PageBackground from './common/PageBackground';
+import Glass from './common/Glass';
+import { ChevronLeft } from './icons';
+import TabBar from './common/TabBar';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { useAuth } from '../contexts/AuthContext';
+import { usePlayerProfile } from '../hooks/usePlayerProfile';
 
+interface GameCard {
+  id: string;
+  emoji: string;
+  title: string;
+  sub: string;
+  bg: string;
+  border: string;
+  borderHover: string;
+  onClick: () => void;
+}
 
-const MultiplayerMenu: React.FC = () => {
-  const navigate = useNavigate();
-
+const FriendlyCard: React.FC<GameCard> = ({ id, emoji, title, sub, bg, border, borderHover, onClick }) => {
+  const [hovered, setHovered] = useState(false);
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#1a2332',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      <div style={{ position: 'absolute', top: '15%', right: '10%', width: '120px', height: '120px', backgroundColor: '#00d4aa', borderRadius: '50%', opacity: 0.1, animation: 'float 6s ease-in-out infinite' }} />
-      <div style={{ position: 'absolute', bottom: '25%', left: '15%', width: '90px', height: '90px', backgroundColor: '#4299e1', borderRadius: '50%', opacity: 0.1, animation: 'float 7s ease-in-out infinite reverse' }} />
-
-      <div style={{
-        backgroundColor: '#2a3441',
-        borderRadius: '24px',
-        padding: '50px 40px',
-        textAlign: 'center',
-        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-        maxWidth: '420px',
-        width: '90%',
-        animation: 'slideUp 0.8s ease-out',
-      }}>
-        <h2 style={{ fontSize: '2.8em', margin: '0 0 15px 0', color: '#ffffff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
-          Multiplayer Mode
-        </h2>
-        <p style={{ color: '#a0aec0', fontSize: '1.2em', marginBottom: '40px', fontWeight: '500' }}>
-          Choose your multiplayer experience
-        </p>
-
-        <div style={{ marginBottom: '30px' }}>
-          <MenuButton onClick={() => navigate('/local')} primary={true} description="Play with a friend on the same device" color="#00d4aa">
-            🏠 Local 2-Player
-          </MenuButton>
-          <MenuButton onClick={() => navigate('/matchmaking?mode=friendly')} primary={true} description="Host a game for online friends" color="#4299e1">
-            🌐 Host Online Game
-          </MenuButton>
-          <MenuButton onClick={() => navigate('/matchmaking?mode=friendly')} primary={true} description="Join a friend's online game" color="#ed8936">
-            🔍 Join Online Game
-          </MenuButton>
-          <MenuButton onClick={() => navigate('/')} primary={false} description="" color="#ff6b35">
-            ← Back to Main Menu
-          </MenuButton>
-        </div>
-
+    <button
+      key={id}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+        padding: 16, borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+        background: hovered ? bg.replace(/0\.\d+\)/, '0.18)') : bg,
+        border: `1px solid ${hovered ? borderHover : border}`,
+        transition: 'transform 0.2s ease, border-color 0.2s ease',
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        fontFamily: tokens.font,
+      }}
+    >
+      <div style={{ width: 44, height: 44, borderRadius: 12, background: bg, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+        {emoji}
       </div>
-    </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: tokens.text, marginBottom: 2 }}>{title}</div>
+        <div style={{ fontSize: 12, color: tokens.textMuted }}>{sub}</div>
+      </div>
+      <span style={{ color: tokens.textMuted, fontSize: 18, lineHeight: 1 }}>›</span>
+    </button>
   );
 };
 
-const MenuButton: React.FC<{
-  children: React.ReactNode;
-  onClick: () => void;
-  primary: boolean;
-  description: string;
-  disabled?: boolean;
-  color: string;
-}> = ({ children, onClick, primary, description, disabled = false, color }) => (
-  <div style={{ marginBottom: '15px' }}>
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        display: 'block',
-        width: '100%',
-        padding: '18px 24px',
-        fontSize: '18px',
-        fontWeight: 'bold',
-        border: primary ? 'none' : `2px solid ${color}`,
-        borderRadius: '16px',
-        background: disabled ? '#3a4553' : primary ? color : 'transparent',
-        color: disabled ? '#6b7280' : primary ? 'white' : color,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: 'translateY(0) scale(1)',
-        opacity: disabled ? 0.6 : 1,
-        boxShadow: disabled ? 'none' : primary ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)` : '0 4px 15px rgba(0, 0, 0, 0.1)',
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
-          e.currentTarget.style.boxShadow = primary ? `0 12px 35px ${color}60, 0 8px 20px rgba(0, 0, 0, 0.15)` : `0 8px 25px ${color}30, 0 4px 15px rgba(0, 0, 0, 0.1)`;
-          if (!primary) e.currentTarget.style.backgroundColor = `${color}15`;
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-          e.currentTarget.style.boxShadow = primary ? `0 8px 25px ${color}40, 0 4px 10px rgba(0, 0, 0, 0.1)` : '0 4px 15px rgba(0, 0, 0, 0.1)';
-          if (!primary) e.currentTarget.style.backgroundColor = 'transparent';
-        }
-      }}
-    >
-      {children}
-    </button>
-    {description && (
-      <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#718096', textAlign: 'center' }}>
-        {description}
-      </p>
-    )}
-  </div>
-);
+const MultiplayerMenu: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const profile = usePlayerProfile();
+  const isMobile = useIsMobile();
+
+  const modeCards: GameCard[] = [
+    {
+      id: 'find',
+      emoji: '⚡',
+      title: 'Find Game',
+      sub: 'Match up against another player',
+      bg: 'rgba(0,212,170,0.10)',
+      border: 'rgba(0,212,170,0.25)',
+      borderHover: 'rgba(0,212,170,0.45)',
+      onClick: () => navigate('/matchmaking?mode=ranked&view=searching'),
+    },
+    {
+      id: 'host',
+      emoji: '🌐',
+      title: 'Host a game',
+      sub: 'Get a 6-letter code to share',
+      bg: 'rgba(66,153,225,0.10)',
+      border: 'rgba(66,153,225,0.25)',
+      borderHover: 'rgba(66,153,225,0.40)',
+      onClick: () => navigate('/matchmaking?mode=friendly&view=create'),
+    },
+    {
+      id: 'join',
+      emoji: '🔍',
+      title: 'Join with code',
+      sub: "Enter your friend's code",
+      bg: 'rgba(124,77,255,0.10)',
+      border: 'rgba(124,77,255,0.25)',
+      borderHover: 'rgba(124,77,255,0.40)',
+      onClick: () => navigate('/matchmaking?mode=friendly&view=join'),
+    },
+    {
+      id: 'local',
+      emoji: '👥',
+      title: 'Local 2-player',
+      sub: 'Pass and play on this device',
+      bg: 'rgba(247,147,30,0.10)',
+      border: 'rgba(247,147,30,0.25)',
+      borderHover: 'rgba(247,147,30,0.40)',
+      onClick: () => navigate('/local'),
+    },
+  ];
+
+  const content = (
+    <div style={{ fontFamily: tokens.font, color: tokens.text, maxWidth: 600, margin: isMobile ? undefined : '40px auto', padding: isMobile ? '0 16px' : '0 60px', paddingBottom: isMobile ? 100 : 0 }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: isMobile ? '16px 0 12px' : '20px 0 16px' }}>
+        <button onClick={() => navigate('/menu')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
+          <ChevronLeft size={20} />
+        </button>
+        <span style={{ fontSize: 18, fontWeight: 800 }}>Multiplayer</span>
+      </div>
+
+      {/* Mode cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+        {modeCards.map((card) => <FriendlyCard key={card.id} {...card} />)}
+      </div>
+
+      {/* Online now strip */}
+      <Glass padding={14} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{
+          width: 8, height: 8, borderRadius: '50%', background: tokens.accent, flexShrink: 0,
+          boxShadow: `0 0 6px ${tokens.accent}`, display: 'inline-block', animation: 'mxPulse 1.5s ease-in-out infinite',
+        }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: tokens.textMuted }}>Players online now</span>
+      </Glass>
+
+    </div>
+  );
+
+  return (
+    <PageBackground>
+      {content}
+      {isMobile && <TabBar username={profile?.username} />}
+    </PageBackground>
+  );
+};
 
 export default MultiplayerMenu;

@@ -1,28 +1,34 @@
-// src/components/progression/LevelBadge.tsx
 import React from 'react';
+import { tokens } from '../../styles/tokens';
 
 interface LevelBadgeProps {
   level: number;
   size?: 'sm' | 'md' | 'lg';
 }
 
-const sizeMap = { sm: 16, md: 20, lg: 28 };
+const sizeMap = {
+  sm: { width: 26,  fontSize: 11 },
+  md: { width: 34,  fontSize: 13 },
+  lg: { width: 44,  fontSize: 16 },
+};
 
 export const LevelBadge: React.FC<LevelBadgeProps> = ({ level, size = 'md' }) => {
-  const fontSize = sizeMap[size];
+  const { width, fontSize } = sizeMap[size];
   return (
     <span style={{
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#4a4af4',
-      color: '#fff',
-      borderRadius: '4px',
-      padding: '1px 6px',
+      width,
+      height: width,
+      borderRadius: '50%',
+      background: `linear-gradient(135deg, ${tokens.xp}, ${tokens.xpDark})`,
+      color: tokens.text,
+      fontWeight: 900,
       fontSize,
-      fontWeight: 700,
-      lineHeight: 1.4,
-      minWidth: fontSize * 1.6,
+      border: '1.5px solid rgba(255,255,255,0.15)',
+      boxShadow: '0 4px 14px rgba(124,77,255,0.4)',
+      flexShrink: 0,
     }}>
       {level}
     </span>

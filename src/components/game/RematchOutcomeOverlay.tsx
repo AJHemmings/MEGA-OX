@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { tokens } from '../../styles/tokens';
 
 interface RematchOutcomeOverlayProps {
   type: 'agreed' | 'opted_out';
@@ -16,52 +17,42 @@ const RematchOutcomeOverlay: React.FC<RematchOutcomeOverlayProps> = ({ type, onD
   }, []);
 
   const isAgreed = type === 'agreed';
+  const color    = isAgreed ? tokens.accent : tokens.textMuted;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        // Agreed: nearly-opaque cover screen. Opted-out: modal overlay.
-        background: isAgreed ? 'rgba(10, 16, 26, 0.96)' : 'rgba(10, 16, 26, 0.88)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 3000,
-      }}
-    >
-      <div
-        style={{
-          background: '#2a3441',
-          borderRadius: '20px',
-          padding: '40px 48px',
-          textAlign: 'center',
-          border: `2px solid ${isAgreed ? '#00d4aa' : '#3a4a5a'}`,
-          boxShadow: isAgreed
-            ? '0 0 60px rgba(0, 212, 170, 0.15), 0 8px 32px rgba(0,0,0,0.5)'
-            : '0 8px 32px rgba(0,0,0,0.4)',
-          maxWidth: 340,
-          width: '90%',
-        }}
-      >
-        <h2
-          style={{
-            color: isAgreed ? '#00d4aa' : '#ffffff',
-            margin: '0 0 12px',
-            fontSize: 22,
-            fontWeight: 'bold',
-          }}
-        >
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(6,13,31,0.88)',
+      backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 3000, fontFamily: tokens.font,
+    }}>
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
+        border: `1px solid ${isAgreed ? 'rgba(0,212,170,0.4)' : 'rgba(255,255,255,0.10)'}`,
+        borderRadius: tokens.glassRadius,
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        padding: '40px 48px', textAlign: 'center',
+        boxShadow: isAgreed
+          ? `0 0 48px rgba(0,212,170,0.15), 0 8px 32px rgba(0,0,0,0.5)`
+          : '0 8px 32px rgba(0,0,0,0.4)',
+        maxWidth: 340, width: 'calc(100% - 40px)',
+        animation: 'mxSlideUp 0.4s cubic-bezier(0.16,1,0.3,1)',
+      }}>
+        <div style={{ fontSize: 44, marginBottom: 16 }}>
+          {isAgreed ? '🤝' : '👋'}
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 900, color, marginBottom: 10 }}>
           {isAgreed ? 'Rematch agreed!' : 'Opponent opted out'}
-        </h2>
-        <p style={{ color: '#a0aec0', margin: '0 0 20px', fontSize: 15, lineHeight: 1.5 }}>
+        </div>
+        <div style={{ fontSize: 14, color: tokens.textMuted, marginBottom: 16, lineHeight: 1.5 }}>
           {isAgreed
             ? 'Your opponent has agreed to a rematch.'
             : 'Your opponent opted out of a rematch.'}
-        </p>
-        <p style={{ color: '#4a5568', fontSize: 13, margin: 0 }}>
-          {isAgreed ? 'Starting new game...' : 'Returning to menu...'}
-        </p>
+        </div>
+        <div style={{ fontSize: 12, color: tokens.textDim, fontWeight: 600 }}>
+          {isAgreed ? 'Starting new game…' : 'Returning to menu…'}
+        </div>
       </div>
     </div>
   );
