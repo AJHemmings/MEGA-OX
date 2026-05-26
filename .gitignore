@@ -20,5 +20,7 @@ build/
 SUPABASE_SETUP.md
 IMPLEMENTATION.md
 
-# Git worktrees
-.worktrees/.superpowers/
+# Git worktrees & tooling
+.worktrees/
+.superpowers/
+.claude/

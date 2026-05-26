@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Mega OX — Phase 5 Visual Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #050a17; color: #fff; font-family: Nunito, system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  button { font-family: Nunito, system-ui, sans-serif; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="foundations.jsx"></script>
+<script type="text/babel" src="screens-p1.jsx"></script>
+<script type="text/babel" src="screens-p2.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const App = () => (
+  <DesignCanvas
+    title="Mega OX — Phase 5 Visual Redesign"
+    subtitle="Dark glassmorphism · Nunito · skinnable game canvas"
+    storageKey="megaox-phase5"
+  >
+    <DCSection id="foundations" title="01 · Foundations">
+      <DCArtboard id="foundations" label="Visual system reference" width={1080} height={1640} background="#060d1f">
+        <FoundationsBoard />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="p1-main" title="02 · Priority 1 · Main Menu">
+      <DCArtboard id="main-menu-mobile" label="Main Menu — Mobile" width={390} height={844} background="#000">
+        <MainMenuMobile />
+      </DCArtboard>
+      <DCArtboard id="main-menu-desktop" label="Main Menu — Desktop" width={1280} height={800} background="#000">
+        <MainMenuDesktop />
+      </DCArtboard>
+      <DCArtboard id="streak-modal" label="Login Streak Modal" width={390} height={844} background="#000">
+        <StreakModal />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="p1-multi" title="03 · Priority 1 · Multiplayer & Matchmaking">
+      <DCArtboard id="multiplayer-mobile" label="Multiplayer Menu — Mobile" width={390} height={844} background="#000">
+        <MultiplayerMenuMobile />
+      </DCArtboard>
+      <DCArtboard id="matchmaking-searching" label="Matchmaking — Searching" width={390} height={844} background="#000">
+        <MatchmakingSearching />
+      </DCArtboard>
+      <DCArtboard id="matchmaking-host" label="Matchmaking — Waiting (Host)" width={390} height={844} background="#000">
+        <MatchmakingHostCode />
+      </DCArtboard>
+      <DCArtboard id="matchmaking-join" label="Matchmaking — Join with code" width={390} height={844} background="#000">
+        <MatchmakingJoin />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="p1-profile" title="04 · Priority 1 · Profile">
+      <DCArtboard id="profile-mobile" label="Profile — Mobile (own)" width={390} height={844} background="#000">
+        <ProfileMobile />
+      </DCArtboard>
+      <DCArtboard id="profile-desktop" label="Profile — Desktop" width={1280} height={800} background="#000">
+        <ProfileDesktop />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="game" title="05 · Game Screen Chrome">
+      <DCArtboard id="game-mobile" label="Game — Mobile (online)" width={390} height={844} background="#000">
+        <GameScreenMobile />
+      </DCArtboard>
+      <DCArtboard id="game-desktop" label="Game — Desktop (annotated)" width={1280} height={800} background="#000">
+        <GameScreenDesktop />
+      </DCArtboard>
+      <DCArtboard id="postgame" label="Post-Game Modal · Level Up" width={390} height={844} background="#000">
+        <PostGameModalScreen />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="p2" title="06 · Priority 2 · Supporting Screens">
+      <DCArtboard id="leaderboard-mobile" label="Leaderboard — Mobile" width={390} height={844} background="#000">
+        <LeaderboardMobile />
+      </DCArtboard>
+      <DCArtboard id="achievements-mobile" label="Achievements — Mobile" width={390} height={844} background="#000">
+        <AchievementsMobile />
+      </DCArtboard>
+      <DCArtboard id="customise-mobile" label="Customise — Mobile" width={390} height={844} background="#000">
+        <CustomiseMobile />
+      </DCArtboard>
+      <DCArtboard id="guest" label="Guest Landing — Mobile" width={390} height={844} background="#000">
+        <GuestLanding />
+      </DCArtboard>
+      <DCArtboard id="demo-game" label="Demo Game — Mobile" width={390} height={844} background="#000">
+        <DemoGameMobile />
+      </DCArtboard>
+      <DCArtboard id="login" label="Login — Mobile" width={390} height={844} background="#000">
+        <LoginMobile />
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
