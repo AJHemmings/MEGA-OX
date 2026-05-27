@@ -4,25 +4,54 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phase 4 is complete and merged to `main`.** Pushed to private Vercel (2026-05-20). All 8 tasks built, reviewed, and deployed.
+> "I've read the handover. **Phases 1–5 are complete and merged to `main`.** Phase 5 (visual redesign) shipped 2026-05-27 and is live on `mega-ox-dev.vercel.app`.
 >
-> Next phase is **Phase 5: Visual redesign**. Smoke tests for Phase 4 are still pending full browser verification — check the 'Confirmed working' section for what to verify first."
+> Next phase is **Phase 6: Cash shop**. Before starting, check the 'Known issues' section — a code review session identified several confirmed tech debt items worth addressing."
 
 ---
 
 ## Current state
 
-`main` branch: Phase 4 complete and merged (2026-05-20).
+`main` branch: Phase 5 complete and merged (2026-05-27). Latest commit: `b63b143`.
 
-**Private Vercel (`mega-ox-dev`):** Testing environment
+**Private Vercel (`mega-ox-dev`):** Testing environment — live URL: https://mega-ox-dev.vercel.app
 — Project ID: `prj_ax0KSF6QTW1EMnAdtDa9HesZWCub`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy: `git push private main` from project root
 — Deployment protection: **disabled** (for testing)
-— Latest production commit: `9d0d991` (Phase 4 merged 2026-05-20).
+— Latest production commit: `b63b143` (landing page UI polish, 2026-05-27)
 — Edge function: **v10** deployed 2026-03-31. `verify_jwt: false` locked in `config.toml`.
 
-**Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. Leave alone. Do NOT push to `origin/main` without explicit instruction.
+**Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. URL: https://mega-ox.vercel.app
+— Still running Phase 3-era code. Do NOT push to `origin/main` without explicit instruction.
+
+---
+
+## Phase 5 — complete ✅ (merged 2026-05-27)
+
+**Design brief:** `docs/superpowers/specs/2026-05-26-phase5-visual-redesign-design.md`
+**Design handoff assets:** `design_handoff_phase5_visual_redesign/`
+
+**What was built:**
+- Full visual pass across all screens — dark glassmorphism aesthetic (deep navy/blue base, frosted glass cards, teal `#00d4aa` accent)
+- Shared design token system: `src/styles/tokens.ts` — colours, radius, font, spacing
+- New shared components: `Glass`, `PrimaryButton`, `SecondaryButton`, `PageBackground`, `Pill`, `TabBar`
+- All screens restyled: GuestLandingPage, MainMenu, MultiplayerMenu, MatchmakingPage, OnlineGameView, ProfilePage, CustomisePage, LeaderboardPage, AchievementsPage, auth pages, HowToPlay, SeasonPage, SettingsPage
+- Desktop + mobile responsive layouts on MainMenu
+- Design direction: Telegram tap-to-earn game aesthetic — not neon/esports, not flat/corporate
+
+**Landing page polish (2026-05-27, commit `b63b143`):**
+- Removed board preview grid (looked bad)
+- Added "Coming soon" pill to the Ranked Multiplayer unlock row
+- Replaced side-by-side Log In / Sign Up buttons with full-width Log In button + "Don't have an account? Sign up!" link below
+
+**ESLint fixes (2026-05-27, commit `59cfabc`):**
+- Three unused-var errors from the Phase 5 refactor blocked the Vercel build
+- `MainMenu.tsx`: removed `navigate` from `MobileLayout` destructure (used in `DesktopLayout` only)
+- `MultiplayerMenu.tsx`: renamed unused `user` to `_user`
+- `MatchmakingPage.tsx`: removed unused `Pill` import
+
+**Smoke tests:** Phase 5 visual pass is not a logic change — no new smoke test checklist. Verify visually on https://mega-ox-dev.vercel.app.
 
 ---
 
@@ -205,7 +234,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 2.5   | Disconnect handling + broadcast sync + audio + Play Again | **Complete**     |
 | 3     | Player progression + achievements + virtual currency      | **Complete**     |
 | 4     | Profile customisation + emoji communication               | **Complete** (merged 2026-05-20)  |
-| 5     | Visual redesign                                           | Not started      |
+| 5     | Visual redesign                                           | **Complete** (merged 2026-05-27)  |
 | 6     | Cash shop                                                 | Not started      |
 | 7     | Admin dashboard                                           | Not started      |
 | 8     | Bug report system                                         | Not started      |
@@ -239,6 +268,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | Avatar / badge / banner equip (CustomisePage) | Done — Phase 4           |
 | Profile cosmetics display (ProfilePage)    | Done — Phase 4            |
 | In-game emoji communication                | Done — Phase 4            |
+| Visual redesign (all screens)              | Done — Phase 5            |
 
 ---
 
@@ -375,6 +405,39 @@ All attempted to patch the event-based system. Approaches tried: reordering hand
 - Both players upsert their pick — no broadcast, no WebSocket dependency
 - Both clients poll every 1s: when 2 rows appear, each resolves independently
 - Creator waits 2s, then: draw → delete picks → `rpsRound++` → new round; win → update game row + delete picks → joiner's `fetchGameState` syncs
+
+---
+
+## Code review findings — 2026-05-27
+
+A full architectural code review was run (7-angle, multi-agent). Two initial findings were wrong (code had guards the agents missed). Confirmed findings below.
+
+### Confirmed tech debt
+
+**`disconnectTimerRef` is dead code** (`useOnlineGame.ts` ~line 52)
+Declared and cleared in two places (`join` handler + channel cleanup) but never assigned. `clearTimeout(disconnectTimerRef.current)` is always a no-op. Leftover from a previous `setTimeout`-based disconnect implementation replaced by `countdownIntervalRef`. Delete the ref and both clear calls.
+
+**`tierColour` duplicated** (`LeaderboardPage.tsx` line 26, `ProfilePage.tsx` line 40)
+Identical rank-tier → hex colour lookup defined twice. A new tier must be added in both files. Extract to `src/styles/tokens.ts` or `src/lib/tiers.ts`.
+
+**`Field` input component duplicated** (`LoginPage.tsx` ~line 10, `SignUpPage.tsx` ~line 13)
+Same styled input component defined in two files, already slightly diverged (SignUpPage added a `right` prop). Extract to `src/components/common/Field.tsx`.
+
+**`loadProfile` in `OnlineGameView` re-implements `usePlayerProfile`** (`OnlineGameView.tsx` ~line 152)
+An inline async function fetches username, avatar, rank tier, and level — the exact shape `usePlayerProfile` exposes. `OnlineGameView` does not import `usePlayerProfile` at all. If the profile schema changes, only the hook gets updated.
+
+**`usePlayerProfile` effect dep is `[user]` not `[user?.id]`** (`usePlayerProfile.ts` line 47)
+Supabase fires `onAuthStateChange` with a new `User` object reference on every token refresh (~hourly), even when `user.id` hasn't changed. This re-runs the effect and fires two unnecessary DB queries. Change dep to `[user?.id]`.
+
+### Conditional bug (depends on Supabase config)
+
+**Email confirmation signup skips profile creation** (`AuthContext.tsx` ~line 75)
+If "Confirm email" is enabled in Supabase (Authentication → Email), `signUp()` returns no session. The immediately following `getUser()` returns `null`. The `if (user)` block is skipped — no `profiles`, `player_stats`, or `currency_balance` row is created. The user confirms their email, logs in, and the entire app is broken for them. **Check the Supabase dashboard toggle. If off, ignore this.**
+
+### Plausible but not smoke-test-visible
+
+**Orphaned disconnect countdown interval** (`useOnlineGame.ts` ~line 286)
+The `leave` presence handler starts a `setInterval` without first calling `clearInterval` on the existing one. If the opponent disconnects → reconnects → disconnects again within the 90-second window, a second interval is started while the first is still running (the `join` handler cleared the ref but the first interval is already gone). Two intervals compete, producing visible countdown jitter. Fix: `clearInterval(countdownIntervalRef.current)` as the first line of the `leave` handler.
 
 ---
 
