@@ -247,7 +247,7 @@ interface LayoutProps {
 }
 
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, navigate,
+  profile, progression, recentGames, initial, onPlay, onMode,
 }) => (
   <div style={{
     minHeight: '100vh',

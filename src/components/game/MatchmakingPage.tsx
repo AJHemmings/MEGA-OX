@@ -10,7 +10,6 @@ import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import PrimaryButton from '../common/PrimaryButton';
 import SecondaryButton from '../common/SecondaryButton';
-import Pill from '../common/Pill';
 import { ChevronLeft, SearchIcon } from '../icons';
 
 const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();

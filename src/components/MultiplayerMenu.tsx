@@ -52,7 +52,7 @@ const FriendlyCard: React.FC<GameCard> = ({ id, emoji, title, sub, bg, border, b
 
 const MultiplayerMenu: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const profile = usePlayerProfile();
   const isMobile = useIsMobile();
 
