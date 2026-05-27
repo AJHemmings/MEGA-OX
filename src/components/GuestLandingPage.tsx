@@ -4,13 +4,11 @@ import { tokens } from '../styles/tokens';
 import PageBackground from './common/PageBackground';
 import Glass from './common/Glass';
 import PrimaryButton from './common/PrimaryButton';
-import SecondaryButton from './common/SecondaryButton';
-import { SparkleIcon } from './icons';
 
 const UNLOCK_ROWS = [
-  { icon: '🏆', label: 'Ranked multiplayer + leaderboards', tint: 'rgba(0,212,170,0.15)' },
-  { icon: '⚡', label: 'XP system + achievements',          tint: 'rgba(124,77,255,0.15)' },
-  { icon: '🎨', label: 'Skins, avatars + customisation',    tint: 'rgba(249,168,37,0.15)' },
+  { icon: '🏆', label: 'Ranked multiplayer + leaderboards', tint: 'rgba(0,212,170,0.15)', comingSoon: true },
+  { icon: '⚡', label: 'XP system + achievements',          tint: 'rgba(124,77,255,0.15)', comingSoon: false },
+  { icon: '🎨', label: 'Skins, avatars + customisation',    tint: 'rgba(249,168,37,0.15)', comingSoon: false },
 ];
 
 const GuestLandingPage: React.FC = () => {
@@ -42,31 +40,6 @@ const GuestLandingPage: React.FC = () => {
           Ultimate Noughts &amp; Crosses.<br />Every move matters.
         </div>
 
-        {/* Board preview placeholder */}
-        <div style={{
-          width: 240, height: 240, borderRadius: 20, marginBottom: 28, flexShrink: 0,
-          background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.22))',
-          border: '2px solid rgba(0,212,170,0.35)',
-          boxShadow: 'inset 0 0 40px rgba(0,212,170,0.25), 0 8px 32px rgba(0,0,0,0.4)',
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 3, padding: 12,
-        }}>
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} style={{
-              borderRadius: 8,
-              background: i === 4
-                ? 'rgba(0,212,170,0.15)'
-                : 'rgba(255,255,255,0.04)',
-              border: i === 4
-                ? '1px solid rgba(0,212,170,0.3)'
-                : '1px solid rgba(255,255,255,0.06)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {i === 4 && <SparkleIcon size={14} />}
-            </div>
-          ))}
-        </div>
-
         {/* Primary CTA */}
         <div style={{ width: '100%', marginBottom: 20 }}>
           <PrimaryButton onClick={() => navigate('/demo')} fullWidth>
@@ -90,35 +63,38 @@ const GuestLandingPage: React.FC = () => {
                   {r.icon}
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: tokens.text }}>{r.label}</span>
+                {r.comingSoon && (
+                  <span style={{
+                    marginLeft: 'auto', flexShrink: 0,
+                    fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase',
+                    color: tokens.accent, background: 'rgba(0,212,170,0.12)',
+                    border: '1px solid rgba(0,212,170,0.3)',
+                    borderRadius: 100, padding: '2px 8px',
+                  }}>
+                    Coming soon
+                  </span>
+                )}
               </div>
             ))}
           </div>
         </Glass>
 
-        {/* Auth row */}
-        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-          <SecondaryButton onClick={() => navigate('/login')} fullWidth>Log In</SecondaryButton>
-          {/* Outline / tertiary variant */}
-          <button
-            onClick={() => navigate('/signup')}
-            style={{
-              flex: 1, padding: '12px 0', borderRadius: tokens.rBtn,
-              border: `1.5px solid ${tokens.accent}`,
-              color: tokens.accent, background: 'transparent',
-              fontFamily: tokens.font, fontSize: 14, fontWeight: 800,
-              cursor: 'pointer', transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = tokens.accent;
-              e.currentTarget.style.color = tokens.bgBase;
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = tokens.accent;
-            }}
-          >
-            Sign Up
-          </button>
+        {/* Auth section */}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <PrimaryButton onClick={() => navigate('/login')} fullWidth>Log In</PrimaryButton>
+          <p style={{ margin: 0, fontSize: 13, color: tokens.textMuted }}>
+            Don't have an account?{' '}
+            <button
+              onClick={() => navigate('/signup')}
+              style={{
+                background: 'none', border: 'none', padding: 0,
+                fontFamily: tokens.font, fontSize: 13, fontWeight: 700,
+                color: tokens.accent, cursor: 'pointer', textDecoration: 'underline',
+              }}
+            >
+              Sign up!
+            </button>
+          </p>
         </div>
 
       </div>
