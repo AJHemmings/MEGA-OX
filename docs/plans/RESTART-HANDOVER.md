@@ -4,15 +4,15 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phases 1–5 are complete and merged to `main`.** Phase 5 (visual redesign) shipped 2026-05-27 and is live on `mega-ox-dev.vercel.app`.
+> "I've read the handover. **Phases 1–5 are complete and merged to `main`**, plus a tech debt + leaderboard fix session on 2026-05-28. Live on `mega-ox-dev.vercel.app`.
 >
-> Next phase is **Phase 6: Cash shop**. Before starting, check the 'Known issues' section — a code review session identified several confirmed tech debt items worth addressing."
+> Next phase is **Phase 6: Cash shop**. Remaining tech debt items from the code review are listed in 'Known issues'."
 
 ---
 
 ## Current state
 
-`main` branch: Phase 5 complete and merged (2026-05-27). Latest commit: `b63b143`.
+`main` branch: Tech debt + leaderboard fixes merged (2026-05-28). Latest commit: `d121c89`.
 
 **Private Vercel (`mega-ox-dev`):** Testing environment — live URL: https://mega-ox-dev.vercel.app
 — Project ID: `prj_ax0KSF6QTW1EMnAdtDa9HesZWCub`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
@@ -24,6 +24,32 @@ Read this file in full, then say:
 
 **Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. URL: https://mega-ox.vercel.app
 — Still running Phase 3-era code. Do NOT push to `origin/main` without explicit instruction.
+
+---
+
+## Tech debt + leaderboard fixes — complete ✅ (merged 2026-05-28)
+
+**Commit:** `d121c89` (merge commit), feature branch `feat/tech-debt`
+
+**Tech debt resolved (from 2026-05-27 code review):**
+- `disconnectTimerRef` dead code removed from `useOnlineGame.ts` — declared/cleared but never assigned
+- `tierColour` extracted to `src/styles/tokens.ts` — was duplicated in `LeaderboardPage` and `ProfilePage`
+- `usePlayerProfile` dep array fixed — `[user]` → `[userId]` (primitive) to prevent redundant fetches on token refresh
+
+**Tech debt still open (deferred to later session):**
+- `Field` input component duplicated in `LoginPage` + `SignUpPage` (already diverged)
+- `loadProfile` in `OnlineGameView` reimplements `usePlayerProfile` inline
+- Orphaned countdown interval on rapid disconnect/reconnect (`useOnlineGame.ts` leave handler)
+
+**Leaderboard fixes:**
+- Migration `20260528000001_backfill_player_stats.sql` — inserts missing `player_stats` rows for profiles without one; overwrites W/L/D with ground-truth counts from `games` table (already applied to live DB)
+- Migration `20260528000002_leaderboard_row_number.sql` — replaces `rank()` with `row_number()` so tied MMR (everyone on default 1000) produces unique positions (already applied to live DB)
+- Podium now renders when fewer than 3 players are ranked (was `=== 3`, now `> 0`)
+- Friends/Season leaderboard tabs now show correct placeholders instead of global data
+
+**UI fixes:**
+- SEASON 04 pill and heading removed from `LeaderboardPage` and `SeasonPage`
+- Mobile hamburger menu added to `MobileLayout` in `MainMenu.tsx` — `≡` icon top-left, slide-in drawer (Leaderboard, Achievements, Season), closes on backdrop tap
 
 ---
 
@@ -414,20 +440,17 @@ A full architectural code review was run (7-angle, multi-agent). Two initial fin
 
 ### Confirmed tech debt
 
-**`disconnectTimerRef` is dead code** (`useOnlineGame.ts` ~line 52)
-Declared and cleared in two places (`join` handler + channel cleanup) but never assigned. `clearTimeout(disconnectTimerRef.current)` is always a no-op. Leftover from a previous `setTimeout`-based disconnect implementation replaced by `countdownIntervalRef`. Delete the ref and both clear calls.
+~~**`disconnectTimerRef` is dead code**~~ ✅ Fixed 2026-05-28
 
-**`tierColour` duplicated** (`LeaderboardPage.tsx` line 26, `ProfilePage.tsx` line 40)
-Identical rank-tier → hex colour lookup defined twice. A new tier must be added in both files. Extract to `src/styles/tokens.ts` or `src/lib/tiers.ts`.
+~~**`tierColour` duplicated**~~ ✅ Fixed 2026-05-28 — extracted to `src/styles/tokens.ts`
+
+~~**`usePlayerProfile` effect dep is `[user]` not `[user?.id]`**~~ ✅ Fixed 2026-05-28
 
 **`Field` input component duplicated** (`LoginPage.tsx` ~line 10, `SignUpPage.tsx` ~line 13)
 Same styled input component defined in two files, already slightly diverged (SignUpPage added a `right` prop). Extract to `src/components/common/Field.tsx`.
 
 **`loadProfile` in `OnlineGameView` re-implements `usePlayerProfile`** (`OnlineGameView.tsx` ~line 152)
 An inline async function fetches username, avatar, rank tier, and level — the exact shape `usePlayerProfile` exposes. `OnlineGameView` does not import `usePlayerProfile` at all. If the profile schema changes, only the hook gets updated.
-
-**`usePlayerProfile` effect dep is `[user]` not `[user?.id]`** (`usePlayerProfile.ts` line 47)
-Supabase fires `onAuthStateChange` with a new `User` object reference on every token refresh (~hourly), even when `user.id` hasn't changed. This re-runs the effect and fires two unnecessary DB queries. Change dep to `[user?.id]`.
 
 ### Conditional bug (depends on Supabase config)
 
