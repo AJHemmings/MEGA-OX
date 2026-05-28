@@ -246,20 +246,81 @@ interface LayoutProps {
   navigate: ReturnType<typeof useNavigate>;
 }
 
+const MOBILE_NAV = [
+  { label: 'Leaderboard',  path: '/leaderboard' },
+  { label: 'Achievements', path: '/achievements' },
+  { label: 'Season',       path: '/season' },
+];
+
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, onPlay, onMode,
-}) => (
+  profile, progression, recentGames, initial, onPlay, onMode, navigate,
+}) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
   <div style={{
     minHeight: '100vh',
     padding: '0 16px',
     paddingBottom: 88, // tab bar clearance
     fontFamily: tokens.font,
   }}>
+    {/* Backdrop */}
+    {menuOpen && (
+      <div
+        onClick={() => setMenuOpen(false)}
+        style={{ position: 'fixed', inset: 0, zIndex: 199, background: 'rgba(0,0,0,0.5)' }}
+      />
+    )}
+
+    {/* Slide-in drawer */}
+    <div style={{
+      position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 200,
+      width: 220,
+      background: tokens.bgCard,
+      borderRight: '1px solid rgba(255,255,255,0.10)',
+      backdropFilter: tokens.glassBlur,
+      WebkitBackdropFilter: tokens.glassBlur,
+      padding: '64px 0 24px',
+      display: 'flex', flexDirection: 'column', gap: 2,
+      transform: menuOpen ? 'translateX(0)' : 'translateX(-100%)',
+      transition: 'transform 0.22s ease',
+    }}>
+      {MOBILE_NAV.map(({ label, path }) => (
+        <button
+          key={path}
+          onClick={() => { navigate(path); setMenuOpen(false); }}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            textAlign: 'left', padding: '13px 24px',
+            fontFamily: tokens.font, fontSize: 15, fontWeight: 700,
+            color: tokens.textMuted,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = tokens.text; e.currentTarget.style.background = tokens.innerBg; }}
+          onMouseLeave={e => { e.currentTarget.style.color = tokens.textMuted; e.currentTarget.style.background = 'none'; }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+
     {/* Top bar */}
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '52px 0 16px',
     }}>
+      {/* Hamburger */}
+      <button
+        onClick={() => setMenuOpen(o => !o)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 0, flexShrink: 0 }}
+        aria-label="Menu"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ width: 20, height: 2, background: tokens.textMuted, borderRadius: 2 }} />
+          <div style={{ width: 20, height: 2, background: tokens.textMuted, borderRadius: 2 }} />
+          <div style={{ width: 14, height: 2, background: tokens.textMuted, borderRadius: 2 }} />
+        </div>
+      </button>
+
       <span style={{
         fontSize: 22, fontWeight: 900, letterSpacing: 2,
         background: `linear-gradient(90deg, ${tokens.text} 30%, ${tokens.accent} 100%)`,
@@ -362,7 +423,8 @@ const MobileLayout: React.FC<LayoutProps> = ({
       <NewsSlideshow />
     </Glass>
   </div>
-);
+  );
+};
 
 // ── desktop layout ────────────────────────────────────────────
 
