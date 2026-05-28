@@ -7,7 +7,7 @@ import { XPProgressBar } from '../progression/XPProgressBar';
 import { useProgression } from '../../hooks/useProgression';
 import { useAchievements } from '../../hooks/useAchievements';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { tokens } from '../../styles/tokens';
+import { tokens, tierColour } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import SecondaryButton from '../common/SecondaryButton';
@@ -37,10 +37,6 @@ interface RecentGame {
   match_type: string;
 }
 
-const tierColour: Record<string, string> = {
-  'Grand Master': '#f9a825', 'Master': '#c0c0c0', 'Expert': '#cd7f32',
-  'Strategist': '#00d4aa', 'Tactician': '#4299e1', 'Challenger': '#a0aec0', 'Novice': '#4a5568',
-};
 
 // ────────── sub-components ──────────
 

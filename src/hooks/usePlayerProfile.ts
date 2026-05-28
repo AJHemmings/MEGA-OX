@@ -14,21 +14,22 @@ export interface PlayerProfile {
 
 export const usePlayerProfile = () => {
   const { user } = useAuth();
+  const userId = user?.id;
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     Promise.all([
       supabase
         .from('profiles')
         .select('username, avatar_url, player_stats(rank_tier, wins, losses, draws)')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single(),
       supabase
         .from('player_progression')
         .select('level')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single(),
     ]).then(([{ data }, { data: prog }]) => {
       if (data) {
@@ -44,7 +45,7 @@ export const usePlayerProfile = () => {
         });
       }
     });
-  }, [user]);
+  }, [userId]);
 
   return profile;
 };

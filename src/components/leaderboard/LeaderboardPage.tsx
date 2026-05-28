@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { tokens } from '../../styles/tokens';
+import { tokens, tierColour } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
-import Pill from '../common/Pill';
 import { ChevronLeft } from '../icons';
 import TabBar from '../common/TabBar';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
@@ -23,10 +22,6 @@ interface LeaderboardEntry {
   draws: number;
 }
 
-const tierColour: Record<string, string> = {
-  'Grand Master': '#f9a825', 'Master': '#c0c0c0', 'Expert': '#cd7f32',
-  'Strategist': '#00d4aa', 'Tactician': '#4299e1', 'Challenger': '#a0aec0', 'Novice': '#4a5568',
-};
 
 const MEDAL = { 1: '#f9a825', 2: '#c0c0c0', 3: '#cd7f32' } as Record<number, string>;
 const STAND_H = { 1: 80, 2: 64, 3: 48 } as Record<number, number>;
@@ -90,17 +85,20 @@ const LeaderboardPage: React.FC = () => {
           <ChevronLeft size={20} />
         </button>
         <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Leaderboard</span>
-        <Pill variant="purple">SEASON 04</Pill>
       </div>
 
       <Switcher active={tab} onChange={setTab} />
 
-      {loading ? (
+      {tab !== 'Global' ? (
+        <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>
+          {tab === 'Friends' ? 'Friends leaderboard coming soon.' : 'No active season.'}
+        </div>
+      ) : loading ? (
         <div style={{ color: tokens.textMuted, textAlign: 'center', padding: 40 }}>Loading…</div>
       ) : (
         <>
           {/* Podium */}
-          {podium.length === 3 && (
+          {podium.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 16, marginBottom: 20 }}>
               {podium.map((entry) => {
                 const rank  = entry.position as 1 | 2 | 3;

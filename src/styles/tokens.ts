@@ -49,3 +49,8 @@ export const tokens = {
   // Font
   font: "'Nunito', system-ui, sans-serif",
 } as const;
+
+export const tierColour: Record<string, string> = {
+  'Grand Master': '#f9a825', 'Master': '#c0c0c0', 'Expert': '#cd7f32',
+  'Strategist': '#00d4aa', 'Tactician': '#4299e1', 'Challenger': '#a0aec0', 'Novice': '#4a5568',
+};

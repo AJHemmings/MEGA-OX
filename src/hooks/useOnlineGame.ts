@@ -49,7 +49,6 @@ export const useOnlineGame = (gameId: string) => {
   const opponentEmojiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const localMoveCountRef = useRef(0);
-  const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const gameRef = useRef<Game | null>(null);
@@ -233,10 +232,6 @@ export const useOnlineGame = (gameId: string) => {
         const opponentPresence = newPresences.find((p: any) => p.user_id !== user.id);
         if (opponentPresence) {
           setOpponentConnected(true);
-          if (disconnectTimerRef.current) {
-            clearTimeout(disconnectTimerRef.current);
-            disconnectTimerRef.current = null;
-          }
           if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
             countdownIntervalRef.current = null;
@@ -335,7 +330,6 @@ export const useOnlineGame = (gameId: string) => {
     return () => {
       supabase.removeChannel(channel);
       channelRef.current = null;
-      if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
       if (myEmojiTimerRef.current) clearTimeout(myEmojiTimerRef.current);
       if (opponentEmojiTimerRef.current) clearTimeout(opponentEmojiTimerRef.current);
