@@ -199,47 +199,79 @@ const CustomisePage: React.FC = () => {
       {tabItems.length === 0 ? (
         <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40, fontSize: 14 }}>
           {tab === 'emoji' ? 'No emoji unlocked yet.' : `No ${tab}s in your collection yet.`}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {tabItems.map(item => {
-            const equipped = isEquipped(item);
-            return (
+          {tab !== 'emoji' && (
+            <div style={{ marginTop: 12 }}>
               <button
-                key={item.item_id}
-                onClick={() => handleSelect(item)}
-                aria-pressed={equipped}
+                type="button"
+                onClick={() => navigate('/shop')}
                 style={{
-                  padding: 10, borderRadius: 14,
-                  cursor: tab === 'emoji' ? 'default' : 'pointer',
-                  border: 'none',
-                  background: equipped ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
-                  outline: equipped
-                    ? `1.5px solid ${tokens.accent}`
-                    : '1px solid rgba(255,255,255,0.06)',
-                  position: 'relative',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  fontFamily: tokens.font,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: tokens.accent, fontFamily: tokens.font,
+                  fontSize: 13, fontWeight: 700,
                 }}
               >
-                {equipped && (
-                  <div style={{
-                    position: 'absolute', top: 6, right: 6,
-                    padding: '2px 6px', borderRadius: 4,
-                    background: 'rgba(0,212,170,0.2)', fontSize: 8, fontWeight: 800,
-                    color: tokens.accent, letterSpacing: 0.6,
-                  }}>
-                    EQUIPPED
-                  </div>
-                )}
-                <ItemPreview item={item} />
-                <span style={{ fontSize: 10, color: tokens.textMuted, textAlign: 'center', fontWeight: 600, lineHeight: 1.3 }}>
-                  {item.name}
-                </span>
+                Get more items →
               </button>
-            );
-          })}
+            </div>
+          )}
         </div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {tabItems.map(item => {
+              const equipped = isEquipped(item);
+              return (
+                <button
+                  key={item.item_id}
+                  onClick={() => handleSelect(item)}
+                  aria-pressed={equipped}
+                  style={{
+                    padding: 10, borderRadius: 14,
+                    cursor: tab === 'emoji' ? 'default' : 'pointer',
+                    border: 'none',
+                    background: equipped ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
+                    outline: equipped
+                      ? `1.5px solid ${tokens.accent}`
+                      : '1px solid rgba(255,255,255,0.06)',
+                    position: 'relative',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    fontFamily: tokens.font,
+                  }}
+                >
+                  {equipped && (
+                    <div style={{
+                      position: 'absolute', top: 6, right: 6,
+                      padding: '2px 6px', borderRadius: 4,
+                      background: 'rgba(0,212,170,0.2)', fontSize: 8, fontWeight: 800,
+                      color: tokens.accent, letterSpacing: 0.6,
+                    }}>
+                      EQUIPPED
+                    </div>
+                  )}
+                  <ItemPreview item={item} />
+                  <span style={{ fontSize: 10, color: tokens.textMuted, textAlign: 'center', fontWeight: 600, lineHeight: 1.3 }}>
+                    {item.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {tab !== 'emoji' && (
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={() => navigate('/shop')}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: tokens.accent, fontFamily: tokens.font,
+                  fontSize: 13, fontWeight: 700,
+                }}
+              >
+                Get more items →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

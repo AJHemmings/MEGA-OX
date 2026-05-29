@@ -23,6 +23,7 @@ const pathToTab: Record<string, TabId> = {
   '/leaderboard': 'home',
   '/achievements': 'home',
   '/customise': 'profile',
+  '/shop': 'home',
 };
 
 const TabBar: React.FC<TabBarProps> = ({ username }) => {

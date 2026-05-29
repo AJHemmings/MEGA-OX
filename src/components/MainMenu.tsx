@@ -43,6 +43,7 @@ const DESKTOP_NAV = [
   { label: 'Home',         path: '/menu' },
   { label: 'Leaderboard',  path: '/leaderboard' },
   { label: 'Achievements', path: '/achievements' },
+  { label: 'Shop',         path: '/shop' },
   { label: 'Season',       path: '/season' },
 ];
 
@@ -249,6 +250,7 @@ interface LayoutProps {
 const MOBILE_NAV = [
   { label: 'Leaderboard',  path: '/leaderboard' },
   { label: 'Achievements', path: '/achievements' },
+  { label: 'Shop',         path: '/shop' },
   { label: 'Season',       path: '/season' },
 ];
 
