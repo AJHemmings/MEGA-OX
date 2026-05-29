@@ -17,7 +17,7 @@ export function usePurchase(onSuccess: () => void) {
     setPurchasing(true);
     setError(null);
     try {
-      const { data: raw, error: rpcError } = await (supabase.rpc as any)('purchase_item', { p_item_id: itemId });
+      const { data: raw, error: rpcError } = await supabase.rpc('purchase_item', { p_item_id: itemId });
       const data = raw as { success: boolean; error?: string; new_balance?: number } | null;
       if (rpcError) throw new Error('Purchase failed. Please try again.');
       if (!data?.success) {

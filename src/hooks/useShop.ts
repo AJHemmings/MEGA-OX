@@ -41,7 +41,7 @@ export function useShop(userId: string | undefined) {
           name:      item.name,
           type:      item.type,
           asset_url: item.asset_url,
-          price:     item.price,
+          price:     item.price as number, // .gt('price', 0) filter excludes nulls
           rarity:    item.rarity,
           owned:     ownedIds.has(item.id),
         }))
