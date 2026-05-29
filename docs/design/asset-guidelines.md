@@ -146,7 +146,7 @@ MEGA OX uses a **dark glassmorphism** aesthetic. Think: deep space, frosted glas
 - The background fill of each micro board panel
 
 **Canvas size:**
-- Board panel: 300×300 px square
+- Board panel: 300×300 px square *(provisional — measure the actual rendered board in-game before commissioning final assets)*
 - Grid lines are drawn on top — the skin is the panel background fill
 
 **Format:** SVG (preferred) · WebP · PNG
@@ -172,15 +172,17 @@ MEGA OX uses a **dark glassmorphism** aesthetic. Think: deep space, frosted glas
 - Individual cells on the game board (~24–40 px display size)
 - Won-board overlays (the large X or O that covers a completed micro board, ~80–100 px)
 
-**Deliverables per skin set:** 4 files
+**Deliverables per skin set:** 5 files
 1. `x-cell.svg` — X symbol at cell size
 2. `o-cell.svg` — O symbol at cell size
 3. `x-won.svg` — X overlay for a completed micro board
 4. `o-won.svg` — O overlay for a completed micro board
+5. `preview.svg` — Combined shop thumbnail showing X and O side by side (used as `asset_url` in the shop catalogue)
 
 **Canvas size:**
 - Cell markers: 80×80 px
 - Won-board overlays: 200×200 px
+- Shop preview (`preview.svg`): 160×80 px — X on the left half, O on the right half
 
 **Format:** SVG (required — must scale cleanly)
 **File size:** Under 5 KB per file
