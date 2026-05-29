@@ -1,4 +1,4 @@
-﻿-- Phase 6: purchase_item RPC + paid cosmetic catalogue
+-- Phase 6: purchase_item RPC + paid cosmetic catalogue
 -- transactions table + RLS already exist from initial schema.
 -- user_skins/user_equipped_skins RLS already exists from Phase 2.
 
