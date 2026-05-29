@@ -18,6 +18,7 @@ import HowToPlaySelectPage from './components/game/HowToPlaySelectPage';
 import LocalRPSScreen from './components/game/LocalRPSScreen';
 import { AchievementsPage } from './components/achievements/AchievementsPage';
 import CustomisePage from './components/profile/CustomisePage';
+import ShopPage from './components/shop/ShopPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import GuestLandingPage from './components/GuestLandingPage';
 import DemoGamePage from './components/DemoGamePage';
@@ -95,6 +96,7 @@ const App: React.FC = () => {
           <Route path="/matchmaking" element={<MatchmakingPage />} />
           <Route path="/achievements" element={<AchievementsPage />} />
           <Route path="/customise" element={<CustomisePage />} />
+          <Route path="/shop" element={<ShopPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
