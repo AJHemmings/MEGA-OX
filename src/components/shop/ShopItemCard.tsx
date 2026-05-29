@@ -1,6 +1,7 @@
 import React from 'react';
 import { tokens } from '../../styles/tokens';
 import { Coin } from '../icons';
+import Pill from '../common/Pill';
 import { ShopItem } from '../../hooks/useShop';
 
 interface Props {
@@ -72,16 +73,12 @@ export const ShopItemCard: React.FC<Props> = ({ item, onBuy, purchasing, balance
       </span>
 
       {item.owned ? (
-        <div style={{
-          padding: '3px 10px', borderRadius: tokens.rPill,
-          background: 'rgba(0,212,170,0.15)',
-          fontSize: 9, fontWeight: 800, letterSpacing: 0.6,
-          color: tokens.accent, textTransform: 'uppercase',
-        }}>
+        <Pill variant="teal" style={{ fontSize: 9, letterSpacing: 0.6, textTransform: 'uppercase' }}>
           Owned
-        </div>
+        </Pill>
       ) : (
         <button
+          type="button"
           onClick={onBuy}
           disabled={isDisabled}
           style={{

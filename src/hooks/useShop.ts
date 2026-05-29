@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 export interface ShopItem {
   id: string;
   name: string;
-  type: string;
+  type: 'avatar' | 'badge' | 'banner' | 'board' | 'marker';
   asset_url: string | null;
   price: number;
   rarity: string;
