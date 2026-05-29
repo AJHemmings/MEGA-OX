@@ -99,8 +99,7 @@ export const ShopItemCard: React.FC<Props> = ({ item, onBuy, purchasing, balance
             opacity: isDisabled ? 0.6 : 1,
           }}
         >
-          <Coin size={10} />
-          {item.price.toLocaleString()}
+          Buy&nbsp;<Coin size={10} />{item.price.toLocaleString()} cr
         </button>
       )}
     </div>
