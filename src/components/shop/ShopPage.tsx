@@ -14,20 +14,31 @@ import { ChevronLeft, Coin } from '../icons';
 import { ShopItemCard } from './ShopItemCard';
 import { PurchaseConfirmModal } from './PurchaseConfirmModal';
 
-type STab = 'avatar' | 'badge' | 'banner' | 'skins';
+type STab = 'avatar' | 'banner' | 'skins';
+type SkinsSubTab = 'markers' | 'board' | 'theme';
 
 const TABS: { key: STab; label: string }[] = [
   { key: 'avatar', label: 'Avatar' },
-  { key: 'badge',  label: 'Badge'  },
   { key: 'banner', label: 'Banner' },
   { key: 'skins',  label: 'Skins'  },
 ];
 
-const TAB_TYPES: Record<STab, string[]> = {
-  avatar: ['avatar'],
-  badge:  ['badge'],
-  banner: ['banner'],
-  skins:  ['board', 'marker'],
+const SKINS_SUB_TABS: { key: SkinsSubTab; label: string }[] = [
+  { key: 'markers', label: 'Markers' },
+  { key: 'board',   label: 'Board'   },
+  { key: 'theme',   label: 'Theme'   },
+];
+
+const SKINS_TYPE_MAP: Record<SkinsSubTab, string[]> = {
+  markers: ['marker'],
+  board:   ['board'],
+  theme:   ['theme'],
+};
+
+const SKINS_NOTICE: Record<SkinsSubTab, string> = {
+  markers: 'Marker skins go into your inventory. In-game visual unlocks coming soon.',
+  board:   'Board skins go into your inventory. In-game visual unlocks coming soon.',
+  theme:   'Themes go into your inventory. In-game visual unlocks coming soon.',
 };
 
 const ShopPage: React.FC = () => {
@@ -36,11 +47,12 @@ const ShopPage: React.FC = () => {
   const profile   = usePlayerProfile();
   const isMobile  = useIsMobile();
 
-  const [tab, setTab]                 = useState<STab>('avatar');
-  const [pendingItem, setPendingItem] = useState<ShopItem | null>(null);
+  const [tab, setTab]                   = useState<STab>('avatar');
+  const [skinsSubTab, setSkinsSubTab]   = useState<SkinsSubTab>('markers');
+  const [pendingItem, setPendingItem]   = useState<ShopItem | null>(null);
 
-  const { catalogue, loading, error: shopError, refetch }           = useShop(user?.id);
-  const { credits, refresh: refreshProgression, loading: progressionLoading } = useProgression(user?.id);
+  const { catalogue, loading, error: shopError, refetch }                        = useShop(user?.id);
+  const { credits, refresh: refreshProgression, loading: progressionLoading }    = useProgression(user?.id);
 
   const handleSuccess = useCallback(() => {
     refetch();
@@ -50,7 +62,9 @@ const ShopPage: React.FC = () => {
 
   const { purchase, purchasing, error: purchaseError, clearError } = usePurchase(handleSuccess);
 
-  const tabItems = catalogue.filter(item => TAB_TYPES[tab].includes(item.type));
+  const tabItems = tab === 'skins'
+    ? catalogue.filter(item => SKINS_TYPE_MAP[skinsSubTab].includes(item.type))
+    : catalogue.filter(item => item.type === tab);
 
   return (
     <PageBackground>
@@ -83,10 +97,10 @@ const ShopPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab switcher */}
+        {/* Main tab switcher */}
         <div style={{
           display: 'flex', background: 'rgba(255,255,255,0.04)',
-          borderRadius: tokens.glassRadius, padding: 4, marginBottom: 16,
+          borderRadius: tokens.glassRadius, padding: 4, marginBottom: tab === 'skins' ? 8 : 16,
         }}>
           {TABS.map(({ key, label }) => (
             <button
@@ -106,11 +120,36 @@ const ShopPage: React.FC = () => {
           ))}
         </div>
 
+        {/* Skins sub-tab switcher */}
+        {tab === 'skins' && (
+          <div style={{
+            display: 'flex', gap: 6, marginBottom: 12,
+          }}>
+            {SKINS_SUB_TABS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSkinsSubTab(key)}
+                style={{
+                  padding: '5px 14px', borderRadius: tokens.rPill, border: 'none', cursor: 'pointer',
+                  background: skinsSubTab === key ? 'rgba(0,212,170,0.18)' : 'rgba(255,255,255,0.04)',
+                  color: skinsSubTab === key ? tokens.accent : tokens.textMuted,
+                  fontWeight: skinsSubTab === key ? 800 : 600, fontSize: 11, fontFamily: tokens.font,
+                  outline: skinsSubTab === key ? `1px solid ${tokens.accent}` : '1px solid rgba(255,255,255,0.06)',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Skins inventory-only notice */}
         {tab === 'skins' && (
           <Glass style={{ marginBottom: 12, padding: '10px 14px' }}>
             <span style={{ fontSize: 11, color: tokens.textMuted, fontWeight: 600 }}>
-              Board and marker skins go into your inventory. In-game visual unlocks coming soon.
+              {SKINS_NOTICE[skinsSubTab]}
             </span>
           </Glass>
         )}

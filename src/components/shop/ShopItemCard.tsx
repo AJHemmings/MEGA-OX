@@ -27,9 +27,9 @@ const ItemPreview: React.FC<{ item: ShopItem }> = ({ item }) => {
       ? <img src={item.asset_url} alt={item.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />
       : <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />;
   }
-  // badge, board, marker — square preview
+  // board, marker, theme — square preview
   const size = 36;
-  const radius = item.type === 'badge' ? '50%' : '8px';
+  const radius = '8px';
   return item.asset_url
     ? <img src={item.asset_url} alt={item.name} style={{ width: size, height: size, borderRadius: radius, objectFit: 'cover' }} />
     : <div style={{ width: size, height: size, borderRadius: radius, background: 'rgba(255,255,255,0.08)' }} />;

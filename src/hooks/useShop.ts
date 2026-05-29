@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 export interface ShopItem {
   id: string;
   name: string;
-  type: 'avatar' | 'badge' | 'banner' | 'board' | 'marker';
+  type: 'avatar' | 'banner' | 'board' | 'marker' | 'theme';
   asset_url: string | null;
   price: number;
   rarity: string;
@@ -24,6 +24,7 @@ export function useShop(userId: string | undefined) {
         supabase
           .from('cosmetic_items')
           .select('id, name, type, asset_url, price, rarity')
+          .eq('source', 'shop')
           .gt('price', 0),
         supabase
           .from('player_inventory')
