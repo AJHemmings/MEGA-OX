@@ -134,7 +134,7 @@ const ShopPage: React.FC = () => {
         )}
 
         {/* Empty state */}
-        {!loading && tabItems.length === 0 && (
+        {!loading && !shopError && tabItems.length === 0 && (
           <div style={{ textAlign: 'center', padding: 40, color: tokens.textDim, fontSize: 14 }}>
             No items available in this category yet.
           </div>
