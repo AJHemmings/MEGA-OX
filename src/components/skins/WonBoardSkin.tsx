@@ -1,5 +1,5 @@
 // src/components/skins/WonBoardSkin.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import Lottie, { LottieRefCurrentProps } from 'lottie-react';
 import { useSkins } from '../../contexts/SkinContext';
 import { SkinEvent } from '../../skins/types';
@@ -13,11 +13,21 @@ const WonBoardSkin: React.FC<WonBoardSkinProps> = ({ player, currentEvent }) => 
   const skins = useSkins();
   const skin = player === 1 ? skins.p1WonBoardSkin : skins.p2WonBoardSkin;
   const lottieRef = useRef<LottieRefCurrentProps>(null);
+  const [animationData, setAnimationData] = useState<object | null>(null);
 
   useEffect(() => {
-    if (!lottieRef.current || skin.assetUrl === 'placeholder') return;
-    // Phase 5: map SkinEvent → Lottie segment frames here
-  }, [currentEvent, skin.assetUrl]);
+    if (skin.assetUrl === 'placeholder') return;
+    setAnimationData(null);
+    fetch(skin.assetUrl)
+      .then(r => r.json())
+      .then(setAnimationData)
+      .catch(() => {});
+  }, [skin.assetUrl]);
+
+  useEffect(() => {
+    if (!lottieRef.current || !animationData) return;
+    // map SkinEvent → Lottie segment frames here when needed
+  }, [currentEvent, animationData]);
 
   if (skin.assetUrl === 'placeholder') {
     return (
@@ -44,10 +54,12 @@ const WonBoardSkin: React.FC<WonBoardSkinProps> = ({ player, currentEvent }) => 
     );
   }
 
+  if (!animationData) return null;
+
   return (
     <Lottie
       lottieRef={lottieRef}
-      animationData={skin.assetUrl as any}
+      animationData={animationData}
       loop
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
     />

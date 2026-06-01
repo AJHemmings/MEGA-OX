@@ -20,11 +20,24 @@ const BoardSkin: React.FC<BoardSkinProps> = ({ currentEvent, children }) => {
   }, [currentEvent, skin.assetUrl]);
 
   if (skin.assetUrl === 'placeholder') {
-    // Transparent wrapper — board renders as normal
     return <div style={{ position: 'relative', display: 'inline-block' }}>{children}</div>;
   }
 
-  // Real Lottie board skin (Phase 5+) — sits behind children
+  if (skin.assetUrl.endsWith('.svg')) {
+    return (
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <img
+          src={skin.assetUrl}
+          alt=""
+          aria-hidden
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0 }}
+        />
+        <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
+      </div>
+    );
+  }
+
+  // Lottie board skin
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <Lottie

@@ -5,35 +5,35 @@ export const DEFAULT_BOARD_SKIN: Skin = {
   id: 'default-board',
   name: 'Default Board',
   type: 'board',
-  assetUrl: 'placeholder',
+  assetUrl: '/assets/default-board.svg',
 };
 
 export const DEFAULT_MARKER_X_SKIN: Skin = {
   id: 'default-marker-x',
-  name: 'Default X',
+  name: 'Default X (Xan)',
   type: 'marker_x',
-  assetUrl: 'placeholder',
+  assetUrl: '/assets/xan.svg',
 };
 
 export const DEFAULT_MARKER_O_SKIN: Skin = {
   id: 'default-marker-o',
-  name: 'Default O',
+  name: 'Default O (Mo)',
   type: 'marker_o',
-  assetUrl: 'placeholder',
+  assetUrl: '/assets/mo.svg',
 };
 
 export const DEFAULT_WON_BOARD_X_SKIN: Skin = {
   id: 'default-won-board-x',
-  name: 'Default Won Board X',
+  name: 'Default Won Board X (Xan)',
   type: 'won_board_x',
-  assetUrl: 'placeholder',
+  assetUrl: '/assets/xan-won.json',
 };
 
 export const DEFAULT_WON_BOARD_O_SKIN: Skin = {
   id: 'default-won-board-o',
-  name: 'Default Won Board O',
+  name: 'Default Won Board O (Mo)',
   type: 'won_board_o',
-  assetUrl: 'placeholder',
+  assetUrl: '/assets/mo-won.json',
 };
 
 export const ALL_DEFAULT_SKINS: Skin[] = [

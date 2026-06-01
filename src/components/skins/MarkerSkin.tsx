@@ -41,7 +41,17 @@ const MarkerSkin: React.FC<MarkerSkinProps> = ({ player, value, currentEvent }) 
     );
   }
 
-  // Real Lottie skin (Phase 5+)
+  if (skin.assetUrl.endsWith('.svg')) {
+    return (
+      <img
+        src={skin.assetUrl}
+        alt={value}
+        style={{ width: '88%', height: '88%', objectFit: 'contain' }}
+      />
+    );
+  }
+
+  // Lottie marker skin
   return (
     <Lottie
       lottieRef={lottieRef}
