@@ -24,18 +24,19 @@ const MicroBoard: React.FC<MicroBoardProps> = ({
 }) => {
   const gridStyle: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 40px)",
-    gridTemplateRows: "repeat(3, 40px)",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateRows: "repeat(3, 1fr)",
     gap: "2px",
     padding: "2px",
-    border: highlight ? "5px solid #3399ff" : "2px solid #999",
+    border: "2px solid #999",
+    outline: highlight ? "3px solid #3399ff" : "none",
+    outlineOffset: "1px",
     backgroundColor: '#fff',
     position: 'relative',
     borderRadius: "4px",
-    width: "max-content",
-    height: "max-content",
-    justifyContent: "center",
-    alignContent: "center",
+    width: "100%",
+    height: "100%",
+    boxSizing: "border-box",
     transition: "all 0.3s ease",
   };
 

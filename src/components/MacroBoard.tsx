@@ -29,40 +29,15 @@ const MacroBoard: React.FC<MacroBoardProps> = ({
     gridTemplateColumns: "repeat(3, 150px)",
     gridTemplateRows: "repeat(3, 150px)",
     gap: "10px",
-    border: "3px solid #333",
+    border: "3px solid transparent",
     padding: "10px",
     borderRadius: "10px",
     position: "relative",
   };
 
-  const lineStyleHorizontal = (index: number): React.CSSProperties => ({
-    position: "absolute",
-    top: `${150 * index + 10 * (index - 1)}px`, // 150px cell + 10px gap
-    left: "0",
-    width: "100%",
-    height: "4px",
-    backgroundColor: "#333",
-    zIndex: 1,
-  });
-
-  const lineStyleVertical = (index: number): React.CSSProperties => ({
-    position: "absolute",
-    left: `${150 * index + 10 * (index - 1)}px`,
-    top: "0",
-    height: "100%",
-    width: "4px",
-    backgroundColor: "#333",
-    zIndex: 1,
-  });
-
   return (
     <BoardSkin>
       <div style={gridStyle} aria-label="Macro board">
-        {/* Divider Lines */}
-        <div style={lineStyleHorizontal(1)} />
-        <div style={lineStyleHorizontal(2)} />
-        <div style={lineStyleVertical(1)} />
-        <div style={lineStyleVertical(2)} />
 
         {/* MicroBoards */}
         {microBoards.map((mb, index) => (

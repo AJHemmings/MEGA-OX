@@ -51,8 +51,8 @@ const Cell: React.FC<CellProps> = ({
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: "40px",
-        height: "40px",
+        width: "46px",
+        height: "46px",
         fontSize: "24px",
         fontWeight: "bold",
         cursor: disabled ? "default" : "pointer",

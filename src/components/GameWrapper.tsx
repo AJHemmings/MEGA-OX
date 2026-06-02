@@ -186,7 +186,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   const pillVar: PillVariant = pillVariant as PillVariant;
 
   const chrome = (
-    <div style={{ fontFamily: tokens.font, color: tokens.text, maxWidth: 520, margin: '0 auto', padding: '0 14px', userSelect: 'none' }}>
+    <div style={{ fontFamily: tokens.font, color: tokens.text, maxWidth: 524, margin: '0 auto', padding: '0 14px', userSelect: 'none' }}>
 
       {/* Header strip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0 12px' }}>
