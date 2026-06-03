@@ -10,7 +10,7 @@ export const useLoginStreak = () => {
     if (!user) return;
 
     const checkStreak = async () => {
-      const { data: streak } = await supabase.from('login_streaks').select('*').eq('player_id', user.id).single();
+      const { data: streak } = await supabase.from('login_streaks').select('*').eq('player_id', user.id).maybeSingle();
       if (!streak) return;
 
       const today = new Date().toISOString().split('T')[0];
@@ -28,7 +28,7 @@ export const useLoginStreak = () => {
       }).eq('player_id', user.id);
 
       // Check for reward milestone
-      const { data: reward } = await supabase.from('reward_catalog').select('*').eq('day_number', newStreak).single();
+      const { data: reward } = await supabase.from('reward_catalog').select('*').eq('day_number', newStreak).maybeSingle();
 
       setStreakData({ current: newStreak, reward: reward ?? null });
     };
