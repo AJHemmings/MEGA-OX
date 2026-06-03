@@ -25,12 +25,12 @@ export const usePlayerProfile = () => {
         .from('profiles')
         .select('username, avatar_url, player_stats(rank_tier, wins, losses, draws)')
         .eq('id', userId)
-        .single(),
+        .maybeSingle(),
       supabase
         .from('player_progression')
         .select('level')
         .eq('user_id', userId)
-        .single(),
+        .maybeSingle(),
     ]).then(([{ data }, { data: prog }]) => {
       if (data) {
         const stats = (data as any).player_stats;
