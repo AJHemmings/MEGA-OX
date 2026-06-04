@@ -1,21 +1,33 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Xan — Mega OX crosses marker">
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="64 64 152 152" role="img" aria-label="Xan — Mega OX crosses marker">
   <defs>
-    <radialGradient id="xan-shade" cx="0.62" cy="0.68" r="0.75">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#08A0B5" stop-opacity="0.35"/>
+    <radialGradient id="xan-shade" cx="0.65" cy="0.7" r="0.75">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"></stop>
+      <stop offset="100%" stop-color="#08A0B5" stop-opacity="0.35"></stop>
     </radialGradient>
   </defs>
-  <g transform="translate(120 120)">
-    <rect x="-150" y="-40" width="300" height="80" rx="40" fill="#1FE0E5" transform="rotate(45)"/>
-    <rect x="-150" y="-40" width="300" height="80" rx="40" fill="#1FE0E5" transform="rotate(-45)"/>
+
+  
+  <g transform="translate(140 140)">
+    <rect x="-102" y="-39" width="204" height="78" rx="39" fill="#1FE0E5" transform="rotate(45)"></rect>
+    <rect x="-102" y="-39" width="204" height="78" rx="39" fill="#1FE0E5" transform="rotate(-45)"></rect>
   </g>
-  <circle cx="120" cy="120" r="60" fill="#1FE0E5"/>
-  <circle cx="120" cy="120" r="60" fill="url(#xan-shade)"/>
-  <ellipse cx="70" cy="70" rx="30" ry="16" fill="#ffffff" opacity="0.20" transform="rotate(-45 70 70)"/>
-  <circle cx="101" cy="113" r="8" fill="#0E0E14"/>
-  <circle cx="139" cy="113" r="8" fill="#0E0E14"/>
-  <path d="M 104 142 Q 120 162 136 142" stroke="#0E0E14" stroke-width="6.5" fill="none" stroke-linecap="round"/>
-  <circle cx="85" cy="140" r="9" fill="#08A0B5" opacity="0.45"/>
-  <circle cx="155" cy="140" r="9" fill="#08A0B5" opacity="0.45"/>
+
+  
+  <circle cx="140" cy="140" r="65" fill="#1FE0E5"></circle>
+  <circle cx="140" cy="140" r="65" fill="url(#xan-shade)"></circle>
+
+  
+  <ellipse cx="84" cy="84" rx="28" ry="15" fill="#ffffff" opacity="0.20" transform="rotate(-45 84 84)"></ellipse>
+
+  
+  <circle cx="120" cy="133" r="8" fill="#0E0E14"></circle>
+  <circle cx="160" cy="133" r="8" fill="#0E0E14"></circle>
+
+  
+  <path d="M 124 162 Q 140 182 156 162" stroke="#0E0E14" stroke-width="6.5" fill="none" stroke-linecap="round"></path>
+
+  
+  <circle cx="104" cy="160" r="9" fill="#08A0B5" opacity="0.45"></circle>
+  <circle cx="176" cy="160" r="9" fill="#08A0B5" opacity="0.45"></circle>
 </svg>
