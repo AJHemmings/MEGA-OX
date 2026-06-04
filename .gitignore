@@ -20,9 +20,10 @@ build/
 SUPABASE_SETUP.md
 IMPLEMENTATION.md
 
-# Local design assets and issue screenshots (AI reference only, not for the repo)
+# Local design assets, issue screenshots, and AI specs/plans (not for the repo)
 docs/design/
 docs/issues/
+docs/superpowers/
 
 # Git worktrees & tooling
 .worktrees/
