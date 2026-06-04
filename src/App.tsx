@@ -22,6 +22,13 @@ import ShopPage from './components/shop/ShopPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import GuestLandingPage from './components/GuestLandingPage';
 import DemoGamePage from './components/DemoGamePage';
+import { AdminRoute } from './components/admin/AdminRoute';
+import { AdminLayout } from './components/admin/AdminLayout';
+import SkinsManager from './components/admin/SkinsManager';
+import EmojiManager from './components/admin/EmojiManager';
+import AchievementsManager from './components/admin/AchievementsManager';
+import ShopManager from './components/admin/ShopManager';
+import AiTuner from './components/admin/AiTuner';
 
 // Thin wrappers so GameWrapper gets a real navigate callback from the router
 const TrainingRoute: React.FC = () => {
@@ -97,6 +104,22 @@ const App: React.FC = () => {
           <Route path="/achievements" element={<AchievementsPage />} />
           <Route path="/customise" element={<CustomisePage />} />
           <Route path="/shop" element={<ShopPage />} />
+          <Route path="/admin" element={<Navigate to="/admin/skins" replace />} />
+          <Route path="/admin/skins" element={
+            <AdminRoute><AdminLayout><SkinsManager /></AdminLayout></AdminRoute>
+          } />
+          <Route path="/admin/achievements" element={
+            <AdminRoute><AdminLayout><AchievementsManager /></AdminLayout></AdminRoute>
+          } />
+          <Route path="/admin/emojis" element={
+            <AdminRoute><AdminLayout><EmojiManager /></AdminLayout></AdminRoute>
+          } />
+          <Route path="/admin/shop" element={
+            <AdminRoute requiredRole="super_admin"><AdminLayout><ShopManager /></AdminLayout></AdminRoute>
+          } />
+          <Route path="/admin/ai-tuner" element={
+            <AdminRoute requiredRole="super_admin"><AdminLayout><AiTuner /></AdminLayout></AdminRoute>
+          } />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

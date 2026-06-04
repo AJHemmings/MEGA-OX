@@ -5,6 +5,7 @@ import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useRecentGames, RecentGame } from '../hooks/useRecentGames';
 import { useProgression } from '../hooks/useProgression';
 import { useLoginStreak } from '../hooks/useLoginStreak';
+import { useAdminRole } from '../hooks/useAdminRole';
 import { useTutorial } from '../hooks/useTutorial';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { supabase } from '../lib/supabase';
@@ -245,6 +246,7 @@ interface LayoutProps {
   onMode: (action: string) => void;
   onSignOut: () => void;
   navigate: ReturnType<typeof useNavigate>;
+  adminRole: string | null;
 }
 
 const MOBILE_NAV = [
@@ -255,7 +257,7 @@ const MOBILE_NAV = [
 ];
 
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, navigate,
+  profile, progression, recentGames, initial, onPlay, onMode, navigate, adminRole,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -303,6 +305,21 @@ const MobileLayout: React.FC<LayoutProps> = ({
           {label}
         </button>
       ))}
+      {adminRole !== null && (
+        <button
+          onClick={() => { navigate('/admin/skins'); setMenuOpen(false); }}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            textAlign: 'left', padding: '13px 24px',
+            fontFamily: tokens.font, fontSize: 15, fontWeight: 700,
+            color: tokens.accent,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = tokens.text; e.currentTarget.style.background = tokens.innerBg; }}
+          onMouseLeave={e => { e.currentTarget.style.color = tokens.accent; e.currentTarget.style.background = 'none'; }}
+        >
+          Admin
+        </button>
+      )}
     </div>
 
     {/* Top bar */}
@@ -431,7 +448,7 @@ const MobileLayout: React.FC<LayoutProps> = ({
 // ── desktop layout ────────────────────────────────────────────
 
 const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate,
+  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate, adminRole,
 }) => (
   <div style={{ minHeight: '100vh', fontFamily: tokens.font }}>
     {/* Header */}
@@ -467,6 +484,20 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
             {n.label}
           </button>
         ))}
+        {adminRole !== null && (
+          <button
+            onClick={() => navigate('/admin/skins')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: tokens.font, fontWeight: 700, fontSize: 14,
+              color: tokens.accent, padding: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = tokens.text; }}
+            onMouseLeave={e => { e.currentTarget.style.color = tokens.accent; }}
+          >
+            Admin
+          </button>
+        )}
       </div>
 
       {/* Right cluster */}
@@ -634,6 +665,7 @@ const MainMenu: React.FC = () => {
   const recentGames = useRecentGames();
   const progression = useProgression(user?.id);
   const streakData = useLoginStreak();
+  const { role: adminRole } = useAdminRole();
   const { shouldAutoStart, markComplete } = useTutorial('home');
   const isMobile = useIsMobile();
 
@@ -686,6 +718,7 @@ const MainMenu: React.FC = () => {
     onMode: handleMode,
     onSignOut: signOut,
     navigate,
+    adminRole,
   };
 
   return (
