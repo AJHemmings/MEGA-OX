@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Marker } from "../models/Game";
-import { easyMove, mediumMove, hardMove } from '../ai/aiPlayer';
+import { easyMove, mediumMove, hardMove, Move } from '../ai/aiPlayer';
+import { useAiConfig } from '../hooks/useAiConfig';
 import MacroBoard from "./MacroBoard";
 import { useGameLogic } from "../hooks/useGameLogic";
 import { Modal } from "./modal";
@@ -102,8 +103,22 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   gameMode, onBackToMenu, onGameOver, navExtra, difficulty = 'easy', demoMode = false,
 }) => {
   const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } = useGameLogic();
+  const { config: aiConfig } = useAiConfig();
   const [showRules, setShowRules] = useState(false);
   const [isAiTurn, setIsAiTurn] = useState(false);
+
+  function getAiMove(diff: 'easy' | 'medium' | 'hard', g: typeof game): Move {
+    if (diff === 'easy')   return easyMove(g);
+    if (diff === 'medium') return mediumMove(g, {
+      winRuleStrength:      aiConfig.medium.win_rule_strength,
+      poisonFilterStrength: aiConfig.medium.poison_filter_strength,
+    });
+    return hardMove(g, {
+      winRuleStrength:      aiConfig.hard.win_rule_strength,
+      poisonFilterStrength: aiConfig.hard.poison_filter_strength,
+      minimaxDepth:         aiConfig.hard.minimax_depth,
+    });
+  }
   const prevMicroWinnersRef = useRef<string[]>([]);
   const gameWonFiredRef = useRef(false);
   const isMobile = useIsMobile();
@@ -125,8 +140,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
       const { min, max } = DELAY_RANGES[difficulty];
       const delay = Math.floor(Math.random() * (max - min + 1)) + min;
       const timer = setTimeout(() => {
-        const moveMap = { easy: easyMove, medium: mediumMove, hard: hardMove };
-        const move = moveMap[difficulty](game);
+        const move = getAiMove(difficulty, game);
         const ok = onPlaceMarker(move.microIndex, move.cellIndex);
         if (ok) playMarkerPlaced();
         setIsAiTurn(false);

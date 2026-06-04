@@ -8,6 +8,12 @@ import { Game, Marker, MicroBoard } from "../models/Game";
 
 export type Move = { microIndex: number; cellIndex: number };
 
+export interface AiConfig {
+  winRuleStrength:      number;
+  poisonFilterStrength: number;
+  minimaxDepth?:        number;
+}
+
 // ─── Strength constants ───────────────────────────────────────────────────────
 
 export const MEDIUM_WIN_RULE_STRENGTH = 80;
@@ -269,7 +275,7 @@ export function easyMove(game: Game): Move {
  * 2. Probabilistically avoid sending opponent to a winning board.
  * 3. Random from remaining candidates.
  */
-export function mediumMove(game: Game): Move {
+export function mediumMove(game: Game, config?: AiConfig): Move {
   const aiMarker = game.currentPlayer.marker;
   const opponentMarker = aiMarker === Marker.X ? Marker.O : Marker.X;
 
@@ -277,13 +283,13 @@ export function mediumMove(game: Game): Move {
   if (candidates.length === 0) throw new Error('AI called with no legal moves — game may already be over');
 
   // Win rule
-  if (Math.random() * 100 < MEDIUM_WIN_RULE_STRENGTH) {
+  if (Math.random() * 100 < (config?.winRuleStrength ?? MEDIUM_WIN_RULE_STRENGTH)) {
     const winning = winMoves(game, candidates, aiMarker);
     if (winning.length > 0) return pickRandom(winning);
   }
 
   // Poison filter
-  if (Math.random() * 100 < MEDIUM_POISON_RULE_STRENGTH) {
+  if (Math.random() * 100 < (config?.poisonFilterStrength ?? MEDIUM_POISON_RULE_STRENGTH)) {
     candidates = filterPoisonSends(game, candidates, aiMarker, opponentMarker);
   }
 
@@ -296,7 +302,7 @@ export function mediumMove(game: Game): Move {
  * 2. Probabilistically filter out poison sends.
  * 3. Minimax over remaining candidates.
  */
-export function hardMove(game: Game): Move {
+export function hardMove(game: Game, config?: AiConfig): Move {
   const aiMarker = game.currentPlayer.marker;
   const opponentMarker = aiMarker === Marker.X ? Marker.O : Marker.X;
 
@@ -304,13 +310,13 @@ export function hardMove(game: Game): Move {
   if (candidates.length === 0) throw new Error('AI called with no legal moves — game may already be over');
 
   // Win rule
-  if (Math.random() * 100 < HARD_WIN_RULE_STRENGTH) {
+  if (Math.random() * 100 < (config?.winRuleStrength ?? HARD_WIN_RULE_STRENGTH)) {
     const winning = winMoves(game, candidates, aiMarker);
     if (winning.length > 0) return pickRandom(winning);
   }
 
   // Poison filter
-  if (Math.random() * 100 < HARD_POISON_RULE_STRENGTH) {
+  if (Math.random() * 100 < (config?.poisonFilterStrength ?? HARD_POISON_RULE_STRENGTH)) {
     candidates = filterPoisonSends(game, candidates, aiMarker, opponentMarker);
   }
 
@@ -324,7 +330,7 @@ export function hardMove(game: Game): Move {
     // After AI places, it's opponent's turn → isMaximising = false
     const score = minimax(
       clone,
-      HARD_MINIMAX_DEPTH - 1,
+      (config?.minimaxDepth ?? HARD_MINIMAX_DEPTH) - 1,
       -Infinity,
       Infinity,
       false,
