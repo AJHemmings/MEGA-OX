@@ -29,44 +29,69 @@ export const AssetUpload: React.FC<Props> = ({ value, onChange }) => {
   };
 
   return (
-    <div>
-      <div style={{ fontSize: 9, color: tokens.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 }}>Asset</div>
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Asset</div>
 
-      <div
-        style={{
-          border: `2px dashed ${value ? tokens.accent : 'rgba(255,255,255,0.15)'}`,
-          borderRadius: 8, padding: 12, textAlign: 'center',
-          cursor: 'pointer', marginBottom: value ? 8 : 0,
-          background: value ? 'rgba(0,212,170,0.04)' : 'transparent',
-        }}
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-      >
-        <input ref={inputRef} type="file" accept=".svg,.png,.json" style={{ display: 'none' }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-        <div style={{ fontSize: 9, color: uploading ? tokens.accent : tokens.textMuted }}>
-          {uploading ? 'Uploading...' : value ? '↑ Upload new file' : '📁 Drop SVG / PNG / JSON or click to browse'}
-        </div>
-      </div>
-
-      {uploadError && (
-        <div style={{ fontSize: 9, color: tokens.loss, marginTop: 4 }}>{uploadError}</div>
-      )}
-
-      {value && (
+      {value ? (
         <div style={{
-          marginTop: 8, background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6,
-          padding: 8, display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 8, padding: 14, display: 'flex', alignItems: 'center', gap: 14,
         }}>
           <img
             src={value} alt="preview"
-            style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 4 }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 6, background: 'rgba(255,255,255,0.06)' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
           />
-          <div style={{ fontSize: 9, color: tokens.textMuted, wordBreak: 'break-all', flex: 1 }}>{value}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: tokens.text, fontWeight: 600, marginBottom: 8 }}>Image uploaded</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                style={{
+                  fontSize: 11, fontWeight: 700, color: tokens.accent, cursor: 'pointer',
+                  background: 'rgba(0,212,170,0.1)', border: `1px solid rgba(0,212,170,0.3)`,
+                  padding: '4px 10px', borderRadius: 4, fontFamily: tokens.font,
+                }}
+              >
+                {uploading ? 'Uploading…' : 'Replace'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                style={{
+                  fontSize: 11, fontWeight: 700, color: tokens.textMuted, cursor: 'pointer',
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '4px 10px', borderRadius: 4, fontFamily: tokens.font,
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
         </div>
+      ) : (
+        <div
+          style={{
+            border: '2px dashed rgba(255,255,255,0.15)', borderRadius: 8,
+            padding: '20px 12px', textAlign: 'center', cursor: 'pointer',
+          }}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        >
+          <div style={{ fontSize: 13, color: uploading ? tokens.accent : tokens.textMuted, fontWeight: 600 }}>
+            {uploading ? 'Uploading…' : 'Drop SVG / PNG / JSON here, or click to browse'}
+          </div>
+          <div style={{ fontSize: 11, color: tokens.textDim, marginTop: 4 }}>Max 2MB</div>
+        </div>
+      )}
+
+      <input ref={inputRef} type="file" accept=".svg,.png,.json" style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+
+      {uploadError && (
+        <div style={{ fontSize: 12, color: tokens.loss, marginTop: 6 }}>{uploadError}</div>
       )}
     </div>
   );

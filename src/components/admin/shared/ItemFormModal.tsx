@@ -20,9 +20,10 @@ const empty = (): ItemFormData => ({
 });
 
 export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onClose }) => {
-  const [form, setForm]     = useState<ItemFormData>(empty());
-  const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState<string | null>(null);
+  const [form, setForm]       = useState<ItemFormData>(empty());
+  const [priceStr, setPriceStr] = useState('0');
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   useEffect(() => {
     if (item) {
@@ -34,8 +35,10 @@ export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onCl
         rarity:    item.rarity,
         animated:  item.animated,
       });
+      setPriceStr(String(item.price ?? 0));
     } else {
       setForm({ ...empty(), type: typeOptions[0] ?? '' });
+      setPriceStr('0');
     }
     setError(null);
   }, [item, typeOptions]);
@@ -56,9 +59,20 @@ export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onCl
     fontFamily: tokens.font, outline: 'none',
   };
 
+  const selectStyle: React.CSSProperties = {
+    ...inputStyle,
+    background: tokens.bgCard,
+    colorScheme: 'dark',
+  };
+
+  const optionStyle: React.CSSProperties = {
+    background: tokens.bgCard,
+    color: tokens.text,
+  };
+
   const field = (label: string, children: React.ReactNode) => (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 9, color: tokens.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
         {label}
       </div>
       {children}
@@ -74,8 +88,11 @@ export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onCl
       }}
       onClick={saving ? undefined : onClose}
     >
-      <Glass style={{ maxWidth: 400, width: '100%', padding: 0 }}>
-        <div style={{ padding: 24, fontFamily: tokens.font }} onClick={(e) => e.stopPropagation()}>
+      <Glass style={{ maxWidth: 600, width: '100%', padding: 0 }}>
+        <div
+          style={{ padding: 24, fontFamily: tokens.font, maxHeight: 'calc(100vh - 48px)', overflowY: 'auto' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div style={{ fontSize: 16, fontWeight: 800, color: tokens.text, marginBottom: 20 }}>
             {item ? `Edit — ${item.name}` : 'Add Item'}
           </div>
@@ -85,36 +102,44 @@ export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onCl
               style={inputStyle} placeholder="Item name" />
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {field('Type',
-              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                style={inputStyle}>
-                {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            )}
-            {field('Price (credits)',
-              <input type="number" min={0} value={form.price}
-                onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))}
-                style={inputStyle} />
-            )}
-          </div>
+          {field('Type',
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+              style={selectStyle}>
+              {typeOptions.map(t => <option key={t} value={t} style={optionStyle}>{t}</option>)}
+            </select>
+          )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {field('Rarity',
-              <select value={form.rarity} onChange={e => setForm(f => ({ ...f, rarity: e.target.value }))}
-                style={inputStyle}>
-                {RARITY_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            )}
-            {field('Animated',
-              <select value={form.animated ? 'yes' : 'no'}
-                onChange={e => setForm(f => ({ ...f, animated: e.target.value === 'yes' }))}
-                style={inputStyle}>
-                <option value="no">No</option>
-                <option value="yes">Yes (Lottie JSON)</option>
-              </select>
-            )}
-          </div>
+          {field('Price (credits)',
+            <input
+              type="text"
+              inputMode="numeric"
+              value={priceStr}
+              placeholder="0"
+              onFocus={e => e.target.select()}
+              onChange={e => {
+                const digits = e.target.value.replace(/[^0-9]/g, '');
+                setPriceStr(digits);
+                setForm(f => ({ ...f, price: digits === '' ? 0 : parseInt(digits, 10) }));
+              }}
+              style={inputStyle}
+            />
+          )}
+
+          {field('Rarity',
+            <select value={form.rarity} onChange={e => setForm(f => ({ ...f, rarity: e.target.value }))}
+              style={selectStyle}>
+              {RARITY_OPTIONS.map(r => <option key={r} value={r} style={optionStyle}>{r}</option>)}
+            </select>
+          )}
+
+          {field('Animated',
+            <select value={form.animated ? 'yes' : 'no'}
+              onChange={e => setForm(f => ({ ...f, animated: e.target.value === 'yes' }))}
+              style={selectStyle}>
+              <option value="no" style={optionStyle}>No</option>
+              <option value="yes" style={optionStyle}>Yes (Lottie JSON)</option>
+            </select>
+          )}
 
           <AssetUpload
             value={form.asset_url}

@@ -30,6 +30,8 @@ export function useAdminItems(typeFilter?: string | string[]) {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
 
+  const typeFilterKey = Array.isArray(typeFilter) ? typeFilter.join(',') : (typeFilter ?? '');
+
   const fetch = useCallback(async () => {
     setLoading(true);
     let query = supabase
@@ -37,9 +39,8 @@ export function useAdminItems(typeFilter?: string | string[]) {
       .select('*')
       .order('type').order('name');
 
-    if (typeFilter) {
-      const types = Array.isArray(typeFilter) ? typeFilter : [typeFilter];
-      query = query.in('type', types);
+    if (typeFilterKey) {
+      query = query.in('type', typeFilterKey.split(','));
     }
 
     const { data, error: err } = await query;
@@ -47,7 +48,8 @@ export function useAdminItems(typeFilter?: string | string[]) {
     setItems((data ?? []) as unknown as AdminItem[]);
     setError(null);
     setLoading(false);
-  }, [typeFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilterKey]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

@@ -36,88 +36,76 @@ const ItemsPanel: React.FC = () => {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: tokens.textMuted, marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: tokens.textMuted, marginBottom: 16 }}>
         {shopItems.length} shop item{shopItems.length !== 1 ? 's' : ''}
       </div>
 
       {loading && <div style={{ color: tokens.textMuted, fontSize: 13, padding: 20 }}>Loading…</div>}
       {error   && <div style={{ color: tokens.loss,     fontSize: 13, padding: 20 }}>{error}</div>}
 
-      {!loading && !error && (
+      {!loading && !error && shopItems.length === 0 && (
+        <div style={{ padding: 40, textAlign: 'center', color: tokens.textMuted, fontSize: 13 }}>
+          No shop items.
+        </div>
+      )}
+
+      {!loading && !error && shopItems.length > 0 && (
         <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 10, overflow: 'hidden',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+          gap: 12,
         }}>
-          {/* header */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '36px 1fr 80px 90px 90px 60px',
-            gap: 8, padding: '8px 14px',
-            borderBottom: '1px solid rgba(255,255,255,0.07)',
-          }}>
-            <div style={headerCell} />
-            <div style={headerCell}>Name</div>
-            <div style={headerCell}>Price</div>
-            <div style={headerCell}>Visible</div>
-            <div style={headerCell}>Featured</div>
-            <div style={headerCell}>Type</div>
-          </div>
-
-          {shopItems.length === 0 && (
-            <div style={{ padding: 24, textAlign: 'center', color: tokens.textMuted, fontSize: 13 }}>
-              No shop items.
-            </div>
-          )}
-
           {shopItems.map(item => (
             <div key={item.id} style={{
-              display: 'grid',
-              gridTemplateColumns: '36px 1fr 80px 90px 90px 60px',
-              gap: 8, padding: '8px 14px', alignItems: 'center',
-              borderBottom: '1px solid rgba(255,255,255,0.04)',
-              opacity: item.archived ? 0.4 : 1,
+              background: 'rgba(255,255,255,0.04)',
+              border: `1px solid rgba(255,255,255,${item.archived ? '0.04' : '0.09'})`,
+              borderRadius: 10, padding: 14,
+              display: 'flex', flexDirection: 'column', gap: 10,
+              opacity: item.archived ? 0.45 : 1,
             }}>
-              {/* preview */}
+              {/* Preview */}
               <div style={{
-                width: 28, height: 28, borderRadius: 4, overflow: 'hidden',
-                background: 'rgba(255,255,255,0.06)',
+                width: '100%', aspectRatio: '1 / 1',
+                background: 'rgba(255,255,255,0.05)', borderRadius: 8,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden',
               }}>
-                {item.asset_url && (
-                  <img src={item.asset_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                )}
+                {item.asset_url
+                  ? <img src={item.asset_url} alt={item.name}
+                      style={{ width: '72%', height: '72%', objectFit: 'contain' }} />
+                  : <div style={{ fontSize: 22, opacity: 0.2 }}>?</div>
+                }
               </div>
 
-              {/* name */}
-              <div style={{ fontSize: 12, color: tokens.text, fontWeight: 600 }}>{item.name}</div>
+              {/* Name + type */}
+              <div>
+                <div style={{
+                  fontSize: 13, fontWeight: 700, color: tokens.text,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{item.name}</div>
+                <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2 }}>{item.type}</div>
+              </div>
 
-              {/* price */}
-              <div style={{ fontSize: 11, color: tokens.credits }}>
+              {/* Price */}
+              <div style={{ fontSize: 12, fontWeight: 700, color: tokens.credits }}>
                 {item.price != null ? `${item.price} cr` : '—'}
               </div>
 
-              {/* visible toggle */}
-              <div>
+              {/* Toggles */}
+              <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   onClick={() => updateItem(item.id, { visible: !item.visible })}
-                  style={toggleBtn(item.visible, tokens.accent)}
+                  style={{ ...toggleBtn(item.visible, tokens.accent), flex: 1 }}
                 >
                   {item.visible ? 'Visible' : 'Hidden'}
                 </button>
-              </div>
-
-              {/* featured toggle */}
-              <div>
                 <button
                   onClick={() => updateItem(item.id, { featured: !item.featured })}
-                  style={toggleBtn(item.featured, tokens.credits)}
+                  style={{ ...toggleBtn(item.featured, tokens.credits), flex: 1 }}
                 >
                   {item.featured ? 'Featured' : 'Normal'}
                 </button>
               </div>
-
-              {/* type */}
-              <div style={{ fontSize: 11, color: tokens.textMuted }}>{item.type}</div>
             </div>
           ))}
         </div>
