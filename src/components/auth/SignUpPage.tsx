@@ -105,7 +105,7 @@ const SignUpPage: React.FC = () => {
         minHeight: '100vh', display: 'flex', flexDirection: 'column',
         alignItems: 'center', padding: '24px 24px 0',
       }}>
-        <div style={{ width: '100%' }}>
+        <div style={{ width: '100%', maxWidth: 390 }}>
 
           {/* Back button */}
           <button
