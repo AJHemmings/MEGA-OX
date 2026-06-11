@@ -178,8 +178,10 @@ const AchievementsManager: React.FC = () => {
   };
 
   return (
-    <div style={{ fontFamily: tokens.font }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div style={{ fontFamily: tokens.font, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+
+      {/* Frozen header */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: tokens.text }}>Achievements</div>
           <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2 }}>
@@ -195,25 +197,27 @@ const AchievementsManager: React.FC = () => {
         </button>
       </div>
 
-      {loading && <div style={{ color: tokens.textMuted, fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Loading…</div>}
-      {!loading && error && (
-        <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(229,62,62,0.12)', color: tokens.loss, fontSize: 13 }}>
-          {error}
-        </div>
-      )}
-      {!loading && !error && achievements.length === 0 && (
-        <div style={{ color: tokens.textMuted, fontSize: 13, padding: '40px 0', textAlign: 'center' }}>
-          No achievements yet.
-        </div>
-      )}
+      {/* Scrollable list */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {loading && <div style={{ color: tokens.textMuted, fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Loading…</div>}
+        {!loading && error && (
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(229,62,62,0.12)', color: tokens.loss, fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+        {!loading && !error && achievements.length === 0 && (
+          <div style={{ color: tokens.textMuted, fontSize: 13, padding: '40px 0', textAlign: 'center' }}>
+            No achievements yet.
+          </div>
+        )}
 
-      {!loading && !error && achievements.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: 12,
-        }}>
-          {achievements.map(a => (
+        {!loading && !error && achievements.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 12,
+          }}>
+            {achievements.map(a => (
             <div key={a.id} style={{
               background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.09)',
@@ -247,9 +251,10 @@ const AchievementsManager: React.FC = () => {
                 Edit
               </button>
             </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
 
       {modalTarget !== undefined && (
         <AchievementModal

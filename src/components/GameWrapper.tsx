@@ -271,18 +271,29 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
         </div>
       </Modal>
 
-      {/* Board canvas — do not style the board itself */}
-      <MacroBoard
-        microBoards={microBoardsData}
-        onPlaceMarker={(micro, cell) => {
-          if (gameMode === "single" && isAiTurn) return;
-          const ok = onPlaceMarker(micro, cell);
-          if (ok) playMarkerPlaced();
-        }}
-        nextMicroBoardIndex={game.nextMicroBoardIndex}
-        macroWinner={winner === Marker.None ? "" : winner}
-        lastMove={lastMove}
-      />
+      {/* Board canvas — scale to fit viewport while keeping all internal pixel values intact */}
+      {(() => {
+        const BOARD_PX = 490;
+        const availW = Math.min(524, window.innerWidth) - 28;
+        const scale  = Math.min(1, availW / BOARD_PX);
+        return (
+          <div style={{ overflow: 'hidden', height: Math.round(BOARD_PX * scale) }}>
+            <div style={{ width: BOARD_PX, height: BOARD_PX, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+              <MacroBoard
+                microBoards={microBoardsData}
+                onPlaceMarker={(micro, cell) => {
+                  if (gameMode === "single" && isAiTurn) return;
+                  const ok = onPlaceMarker(micro, cell);
+                  if (ok) playMarkerPlaced();
+                }}
+                nextMicroBoardIndex={game.nextMicroBoardIndex}
+                macroWinner={winner === Marker.None ? "" : winner}
+                lastMove={lastMove}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Win result */}
       {gameOver && !onGameOver && (
@@ -291,6 +302,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
             {getWinnerText()}
           </div>
           <PrimaryButton onClick={handleRestart} fullWidth>🔄 New Game</PrimaryButton>
+          <SecondaryButton onClick={onBackToMenu} fullWidth style={{ marginTop: 10 }}>← Main Menu</SecondaryButton>
         </Glass>
       )}
 

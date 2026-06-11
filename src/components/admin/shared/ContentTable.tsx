@@ -41,57 +41,60 @@ export const ContentTable: React.FC<Props> = ({
     : items;
 
   return (
-    <div style={{ fontFamily: tokens.font }}>
+    <div style={{ fontFamily: tokens.font, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: tokens.text }}>{sectionTitle}</div>
-          <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2 }}>
-            {items.length} item{items.length !== 1 ? 's' : ''}
+      {/* Frozen: header + tabs */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: tokens.text }}>{sectionTitle}</div>
+            <div style={{ fontSize: 11, color: tokens.textMuted, marginTop: 2 }}>
+              {items.length} item{items.length !== 1 ? 's' : ''}
+            </div>
           </div>
+          <button onClick={onAdd} style={{
+            background: 'rgba(0,212,170,0.18)', border: `1px solid ${tokens.accent}`,
+            borderRadius: 20, padding: '6px 16px', fontSize: 12, fontWeight: 800,
+            color: tokens.accent, cursor: 'pointer', fontFamily: tokens.font,
+          }}>
+            + Add
+          </button>
         </div>
-        <button onClick={onAdd} style={{
-          background: 'rgba(0,212,170,0.18)', border: `1px solid ${tokens.accent}`,
-          borderRadius: 20, padding: '6px 16px', fontSize: 12, fontWeight: 800,
-          color: tokens.accent, cursor: 'pointer', fontFamily: tokens.font,
-        }}>
-          + Add
-        </button>
+
+        {tabs && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+            {tabs.map(tab => (
+              <button key={tab.key} onClick={() => onTabChange?.(tab.key)} style={{
+                padding: '5px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                background: activeTab === tab.key ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
+                color: activeTab === tab.key ? tokens.accent : tokens.textMuted,
+                fontWeight: activeTab === tab.key ? 700 : 500,
+                fontSize: 12, fontFamily: tokens.font,
+              }}>{tab.label}</button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Tabs */}
-      {tabs && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-          {tabs.map(tab => (
-            <button key={tab.key} onClick={() => onTabChange?.(tab.key)} style={{
-              padding: '5px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-              background: activeTab === tab.key ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
-              color: activeTab === tab.key ? tokens.accent : tokens.textMuted,
-              fontWeight: activeTab === tab.key ? 700 : 500,
-              fontSize: 12, fontFamily: tokens.font,
-            }}>{tab.label}</button>
-          ))}
-        </div>
-      )}
+      {/* Scrollable list */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {loading && <div style={{ color: tokens.textMuted, fontSize: 13, padding: 20 }}>Loading…</div>}
+        {error   && <div style={{ color: tokens.loss,     fontSize: 13, padding: 20 }}>{error}</div>}
 
-      {loading && <div style={{ color: tokens.textMuted, fontSize: 13, padding: 20 }}>Loading…</div>}
-      {error   && <div style={{ color: tokens.loss,     fontSize: 13, padding: 20 }}>{error}</div>}
+        {!loading && !error && filtered.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', color: tokens.textMuted, fontSize: 13 }}>
+            No items.
+          </div>
+        )}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div style={{ padding: 40, textAlign: 'center', color: tokens.textMuted, fontSize: 13 }}>
-          No items.
-        </div>
-      )}
-
-      {/* Card grid */}
-      {!loading && !error && filtered.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-          gap: 12,
-        }}>
-          {filtered.map(item => (
+        {/* Card grid */}
+        {!loading && !error && filtered.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+            gap: 12,
+          }}>
+            {filtered.map(item => (
             <div key={item.id} style={{
               background: 'rgba(255,255,255,0.04)',
               border: `1px solid rgba(255,255,255,${item.archived ? '0.04' : '0.09'})`,
@@ -164,9 +167,10 @@ export const ContentTable: React.FC<Props> = ({
               </div>
 
             </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

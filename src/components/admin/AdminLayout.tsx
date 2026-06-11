@@ -33,13 +33,21 @@ export const AdminLayout: React.FC<Props> = ({ children }) => {
   });
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: tokens.bgBase }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: tokens.bgBase }}>
       <div style={{
-        width: 140, flexShrink: 0,
+        width: 140, flexShrink: 0, display: 'flex', flexDirection: 'column',
         background: 'rgba(255,255,255,0.03)',
         borderRight: '1px solid rgba(255,255,255,0.07)',
         padding: '20px 12px',
       }}>
+        {/* Back to game */}
+        <div
+          style={{ ...linkStyle(false), marginBottom: 12 }}
+          onClick={() => navigate('/menu')}
+        >
+          ← Menu
+        </div>
+
         <div style={{
           color: tokens.accent, fontWeight: 800, fontSize: 10,
           letterSpacing: 1.5, marginBottom: 16, fontFamily: tokens.font,
@@ -65,7 +73,7 @@ export const AdminLayout: React.FC<Props> = ({ children }) => {
         )}
       </div>
 
-      <div style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
+      <div style={{ flex: 1, padding: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {children}
       </div>
     </div>

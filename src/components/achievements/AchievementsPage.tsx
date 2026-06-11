@@ -98,65 +98,72 @@ export const AchievementsPage: React.FC = () => {
     <div style={{
       fontFamily: tokens.font, color: tokens.text,
       maxWidth: 600, margin: '0 auto',
-      padding: '0 16px', paddingBottom: isMobile ? 100 : 60,
+      display: 'flex', flexDirection: 'column',
+      height: '100dvh',
+      padding: '0 16px',
     }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Achievements</span>
+      {/* Frozen top section */}
+      <div style={{ flexShrink: 0 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Achievements</span>
+          {!loading && totalCount > 0 && (
+            <Pill variant="teal">{unlockedCount} / {totalCount}</Pill>
+          )}
+        </div>
+
+        {/* Total progress card */}
         {!loading && totalCount > 0 && (
-          <Pill variant="teal">{unlockedCount} / {totalCount}</Pill>
+          <Glass style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>Total progress</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: tokens.accent }}>{Math.round(progressPct)}%</span>
+            </div>
+            <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: tokens.rPill, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${progressPct}%`,
+                background: `linear-gradient(90deg, ${tokens.accent}, ${tokens.xp})`,
+                borderRadius: tokens.rPill, boxShadow: '0 0 8px rgba(0,212,170,0.45)',
+              }} />
+            </div>
+          </Glass>
+        )}
+
+        {/* Category scroll */}
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 12, paddingBottom: 4, scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'] }}>
+          {(['All', 'Wins', 'Streaks', 'Skill', 'Social'] as AchCategory[]).map(cat => (
+            <button key={cat} onClick={() => setCategory(cat)} style={{
+              flexShrink: 0, padding: '6px 14px', borderRadius: tokens.rPill, border: 'none', cursor: 'pointer',
+              background: category === cat ? tokens.accent : 'rgba(255,255,255,0.06)',
+              color: category === cat ? '#060d1f' : tokens.textMuted,
+              fontWeight: 700, fontSize: 12, fontFamily: tokens.font,
+              transition: 'background 0.15s, color 0.15s',
+            }}>
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Scrollable achievement list */}
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: isMobile ? 100 : 60 }}>
+        {loading ? (
+          <div style={{ color: tokens.textMuted, textAlign: 'center', padding: 40 }}>Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>No achievements in this category.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filtered.map(a => <AchCard key={a.id} a={a} />)}
+          </div>
         )}
       </div>
-
-      {/* Total progress card */}
-      {!loading && totalCount > 0 && (
-        <Glass style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>Total progress</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: tokens.accent }}>{Math.round(progressPct)}%</span>
-          </div>
-          <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: tokens.rPill, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', width: `${progressPct}%`,
-              background: `linear-gradient(90deg, ${tokens.accent}, ${tokens.xp})`,
-              borderRadius: tokens.rPill, boxShadow: '0 0 8px rgba(0,212,170,0.45)',
-            }} />
-          </div>
-        </Glass>
-      )}
-
-      {/* Category scroll */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4, scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'] }}>
-        {(['All', 'Wins', 'Streaks', 'Skill', 'Social'] as AchCategory[]).map(cat => (
-          <button key={cat} onClick={() => setCategory(cat)} style={{
-            flexShrink: 0, padding: '6px 14px', borderRadius: tokens.rPill, border: 'none', cursor: 'pointer',
-            background: category === cat ? tokens.accent : 'rgba(255,255,255,0.06)',
-            color: category === cat ? '#060d1f' : tokens.textMuted,
-            fontWeight: 700, fontSize: 12, fontFamily: tokens.font,
-            transition: 'background 0.15s, color 0.15s',
-          }}>
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Achievement list */}
-      {loading ? (
-        <div style={{ color: tokens.textMuted, textAlign: 'center', padding: 40 }}>Loading…</div>
-      ) : filtered.length === 0 ? (
-        <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>No achievements in this category.</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtered.map(a => <AchCard key={a.id} a={a} />)}
-        </div>
-      )}
     </div>
   );
 
