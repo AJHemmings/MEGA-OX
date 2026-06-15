@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useInventory, OwnedItem } from '../../hooks/useInventory';
 import { useLoadout } from '../../hooks/useLoadout';
-import { useProgression } from '../../hooks/useProgression';
+import { useProgressionContext } from '../../contexts/ProgressionContext';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens } from '../../styles/tokens';
@@ -12,7 +12,8 @@ import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import PrimaryButton from '../common/PrimaryButton';
 import TabBar from '../common/TabBar';
-import { ChevronLeft, Coin } from '../icons';
+import { Coin } from '../icons';
+import BackButton from '../common/BackButton';
 import { Loadout } from '../../hooks/useLoadout';
 
 type CTab = 'avatar' | 'banner' | 'badge' | 'emoji';
@@ -55,7 +56,7 @@ const CustomisePage: React.FC = () => {
 
   const { items }              = useInventory(user?.id);
   const { loadout, loading: loadoutLoading, save } = useLoadout(user?.id);
-  const { credits }            = useProgression(user?.id);
+  const { credits }            = useProgressionContext();
 
   // Draft: local copy of loadout. Only synced from DB on first load, not on every change.
   const [draft, setDraft]     = useState<Loadout>({ active_avatar_id: null, active_badge_id: null, active_banner_id: null });
@@ -107,12 +108,7 @@ const CustomisePage: React.FC = () => {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
-        >
-          <ChevronLeft size={20} />
-        </button>
+        <BackButton onClick={() => navigate(-1)} />
         <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Customise</span>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 4,

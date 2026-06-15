@@ -10,7 +10,8 @@ import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import PrimaryButton from '../common/PrimaryButton';
 import SecondaryButton from '../common/SecondaryButton';
-import { ChevronLeft, SearchIcon } from '../icons';
+import { SearchIcon } from '../icons';
+import BackButton from '../common/BackButton';
 
 const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -134,9 +135,7 @@ const MatchmakingPage: React.FC = () => {
         {view === 'searching' && (
           <>
             <div style={headerStyle}>
-              <button onClick={() => navigate('/multiplayer')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-                <ChevronLeft size={20} />
-              </button>
+              <BackButton onClick={() => navigate('/multiplayer')} />
               <span style={{ fontSize: 18, fontWeight: 800 }}>Searching…</span>
             </div>
 
@@ -205,9 +204,7 @@ const MatchmakingPage: React.FC = () => {
         {view === 'create' && (
           <>
             <div style={headerStyle}>
-              <button onClick={() => navigate('/multiplayer')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-                <ChevronLeft size={20} />
-              </button>
+              <BackButton onClick={() => navigate('/multiplayer')} />
               <span style={{ fontSize: 18, fontWeight: 800 }}>Friendly game</span>
             </div>
 
@@ -276,9 +273,7 @@ const MatchmakingPage: React.FC = () => {
         {view === 'join' && (
           <>
             <div style={headerStyle}>
-              <button onClick={() => navigate('/multiplayer')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-                <ChevronLeft size={20} />
-              </button>
+              <BackButton onClick={() => navigate('/multiplayer')} />
               <span style={{ fontSize: 18, fontWeight: 800 }}>Join a game</span>
             </div>
 

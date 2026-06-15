@@ -12,7 +12,8 @@ import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import SecondaryButton from '../common/SecondaryButton';
 import PrimaryButton from '../common/PrimaryButton';
-import { Flame, ChevronLeft } from '../icons';
+import { Flame } from '../icons';
+import BackButton from '../common/BackButton';
 import TabBar from '../common/TabBar';
 
 interface ProfileData {
@@ -124,9 +125,7 @@ const MobileProfile: React.FC<{
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px 12px' }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-            <ChevronLeft size={20} />
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
           <span style={{ fontSize: 17, fontWeight: 800, flex: 1 }}>Profile</span>
           {isOwnProfile && (
             <SecondaryButton size="sm" onClick={onCustomise}>Customise</SecondaryButton>
@@ -278,9 +277,7 @@ const DesktopProfile: React.FC<{
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0 16px' }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-            <ChevronLeft size={20} />
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
           <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Profile</span>
           <div style={{ display: 'flex', gap: 10 }}>
             <SecondaryButton size="sm" onClick={() => {}}>Share</SecondaryButton>

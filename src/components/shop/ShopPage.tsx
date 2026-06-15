@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useShop, ShopItem } from '../../hooks/useShop';
 import { usePurchase } from '../../hooks/usePurchase';
-import { useProgression } from '../../hooks/useProgression';
+import { useProgressionContext } from '../../contexts/ProgressionContext';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import TabBar from '../common/TabBar';
-import { ChevronLeft, Coin } from '../icons';
+import { Coin } from '../icons';
+import BackButton from '../common/BackButton';
 import { ShopItemCard } from './ShopItemCard';
 import { PurchaseConfirmModal } from './PurchaseConfirmModal';
 
@@ -52,7 +53,7 @@ const ShopPage: React.FC = () => {
   const [pendingItem, setPendingItem]   = useState<ShopItem | null>(null);
 
   const { catalogue, loading, error: shopError, refetch }                        = useShop(user?.id);
-  const { credits, refresh: refreshProgression, loading: progressionLoading }    = useProgression(user?.id);
+  const { credits, refresh: refreshProgression, loading: progressionLoading }    = useProgressionContext();
 
   const handleSuccess = useCallback(() => {
     refetch();
@@ -76,14 +77,7 @@ const ShopPage: React.FC = () => {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
-          <button
-            type="button"
-            aria-label="Go back"
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
-          >
-            <ChevronLeft size={20} />
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
           <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Shop</span>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 4,

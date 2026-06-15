@@ -1,7 +1,7 @@
 // src/components/layout/CreditsBalance.tsx
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useProgression } from '../../hooks/useProgression';
+import { useProgressionContext } from '../../contexts/ProgressionContext';
 
 interface CreditsBalanceProps {
   /** Called when the user clicks the balance — navigate to shop (Phase 6) */
@@ -10,7 +10,7 @@ interface CreditsBalanceProps {
 
 export const CreditsBalance: React.FC<CreditsBalanceProps> = ({ onClick }) => {
   const { user } = useAuth();
-  const { credits, loading } = useProgression(user?.id);
+  const { credits, loading } = useProgressionContext();
 
   if (!user || loading) return null;
 

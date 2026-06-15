@@ -10,7 +10,7 @@ import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import Pill from '../common/Pill';
 import TabBar from '../common/TabBar';
-import { ChevronLeft } from '../icons';
+import BackButton from '../common/BackButton';
 
 type AchCategory = 'All' | 'Wins' | 'Streaks' | 'Skill' | 'Social';
 
@@ -97,22 +97,17 @@ export const AchievementsPage: React.FC = () => {
   const content = (
     <div style={{
       fontFamily: tokens.font, color: tokens.text,
-      maxWidth: 600, margin: '0 auto',
+      maxWidth: isMobile ? 600 : 960, margin: '0 auto',
       display: 'flex', flexDirection: 'column',
       height: '100dvh',
-      padding: '0 16px',
+      padding: isMobile ? '0 16px' : '0 24px',
     }}>
 
       {/* Frozen top section */}
       <div style={{ flexShrink: 0 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
-          >
-            <ChevronLeft size={20} />
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
           <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Achievements</span>
           {!loading && totalCount > 0 && (
             <Pill variant="teal">{unlockedCount} / {totalCount}</Pill>
@@ -159,7 +154,11 @@ export const AchievementsPage: React.FC = () => {
         ) : filtered.length === 0 ? (
           <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>No achievements in this category.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+            gap: 8,
+          }}>
             {filtered.map(a => <AchCard key={a.id} a={a} />)}
           </div>
         )}

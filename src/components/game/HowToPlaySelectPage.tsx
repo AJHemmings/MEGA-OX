@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
-import { ChevronLeft } from '../icons';
+import BackButton from '../common/BackButton';
 
 const MODES = [
   {
@@ -35,9 +35,7 @@ const HowToPlaySelectPage: React.FC = () => {
       }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-            <ChevronLeft size={20} />
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
           <span style={{ fontSize: 18, fontWeight: 800 }}>How to Play</span>
         </div>
 

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { ProgressionProvider } from '../../contexts/ProgressionContext';
 import ResumeGameToast from '../ResumeGameToast';
+import { AdminDebugFAB } from '../admin/AdminDebugFAB';
 
 const ProtectedRoute: React.FC = () => {
   const { user, loading } = useAuth();
@@ -15,10 +17,11 @@ const ProtectedRoute: React.FC = () => {
   }
 
   return user ? (
-    <>
+    <ProgressionProvider>
       <Outlet />
       <ResumeGameToast />
-    </>
+      <AdminDebugFAB />
+    </ProgressionProvider>
   ) : <Navigate to="/login" replace />;
 };
 

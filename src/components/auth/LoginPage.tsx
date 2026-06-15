@@ -6,7 +6,7 @@ import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import PrimaryButton from '../common/PrimaryButton';
 import Field from '../common/Field';
-import { ChevronLeft } from '../icons';
+import BackButton from '../common/BackButton';
 
 const LoginPage: React.FC = () => {
   const { signIn, signInWithGoogle } = useAuth();
@@ -36,12 +36,9 @@ const LoginPage: React.FC = () => {
         <div style={{ width: '100%', maxWidth: 390 }}>
 
           {/* Back button */}
-          <button
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: '4px 0', lineHeight: 0, marginBottom: 20 }}
-          >
-            <ChevronLeft size={20} />
-          </button>
+          <div style={{ marginBottom: 12 }}>
+            <BackButton onClick={() => navigate(-1)} />
+          </div>
 
           {/* Title block */}
           <div style={{ marginBottom: 28 }}>
