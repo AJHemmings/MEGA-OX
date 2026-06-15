@@ -4,26 +4,82 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phases 1–5 are complete and merged to `main`**, plus a tech debt + leaderboard fix session on 2026-05-28. Live on `mega-ox-dev.vercel.app`.
+> "I've read the handover. **Phases 1–7 plus the admin debug FAB are complete and merged to `main`** as of 2026-06-15. Public Vercel is live at `mega-ox.vercel.app`.
 >
-> Next phase is **Phase 6: Cash shop**. Remaining tech debt items from the code review are listed in 'Known issues'."
+> A cleanup and refactor pass is the recommended next task before Phase 8. Known deferred items are listed in 'Known issues'."
 
 ---
 
 ## Current state
 
-`main` branch: Tech debt + leaderboard fixes merged (2026-05-28). Latest commit: `d121c89`.
+`main` branch: All phases complete (1–7) + admin debug FAB + session fixes. Latest commit: `1b3fdfb` (merge feat/admin-debug-fab, 2026-06-15).
 
-**Private Vercel (`mega-ox-dev`):** Testing environment — live URL: https://mega-ox-dev.vercel.app
-— Project ID: `prj_ax0KSF6QTW1EMnAdtDa9HesZWCub`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
+**Public Vercel (`mega-ox`):** Production — all phases live. URL: https://mega-ox.vercel.app
+— Project ID: `prj_qWeofNsmfHHXIJgW2GjgxeMyiTF1`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
+— Connected to: `AJHemmings/MEGA-OX` (public repo), tracking `main`
+— Deploy: `git push` (pushes to `origin/main`, Vercel auto-deploys)
+— Edge function: **v10** deployed 2026-03-31. `verify_jwt: false` locked in `config.toml`.
+— Source maps: suppressed via `.env.production` (`GENERATE_SOURCEMAP=false`). No more build warnings.
+
+**Private Vercel (`mega-ox-dev`):** Staging environment — https://mega-ox-dev.vercel.app
+— Project ID: `prj_ax0KSF6QTW1EMnAdtDa9HesZWCub`
 — Connected to: `AJHemmings/MEGA-OX-private` (private repo), tracking `main`
 — Deploy: `git push private main` from project root
-— Deployment protection: **disabled** (for testing)
-— Latest production commit: `b63b143` (landing page UI polish, 2026-05-27)
-— Edge function: **v10** deployed 2026-03-31. `verify_jwt: false` locked in `config.toml`.
 
-**Public Vercel (`mega-ox`):** Portfolio/CV version — local game, AI only. URL: https://mega-ox.vercel.app
-— Still running Phase 3-era code. Do NOT push to `origin/main` without explicit instruction.
+---
+
+## Admin Debug FAB + session fixes — 2026-06-15 ✅ (merged to main, commit `1b3fdfb`)
+
+**Branch:** `feat/admin-debug-fab` (13 commits, merged and deleted)
+
+### What was built
+
+**Admin Debug FAB** (`src/components/admin/AdminDebugFAB.tsx`)
+- Floating action button visible only to admin accounts, on every protected page
+- Mounted in `ProtectedRoute` alongside `<Outlet />` — zero prop changes elsewhere
+- Mobile: 44px circle at `bottom: 88px` (above tab bar). Desktop: pill at `bottom: 24px`
+- Three panel sections:
+  - **Start Test Game** — inserts a game row (`player_x_id = player_o_id = admin.id`, `status: 'active'`), navigates to `/game/:id?debug=both`, closes panel
+  - **Grant XP / Grant Credits** — numeric input + button per reward; calls `admin_grant_xp` / `admin_grant_credits` RPCs; refreshes shared ProgressionContext immediately
+  - **Quick Nav** — Customise / Shop / Achievements / Admin
+
+**`?debug=both` mode in `OnlineGameView`**
+- Read via `useSearchParams()`; gated on `adminRole !== null` (non-admins cannot exploit it via URL)
+- Bypasses the turn guard in `useOnlineGame.placeMarker` via `{ skipTurnGuard: true }` option
+- Shows a "🛠 Playing as: X/O" pill above the board
+- Suppresses the post-game edge function call (no fake XP/credits for test games)
+
+**New Supabase RPCs** (migrations 20260615000001–000003)
+- `admin_grant_xp(amount int)` — inline admin check (SECURITY DEFINER), XP update + level recalc (direct port of `levelFromXP` from `src/lib/progression.ts`)
+- `admin_grant_credits(amount int)` — delegates to existing `increment_credits()`
+- `GRANT EXECUTE ... TO authenticated` on both RPCs
+
+**`BackButton` shared component** (`src/components/common/BackButton.tsx`)
+- Replaces 16 copies of identical raw `<button>/<ChevronLeft>` across 12 page headers
+- 40×40 hit target, 24px chevron, `tokens.text` (white), subtle hover circle
+- Escape key support built in — listener mounted on the document, only fires when button is visible (prevents double-fire on dual mobile/desktop render)
+- Uses `onClickRef` pattern — stable document listener, never re-subscribes
+
+**`ProgressionContext`** (`src/contexts/ProgressionContext.tsx`)
+- Single shared `useProgression` instance mounted in `ProtectedRoute`
+- All 6 consumers (`AdminDebugFAB`, `OnlineGameView`, `CreditsBalance`, `MainMenu`, `CustomisePage`, `ShopPage`) now use `useProgressionContext()`
+- `ProfilePage` keeps its own instance (needs `isOwnProfile ? user?.id : undefined` conditional)
+- Calling `refresh()` from any consumer (e.g. the FAB after a grant) now updates the balance everywhere simultaneously
+
+**Default items on signup fix** (migration 20260615000004)
+- Root cause: `handle_new_profile()` trigger was never updated when Phase 4 added `cosmetic_items` / `player_inventory`. Any account created after `20260520000001` had an empty inventory — no emojis, no default avatar/badge/banner
+- Fix: trigger now grants all items with `source = 'default'` and sets default equipped avatar/badge/banner on every new signup
+- Backfill applied to all existing accounts (including admin)
+
+**Achievements page desktop layout**
+- `maxWidth: 600` → `960` on desktop; card list switches to a 2-column grid
+- Mobile layout unchanged
+
+### TypeScript fixes applied in this session
+- `AdminDebugFAB` RPC calls cast to `(supabase as any).rpc(...)` — generated types don't include the new RPCs yet
+- `OnlineGameView` — `useAdminRole()` hook call moved above `debugBothSides` declaration (was used before assignment at line 113)
+
+### What still needs doing (cleanup & refactor — see below)
 
 ---
 
@@ -50,6 +106,69 @@ Read this file in full, then say:
 **UI fixes:**
 - SEASON 04 pill and heading removed from `LeaderboardPage` and `SeasonPage`
 - Mobile hamburger menu added to `MobileLayout` in `MainMenu.tsx` — `≡` icon top-left, slide-in drawer (Leaderboard, Achievements, Season), closes on backdrop tap
+
+---
+
+## Tech debt — 2026-06-09 ✅ (merged to main)
+
+- `maybeSingle()` on all nullable profile queries across the app — eliminates 406 console errors when a row is missing
+- `Field` input component extracted to `src/components/common/Field.tsx` — shared between `LoginPage` and `SignUpPage` (was duplicated, had diverged)
+- `useLoginStreak` `.single()` → `.maybeSingle()` fix applied
+
+---
+
+## Mobile UI fixes — 2026-06-11 ✅ (commit `94b8105`)
+
+- **AdminLayout:** viewport-locked (`height:100vh`), content pane scrolls independently; ← Menu link added
+- **ContentTable + AchievementsManager:** title/filters frozen at top, only item grid scrolls
+- **AchievementsPage:** header/progress/category bar frozen, only list scrolls
+- **GameWrapper:** board scaled via CSS `transform` so all internal pixel values stay intact on mobile
+- **GameWrapper:** ← Main Menu button added on win/draw/loss screen in single-player mode
+
+---
+
+## Phase 7 — Admin Dashboard ✅ (merged 2026-06-08, commit `9e011bf`)
+
+**Design doc:** `docs/superpowers/specs/2026-06-04-phase7-admin-dashboard-design.md`
+**Implementation plan:** `docs/superpowers/plans/2026-06-04-phase7-admin-dashboard.md`
+
+**What was built:**
+- `admin_roles` table — `super_admin` and `editor` roles
+- `is_admin()` / `is_super_admin()` SECURITY DEFINER functions — RLS on `admin_roles` without recursion
+- `AdminRoute` component — redirects non-admins to `/menu`
+- `AdminLayout` — sidebar nav, viewport-locked scroll, ← Menu link
+- `/admin/skins` — card grid CRUD for `cosmetic_items` (create, edit, delete)
+- `/admin/achievements` — card grid CRUD for `achievements`
+- `/admin/emojis` — list management for in-game emojis
+- `/admin/shop` — card grid with visible/featured toggles + purchase transaction list
+- `/admin/ai-tuner` — difficulty sliders writing to `ai_config` table
+
+**Smoke test fixes applied (commit `40cec34`):**
+- RLS infinite recursion on `admin_roles` — fixed with SECURITY DEFINER functions
+- `useAdminItems` re-fetch loop — dep array serialised to string key
+- `SignUpPage` full-screen bug — missing `maxWidth: 390`
+- Badge prices showing in admin — NULLed in DB, display guards on `source === 'shop'`
+- Admin UI redesigned — card grids replace row lists in Skins, Achievements, Shop
+- Modal polish — wider, scrollable, dark selects, integer price input
+
+**Not completed in smoke test (low risk — `AdminRoute` guards all routes):**
+- Editor role access control (can access Skins/Achievements/Emojis, blocked from Shop/AI Tuner)
+- Regular user redirect test (no Admin link, `/admin` → `/menu`)
+
+---
+
+## Phase 6 — Cash Shop ✅ (merged to main)
+
+**What was built:**
+- `/shop` route — cosmetics store with credits as currency
+- `purchase_item` Postgres RPC — atomic: balance lock → deduct → grant inventory row → log transaction
+- 13 paid cosmetic items seeded (avatar, badge, banner, board, marker)
+- Board/marker skins render in-game: `src/skins/defaults.ts` + `BoardSkin`, `MarkerSkin`, `WonBoardSkin` components
+- Equip purchased items via `/customise`
+
+**Deferred from Phase 6:**
+- Stripe / real-money top-ups — Phase 6 is credits-only
+- Skins RLS policies — added in preparation for Phase 6; full policy audit deferred
 
 ---
 
@@ -248,6 +367,46 @@ Read this file in full, then say:
 
 ---
 
+## Recommended next task — Cleanup & Refactor pass
+
+Before Phase 8, a focused cleanup session is recommended. The codebase has accumulated several known debts across phases. Doing this before Phase 8 will avoid building new features on shaky foundations.
+
+### High priority
+
+**Regenerate `database.types.ts`**
+- `admin_grant_xp` and `admin_grant_credits` are not in the generated types. `AdminDebugFAB` works around this with `(supabase as any).rpc(...)`. Run `supabase gen types typescript --project-id qioxtkcjtvvkzcoupdfk > src/database.types.ts` and remove the casts.
+
+**`loadProfile` in `OnlineGameView` reimplements `usePlayerProfile` inline**
+- `OnlineGameView.tsx` ~line 152: an async function fetches username, avatar, rank tier, and level. This is exactly what `usePlayerProfile` does. If profile schema changes, only the hook gets updated — `OnlineGameView` drifts silently. Replace with the hook.
+
+**`OnlineGameView.tsx` is too large**
+- The file handles mobile layout, desktop layout, forfeit modal, disconnect banner, emoji bubbles, debug mode, post-game, RPS screen, rematch overlay — all in one component. It should be split: extract the two layout trees into `OnlineGameMobile.tsx` and `OnlineGameDesktop.tsx`, keeping `OnlineGameView` as a thin coordinator.
+
+**Orphaned disconnect countdown interval**
+- `useOnlineGame.ts` ~line 286: the `leave` presence handler starts a `setInterval` without first calling `clearInterval`. Rapid disconnect/reconnect starts a second interval while the first still runs. Fix: add `clearInterval(countdownIntervalRef.current)` as the first line of the `leave` handler.
+
+### Medium priority
+
+**`isCreator` misnaming in `useOnlineGame`**
+- `isCreator` actually means "is player X". The creator of a rematch is not always X. Rename to `isPlayerX` and update all callsites.
+
+**`(supabase as any).rpc(...)` pattern**
+- After regenerating types (above), the two casts in `AdminDebugFAB.tsx` can be removed.
+
+**`ProfilePage` still uses its own `useProgression` instance**
+- Intentional (needs `isOwnProfile` conditional), but the prop types `ReturnType<typeof useProgression>` on sub-components should be updated to use `ProgressionState & { refresh: () => void }` from the hook export, matching what `MainMenu.tsx` now does.
+
+### Low priority / deferred
+
+- **EmojiBubble overflow on mobile** — bubbles at `-60px` go off-screen on viewports < ~520px
+- **Email confirmation signup skips profile creation** — if "Confirm email" is on in Supabase, profile rows are never created
+- **Rewards fallback UX** — no visible feedback if edge function fails; retry on login handles eventual consistency
+- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not passed to `GameWrapper`
+- **Forfeit toast text** — reads "reconnection window expired" for voluntary forfeit too
+- **Stale `games` rows** — play-again chains can leave `status='active'` rows; false resume prompts possible
+
+---
+
 ## Approved product roadmap
 
 Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
@@ -261,8 +420,10 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 3     | Player progression + achievements + virtual currency      | **Complete**     |
 | 4     | Profile customisation + emoji communication               | **Complete** (merged 2026-05-20)  |
 | 5     | Visual redesign                                           | **Complete** (merged 2026-05-27)  |
-| 6     | Cash shop                                                 | Not started      |
-| 7     | Admin dashboard                                           | Not started      |
+| 6     | Cash shop                                                 | **Complete**     |
+| 7     | Admin dashboard                                           | **Complete** (merged 2026-06-08) |
+| 7.5   | Admin debug FAB + session fixes                           | **Complete** (merged 2026-06-15) |
+| –     | Cleanup & refactor pass                                   | **Recommended next** |
 | 8     | Bug report system                                         | Not started      |
 
 ---
@@ -295,6 +456,14 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | Profile cosmetics display (ProfilePage)    | Done — Phase 4            |
 | In-game emoji communication                | Done — Phase 4            |
 | Visual redesign (all screens)              | Done — Phase 5            |
+| Cash shop (`/shop`)                        | Done — Phase 6            |
+| Board/marker skin rendering in-game        | Done — Phase 6            |
+| Admin dashboard (`/admin`)                 | Done — Phase 7            |
+| Admin: skins/achievements/emojis/shop/AI-tuner CRUD | Done — Phase 7   |
+| Admin Debug FAB (test game, grant XP/credits, quick nav) | Done — 2026-06-15 |
+| `BackButton` shared component (Escape key, 40px target) | Done — 2026-06-15 |
+| `ProgressionContext` (shared state, live grant refresh) | Done — 2026-06-15 |
+| Default items on signup (trigger fix + backfill) | Done — 2026-06-15 |
 
 ---
 
@@ -446,8 +615,7 @@ A full architectural code review was run (7-angle, multi-agent). Two initial fin
 
 ~~**`usePlayerProfile` effect dep is `[user]` not `[user?.id]`**~~ ✅ Fixed 2026-05-28
 
-**`Field` input component duplicated** (`LoginPage.tsx` ~line 10, `SignUpPage.tsx` ~line 13)
-Same styled input component defined in two files, already slightly diverged (SignUpPage added a `right` prop). Extract to `src/components/common/Field.tsx`.
+~~**`Field` input component duplicated**~~ ✅ Fixed 2026-06-09 — extracted to `src/components/common/Field.tsx`
 
 **`loadProfile` in `OnlineGameView` re-implements `usePlayerProfile`** (`OnlineGameView.tsx` ~line 152)
 An inline async function fetches username, avatar, rank tier, and level — the exact shape `usePlayerProfile` exposes. `OnlineGameView` does not import `usePlayerProfile` at all. If the profile schema changes, only the hook gets updated.
@@ -466,19 +634,20 @@ The `leave` presence handler starts a `setInterval` without first calling `clear
 
 ## Known issues / deferred
 
-- **Phase 4 — EmojiBubble overflow on mobile** — bubbles positioned at `-60px` from board edge will go off-screen on viewports narrower than ~520px. No crash; bubble is invisible on those devices. Fix: adjust offset or use board-relative positioning. Deferred to Phase 5 visual redesign.
-- **Phase 4 — New users have null loadout columns** — the migration sets defaults for existing users but not for sign-ups after migration. New users see no equipped cosmetics until they visit `/customise`. `ProfilePage` handles null gracefully (falls back to letter avatar, omits badge/banner). Fix: add a DB trigger or default values on columns. Deferred.
-- **`useLoginStreak.ts` line 31** — swap `.single()` to `.maybeSingle()` to silence 406 errors. Low priority, no user-facing impact.
-- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not yet passed to `GameWrapper`. Phase 6.
-- **Skins tables have no RLS policies** — fine for Phase 2, needed before Phase 6.
-- **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active`. Cleanup job planned for Phase 7.
-- **`isCreator` in `useOnlineGame`** — actually means "is player X". Renaming to `isPlayerX` deferred.
-- **Play Again simultaneous click race** — two clients can both try to create a rematch. `rematchCreatedRef` prevents it per-client, not across clients. Acceptable.
-- **`game_moves` table `move_number` is always 0** — full move history tracking deferred.
-- **Play Again not shown on forfeit games** — by design.
-- **Forfeit toast text** — always reads "You were forfeited from your last game after the reconnection window expired." regardless of whether forfeit was intentional. Fix: add `forfeit_reason` column (`'voluntary'` | `'disconnect'`), set at forfeit, branch toast text. Low user impact.
-- **Stale `games` rows** — play-again chains can leave `status='active'` or `status='rps'` rows without a clean `status='complete'` write. `useActiveGame` may surface these as false resume prompts. Long-term fix: add `completed_at` column and filter on it.
-- **Rewards fallback UX** — if edge function fails, user gets no feedback. Deferred (retry on login already handles eventual consistency).
+- **EmojiBubble overflow on mobile** — bubbles at `-60px` go off-screen on viewports < ~520px. No crash; bubble invisible. Fix: adjust offset or board-relative positioning.
+- **New user null loadout** — sign-ups after migration see no equipped cosmetics until visiting `/customise`. Fix: DB trigger or default values.
+- **`loadProfile` in `OnlineGameView`** reimplements `usePlayerProfile` inline — replace with the hook.
+- **Orphaned countdown interval** — `leave` presence handler should `clearInterval` before starting a new one (rapid disconnect/reconnect produces jitter).
+- **Email confirmation signup may skip profile creation** — if "Confirm email" toggle is on in Supabase, `signUp()` returns no session, `getUser()` is null, profile rows are never created. Check the Supabase dashboard toggle.
+- **Rewards fallback UX** — if edge function fails, user gets no feedback. Retry on login handles eventual consistency, but no visible "rewards pending" UX.
+- **Stripe / real-money top-ups** — credits-only for now. Stripe purchase flow deferred.
+- **Admin smoke test incomplete** — editor role and regular user redirect not verified (low risk, `AdminRoute` guards all routes).
+- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not yet passed to `GameWrapper`.
+- **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active`. Cleanup job deferred.
+- **`isCreator` in `useOnlineGame`** — actually means "is player X". Renaming deferred.
+- **Play Again simultaneous click race** — `rematchCreatedRef` is per-client only. Acceptable.
+- **Forfeit toast text** — always reads "reconnection window expired" regardless of voluntary forfeit. Fix: `forfeit_reason` column.
+- **Stale `games` rows** — play-again chains can leave `status='active'` rows; false resume prompts possible. Fix: `completed_at` column.
 
 ---
 
@@ -528,6 +697,20 @@ The `leave` presence handler starts a `setInterval` without first calling `clear
 | `src/components/game/EmojiPanel.tsx`              | In-game emoji picker — shows owned emojis, sends via `sendEmoji`                                                                                                                   |
 | `src/components/game/EmojiBubble.tsx`             | Floating emoji bubble, positioned absolute left/right of board                                                                                                                      |
 | `supabase/migrations/20260520000001_phase4_schema.sql` | Loadout columns on profiles, cosmetic_items seed (2 each: avatar/badge/banner/emoji), inventory grants, RLS                                                              |
+| `src/components/common/Field.tsx`                 | Shared text input component (extracted 2026-06-09)                                                                                                                                  |
+| `src/skins/defaults.ts`                           | Board/marker skin lookup by ID                                                                                                                                                       |
+| `src/components/skins/BoardSkin.tsx`              | In-game board skin renderer (Lottie)                                                                                                                                                 |
+| `src/components/skins/MarkerSkin.tsx`             | In-game marker skin renderer                                                                                                                                                         |
+| `src/components/shop/ShopPage.tsx`                | `/shop` — credits-based cosmetics store                                                                                                                                              |
+| `src/components/admin/AdminDebugFAB.tsx`          | Floating debug panel for admin accounts — test game, grant XP/credits, quick nav                                                                                                    |
+| `src/components/common/BackButton.tsx`            | Shared back button — 40px target, 24px chevron, Escape key, hover state                                                                                                             |
+| `src/contexts/ProgressionContext.tsx`             | Shared progression state — one instance for all consumers; `useProgressionContext()` hook                                                                                            |
+| `src/components/admin/AdminLayout.tsx`            | Admin shell — sidebar nav, viewport-locked, ← Menu link                                                                                                                             |
+| `src/components/admin/AdminRoute.tsx`             | Access guard — redirects non-admins to `/menu`                                                                                                                                       |
+| `src/components/admin/shared/ContentTable.tsx`    | Shared card-grid table for admin CRUD pages                                                                                                                                          |
+| `src/components/admin/SkinsManager.tsx`           | `/admin/skins` — cosmetic_items CRUD                                                                                                                                                 |
+| `src/components/admin/AchievementsManager.tsx`    | `/admin/achievements` — achievements CRUD                                                                                                                                            |
+| `src/components/admin/AiTuner.tsx`                | `/admin/ai-tuner` — difficulty sliders → `ai_config` table                                                                                                                          |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap                                                                                                                                                        |
 | `docs/plans/2026-03-19-testing-benchmarks.md`     | Live testing checklist                                                                                                                                                               |
 
@@ -570,8 +753,5 @@ Supabase project ref: **`qioxtkcjtvvkzcoupdfk`**
 
 ## Open questions (resolve at each phase's detail design)
 
-- Currency name and branding
-- Art direction for visual redesign
-- Which profile items are free progression unlocks vs paid vs both
-- Admin access control: private API vs direct Supabase RLS
-- Bug reports: email notifications to admin on new submission?
+- Bug reports: email notifications to admin on new submission? (Phase 8)
+- Stripe integration: real-money top-up flow, pricing tiers (deferred from Phase 6)
