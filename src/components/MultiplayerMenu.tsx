@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { tokens } from '../styles/tokens';
 import PageBackground from './common/PageBackground';
 import Glass from './common/Glass';
-import { ChevronLeft } from './icons';
+import BackButton from './common/BackButton';
 import TabBar from './common/TabBar';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../contexts/AuthContext';
@@ -104,9 +104,7 @@ const MultiplayerMenu: React.FC = () => {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: isMobile ? '16px 0 12px' : '20px 0 16px' }}>
-        <button onClick={() => navigate('/menu')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-          <ChevronLeft size={20} />
-        </button>
+        <BackButton onClick={() => navigate('/menu')} />
         <span style={{ fontSize: 18, fontWeight: 800 }}>Multiplayer</span>
       </div>
 

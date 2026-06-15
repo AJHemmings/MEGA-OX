@@ -10,7 +10,8 @@ import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import TabBar from '../common/TabBar';
-import { ChevronLeft, Coin } from '../icons';
+import { Coin } from '../icons';
+import BackButton from '../common/BackButton';
 import { ShopItemCard } from './ShopItemCard';
 import { PurchaseConfirmModal } from './PurchaseConfirmModal';
 
@@ -76,14 +77,7 @@ const ShopPage: React.FC = () => {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
-          <button
-            type="button"
-            aria-label="Go back"
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
-          >
-            <ChevronLeft size={20} />
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
           <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Shop</span>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 4,

@@ -39,7 +39,7 @@ import Glass from '../common/Glass';
 import PrimaryButton from '../common/PrimaryButton';
 import SecondaryButton from '../common/SecondaryButton';
 import Pill from '../common/Pill';
-import { ChevronLeft } from '../icons';
+import BackButton from '../common/BackButton';
 import { LevelBadge } from '../progression/LevelBadge';
 
 const defaultGameSkins: GameSkins = {
@@ -109,6 +109,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     submitRPSPick, myEmoji, opponentEmoji, sendEmoji,
   } = useOnlineGame(gameId);
 
+  const { role: adminRole } = useAdminRole();
   const [searchParams] = useSearchParams();
   const debugBothSides = searchParams.get('debug') === 'both' && adminRole !== null;
 
@@ -144,8 +145,6 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   const progression = useProgression(user?.id);
   const { refresh: refreshProgression } = progression;
-
-  const { role: adminRole } = useAdminRole();
 
   const wonByForfeit      = forfeitPlayerId !== null;
   const opponentForfeited = forfeitPlayerId !== null && forfeitPlayerId !== user?.id;
@@ -555,10 +554,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
             {/* Header strip */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0 12px' }}>
-              <button onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-                <ChevronLeft size={20} />
-              </button>
+              <BackButton onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')} />
               <Pill variant={matchTypePillVariant as any}>{matchType.toUpperCase()}</Pill>
               <div style={{ marginLeft: 'auto' }}>
                 <SecondaryButton size="sm" onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}>⋯</SecondaryButton>
@@ -660,10 +656,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-            <button onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-              <ChevronLeft size={20} />
-            </button>
+            <BackButton onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')} />
             <Pill variant={matchTypePillVariant as any}>{matchType.toUpperCase()}</Pill>
             <div style={{ marginLeft: 'auto' }}>
               <SecondaryButton size="sm" onClick={() => status === 'active' ? setShowForfeitModal(true) : navigate('/menu')}>⋯</SecondaryButton>

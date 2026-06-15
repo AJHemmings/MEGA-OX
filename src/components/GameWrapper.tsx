@@ -21,7 +21,7 @@ import Glass from './common/Glass';
 import PrimaryButton from './common/PrimaryButton';
 import SecondaryButton from './common/SecondaryButton';
 import Pill from './common/Pill';
-import { ChevronLeft } from './icons';
+import BackButton from './common/BackButton';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 const defaultGameSkins: GameSkins = {
@@ -204,9 +204,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
 
       {/* Header strip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0 12px' }}>
-        <button onClick={onBackToMenu} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}>
-          <ChevronLeft size={20} />
-        </button>
+        <BackButton onClick={onBackToMenu} />
         <Pill variant={pillVar}>{matchType}</Pill>
         {navExtra && <div style={{ flex: 1 }}>{navExtra}</div>}
         <div style={{ marginLeft: navExtra ? 0 : 'auto' }}>

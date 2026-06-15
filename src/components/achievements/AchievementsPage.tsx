@@ -10,7 +10,7 @@ import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
 import Pill from '../common/Pill';
 import TabBar from '../common/TabBar';
-import { ChevronLeft } from '../icons';
+import BackButton from '../common/BackButton';
 
 type AchCategory = 'All' | 'Wins' | 'Streaks' | 'Skill' | 'Social';
 
@@ -107,12 +107,7 @@ export const AchievementsPage: React.FC = () => {
       <div style={{ flexShrink: 0 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px' }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.textMuted, padding: 4, lineHeight: 0 }}
-          >
-            <ChevronLeft size={20} />
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
           <span style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Achievements</span>
           {!loading && totalCount > 0 && (
             <Pill variant="teal">{unlockedCount} / {totalCount}</Pill>
