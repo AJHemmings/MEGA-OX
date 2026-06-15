@@ -32,6 +32,7 @@ import EmojiPanel from './EmojiPanel';
 import EmojiBubble from './EmojiBubble';
 import { useProgression } from '../../hooks/useProgression';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useAdminRole } from '../../hooks/useAdminRole';
 import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
@@ -109,7 +110,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   } = useOnlineGame(gameId);
 
   const [searchParams] = useSearchParams();
-  const debugBothSides = searchParams.get('debug') === 'both';
+  const debugBothSides = searchParams.get('debug') === 'both' && adminRole !== null;
 
   const handlePlaceMarker = useCallback((microBoardIndex: number, cellIndex: number): void => {
     void placeMarker(
@@ -143,6 +144,8 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   const progression = useProgression(user?.id);
   const { refresh: refreshProgression } = progression;
+
+  const { role: adminRole } = useAdminRole();
 
   const wonByForfeit      = forfeitPlayerId !== null;
   const opponentForfeited = forfeitPlayerId !== null && forfeitPlayerId !== user?.id;
