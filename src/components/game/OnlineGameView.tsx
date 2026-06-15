@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Marker } from '../../models/Game';
@@ -108,6 +108,17 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     submitRPSPick, myEmoji, opponentEmoji, sendEmoji,
   } = useOnlineGame(gameId);
 
+  const [searchParams] = useSearchParams();
+  const debugBothSides = searchParams.get('debug') === 'both';
+
+  const handlePlaceMarker = useCallback((microBoardIndex: number, cellIndex: number): void => {
+    void placeMarker(
+      microBoardIndex,
+      cellIndex,
+      debugBothSides ? { skipTurnGuard: true } : undefined,
+    );
+  }, [placeMarker, debugBothSides]);
+
   const [showForfeitModal, setShowForfeitModal]   = useState(false);
   const [rematchOverlay, setRematchOverlay]       = useState<'agreed' | 'opted_out' | null>(null);
   const [waitCountdown, setWaitCountdown]         = useState<number | null>(null);
@@ -176,6 +187,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   useEffect(() => {
     if (status !== 'complete' || postGameCalledRef.current) return;
     postGameCalledRef.current = true;
+    if (debugBothSides) return; // suppress rewards in admin test games
     setPostGameLoading(true);
     callPostGameHandler(gameId).then(result => {
       setPostGameLoading(false);
@@ -184,7 +196,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         refreshProgression();
       }
     });
-  }, [status, gameId, refreshProgression]);
+  }, [status, gameId, refreshProgression, debugBothSides]);
 
   useEffect(() => {
     setRpsResultShown(false);
@@ -371,6 +383,16 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     (myMarker === 'O' && game.currentPlayerIndex === 1)
   );
 
+  const debugTurnPill = debugBothSides ? (
+    <div style={{
+      textAlign: 'center', padding: '6px 0', marginBottom: 4,
+      fontSize: 12, fontWeight: 700, color: tokens.accent,
+      fontFamily: tokens.font, letterSpacing: 0.5,
+    }}>
+      🛠 Playing as: <strong>{game.currentPlayerIndex === 0 ? 'X' : 'O'}</strong>
+    </div>
+  ) : null;
+
   const getWinnerText = () => {
     if (winner === 'draw') return "It's a draw!";
     if (winner === myMarker) return 'You Win!';
@@ -546,11 +568,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
             {/* Board — do not style */}
             <div style={{ position: 'relative' }}>
+              {debugTurnPill}
               {myEmoji       && <EmojiBubble emoji={myEmoji}       side="left"  />}
               {opponentEmoji && <EmojiBubble emoji={opponentEmoji} side="right" />}
               <MacroBoard
                 microBoards={microBoardsData}
-                onPlaceMarker={placeMarker}
+                onPlaceMarker={handlePlaceMarker}
                 nextMicroBoardIndex={game.nextMicroBoardIndex}
                 macroWinner={macroWinner}
                 lastMove={null}
@@ -654,11 +677,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
               {disconnectWarning}
               {turnPill}
               <div style={{ position: 'relative' }}>
+                {debugTurnPill}
                 {myEmoji       && <EmojiBubble emoji={myEmoji}       side="left"  />}
                 {opponentEmoji && <EmojiBubble emoji={opponentEmoji} side="right" />}
                 <MacroBoard
                   microBoards={microBoardsData}
-                  onPlaceMarker={placeMarker}
+                  onPlaceMarker={handlePlaceMarker}
                   nextMicroBoardIndex={game.nextMicroBoardIndex}
                   macroWinner={macroWinner}
                   lastMove={null}
