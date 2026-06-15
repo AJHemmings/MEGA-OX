@@ -442,12 +442,18 @@ export const useOnlineGame = (gameId: string) => {
     return () => clearInterval(interval);
   }, [status, myRematchIntent, rematchGameId, fetchGameState]);
 
-  const placeMarker = useCallback(async (microBoardIndex: number, cellIndex: number) => {
+  const placeMarker = useCallback(async (
+    microBoardIndex: number,
+    cellIndex: number,
+    opts?: { skipTurnGuard?: boolean },
+  ) => {
     if (!game || !user || !myMarker || status !== 'active') return false;
 
-    const isMyTurn = (myMarker === 'X' && game.currentPlayerIndex === 0) ||
-                     (myMarker === 'O' && game.currentPlayerIndex === 1);
-    if (!isMyTurn) return false;
+    if (!opts?.skipTurnGuard) {
+      const isMyTurn = (myMarker === 'X' && game.currentPlayerIndex === 0) ||
+                       (myMarker === 'O' && game.currentPlayerIndex === 1);
+      if (!isMyTurn) return false;
+    }
 
     const gameCopy = deserializeGame(serializeGame(game));
     const placed = gameCopy.placeMarker(microBoardIndex, cellIndex);
