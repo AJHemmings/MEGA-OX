@@ -30,7 +30,7 @@ import { callPostGameHandler } from '../../lib/postGame';
 import { PostGameModal, PostGameResult } from '../progression/PostGameModal';
 import EmojiPanel from './EmojiPanel';
 import EmojiBubble from './EmojiBubble';
-import { useProgression } from '../../hooks/useProgression';
+import { useProgressionContext } from '../../contexts/ProgressionContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useAdminRole } from '../../hooks/useAdminRole';
 import { tokens } from '../../styles/tokens';
@@ -143,7 +143,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const prevCellCountRef      = useRef<number>(0);
   const hasGameStartedRef     = useRef<boolean>(false);
 
-  const progression = useProgression(user?.id);
+  const progression = useProgressionContext();
   const { refresh: refreshProgression } = progression;
 
   const wonByForfeit      = forfeitPlayerId !== null;

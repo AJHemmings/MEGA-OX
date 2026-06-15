@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useRecentGames, RecentGame } from '../hooks/useRecentGames';
-import { useProgression } from '../hooks/useProgression';
+import { useProgressionContext } from '../contexts/ProgressionContext';
+import { ProgressionState } from '../hooks/useProgression';
 import { useLoginStreak } from '../hooks/useLoginStreak';
 import { useAdminRole } from '../hooks/useAdminRole';
 import { useTutorial } from '../hooks/useTutorial';
@@ -239,7 +240,7 @@ const StreakModal: React.FC<StreakModalProps> = ({ current, rewardText, onClaim 
 
 interface LayoutProps {
   profile: ReturnType<typeof usePlayerProfile>;
-  progression: ReturnType<typeof useProgression>;
+  progression: ProgressionState & { refresh: () => void };
   recentGames: RecentGame[];
   initial: string;
   onPlay: () => void;
@@ -663,7 +664,7 @@ const MainMenu: React.FC = () => {
   const navigate = useNavigate();
   const profile = usePlayerProfile();
   const recentGames = useRecentGames();
-  const progression = useProgression(user?.id);
+  const progression = useProgressionContext();
   const streakData = useLoginStreak();
   const { role: adminRole } = useAdminRole();
   const { shouldAutoStart, markComplete } = useTutorial('home');

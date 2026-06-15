@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useInventory, OwnedItem } from '../../hooks/useInventory';
 import { useLoadout } from '../../hooks/useLoadout';
-import { useProgression } from '../../hooks/useProgression';
+import { useProgressionContext } from '../../contexts/ProgressionContext';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens } from '../../styles/tokens';
@@ -56,7 +56,7 @@ const CustomisePage: React.FC = () => {
 
   const { items }              = useInventory(user?.id);
   const { loadout, loading: loadoutLoading, save } = useLoadout(user?.id);
-  const { credits }            = useProgression(user?.id);
+  const { credits }            = useProgressionContext();
 
   // Draft: local copy of loadout. Only synced from DB on first load, not on every change.
   const [draft, setDraft]     = useState<Loadout>({ active_avatar_id: null, active_badge_id: null, active_banner_id: null });

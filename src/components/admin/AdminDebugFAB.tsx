@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdminRole } from '../../hooks/useAdminRole';
-import { useProgression } from '../../hooks/useProgression';
+import { useProgressionContext } from '../../contexts/ProgressionContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens } from '../../styles/tokens';
 import Glass from '../common/Glass';
@@ -36,7 +36,7 @@ export const AdminDebugFAB: React.FC = () => {
   const { user }  = useAuth();
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
-  const { refresh: refreshProgression } = useProgression(user?.id);
+  const { refresh: refreshProgression } = useProgressionContext();
 
   const [open, setOpen]           = useState(false);
   const [xpAmount, setXpAmount]   = useState('');
