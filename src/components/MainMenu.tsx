@@ -660,7 +660,7 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
 // ── main component ────────────────────────────────────────────
 
 const MainMenu: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const profile = usePlayerProfile();
   const recentGames = useRecentGames();
