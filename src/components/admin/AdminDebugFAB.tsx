@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdminRole } from '../../hooks/useAdminRole';
+import { useProgression } from '../../hooks/useProgression';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens } from '../../styles/tokens';
 import Glass from '../common/Glass';
@@ -35,6 +36,7 @@ export const AdminDebugFAB: React.FC = () => {
   const { user }  = useAuth();
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
+  const { refresh: refreshProgression } = useProgression(user?.id);
 
   const [open, setOpen]           = useState(false);
   const [xpAmount, setXpAmount]   = useState('');
@@ -76,20 +78,22 @@ export const AdminDebugFAB: React.FC = () => {
   const grantXp = async () => {
     const n = parseInt(xpAmount, 10);
     if (!n || n <= 0) return;
-    const { error } = await supabase.rpc('admin_grant_xp', { amount: n });
+    const { error } = await (supabase as any).rpc('admin_grant_xp', { amount: n });
     if (error) { setXpMsg(`Error: ${error.message}`); return; }
     setXpAmount('');
     setXpMsg('✓ Granted');
+    refreshProgression();
     setTimeout(() => setXpMsg(''), 2000);
   };
 
   const grantCredits = async () => {
     const n = parseInt(crAmount, 10);
     if (!n || n <= 0) return;
-    const { error } = await supabase.rpc('admin_grant_credits', { amount: n });
+    const { error } = await (supabase as any).rpc('admin_grant_credits', { amount: n });
     if (error) { setCrMsg(`Error: ${error.message}`); return; }
     setCrAmount('');
     setCrMsg('✓ Granted');
+    refreshProgression();
     setTimeout(() => setCrMsg(''), 2000);
   };
 
