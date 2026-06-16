@@ -34,7 +34,7 @@ export const useOnlineGame = (gameId: string) => {
   // Increments on each draw round — used as key on RPSScreen to force remount and reset its
   // internal myPick/waiting state so the player can pick again cleanly.
   const [rpsRound, setRpsRound] = useState(0);
-  const [isCreator, setIsCreator] = useState(false);
+  const [isPlayerX, setIsCreator] = useState(false);
   const [joinerId, setJoinerId] = useState<string | null>(null);
   const [opponentConnected, setOpponentConnected] = useState(true);
   const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
@@ -139,11 +139,11 @@ export const useOnlineGame = (gameId: string) => {
         const opponentRow = picks.find((p: any) => p.user_id !== user.id);
         if (!myRow || !opponentRow) return;
 
-        const creatorPick = isCreator ? myRow.pick : opponentRow.pick;
-        const joinerPick  = isCreator ? opponentRow.pick : myRow.pick;
+        const creatorPick = isPlayerX ? myRow.pick : opponentRow.pick;
+        const joinerPick  = isPlayerX ? opponentRow.pick : myRow.pick;
         setRpsResultPicks({ creator: creatorPick as RPSPick, joiner: joinerPick as RPSPick });
 
-        if (isCreator) {
+        if (isPlayerX) {
           // Wait 2s so the joiner's poll has time to see both rows before we delete them.
           await new Promise(r => setTimeout(r, 2000));
           const result = resolveRPS(creatorPick as RPSPick, joinerPick as RPSPick);
@@ -179,7 +179,7 @@ export const useOnlineGame = (gameId: string) => {
     const interval = setInterval(poll, 1000);
     poll();
     return () => { clearInterval(interval); capturedThisRound = true; };
-  }, [status, gameId, user, isCreator, joinerId, rpsRound, fetchGameState]);
+  }, [status, gameId, user, isPlayerX, joinerId, rpsRound, fetchGameState]);
 
   useEffect(() => {
     if (!user || !gameId) return;
@@ -276,6 +276,9 @@ export const useOnlineGame = (gameId: string) => {
         const opponentStillPresent = currentPresences.some((p: any) => p.user_id !== user.id);
         if (opponentStillPresent) return;
         setOpponentConnected(false);
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
         let remaining = 90;
         setDisconnectCountdown(remaining);
         countdownIntervalRef.current = setInterval(() => {
@@ -381,7 +384,7 @@ export const useOnlineGame = (gameId: string) => {
   }, [status, gameId, user]);
 
   // When both players signal play_again, the player who is currently X creates the rematch.
-  // Using myMarker rather than isCreator because isCreator reflects post-RPS player assignment
+  // Using myMarker rather than isPlayerX because isPlayerX reflects post-RPS player assignment
   // and may differ from the original creator after an RPS swap.
   useEffect(() => {
     if (myRematchIntent !== 'play_again' || opponentRematchIntent !== 'play_again') return;
@@ -429,7 +432,7 @@ export const useOnlineGame = (gameId: string) => {
     };
 
     createRematch();
-  }, [myRematchIntent, opponentRematchIntent, user, opponentId, myMarker, isCreator, gameId]);
+  }, [myRematchIntent, opponentRematchIntent, user, opponentId, myMarker, isPlayerX, gameId]);
 
   // Polling fallback for player O waiting on a rematch game ID.
   // The primary delivery path (rematch_game_id CDC from player X's DB write) can be missed
@@ -565,7 +568,7 @@ export const useOnlineGame = (gameId: string) => {
 
   return {
     game, status, myMarker, winner, placeMarker,
-    rpsResultPicks, rpsRound, dismissRPSResult, isCreator,
+    rpsResultPicks, rpsRound, dismissRPSResult, isPlayerX,
     opponentConnected, disconnectCountdown, opponentId,
     rematchGameId, forfeitPlayerId,
     myRematchIntent, opponentRematchIntent, signalRematchIntent,

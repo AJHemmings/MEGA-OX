@@ -78,7 +78,7 @@ export const AdminDebugFAB: React.FC = () => {
   const grantXp = async () => {
     const n = parseInt(xpAmount, 10);
     if (!n || n <= 0) return;
-    const { error } = await (supabase as any).rpc('admin_grant_xp', { amount: n });
+    const { error } = await supabase.rpc('admin_grant_xp', { amount: n });
     if (error) { setXpMsg(`Error: ${error.message}`); return; }
     setXpAmount('');
     setXpMsg('✓ Granted');
@@ -89,7 +89,7 @@ export const AdminDebugFAB: React.FC = () => {
   const grantCredits = async () => {
     const n = parseInt(crAmount, 10);
     if (!n || n <= 0) return;
-    const { error } = await (supabase as any).rpc('admin_grant_credits', { amount: n });
+    const { error } = await supabase.rpc('admin_grant_credits', { amount: n });
     if (error) { setCrMsg(`Error: ${error.message}`); return; }
     setCrAmount('');
     setCrMsg('✓ Granted');

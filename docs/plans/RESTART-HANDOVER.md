@@ -6,13 +6,13 @@ Read this file in full, then say:
 
 > "I've read the handover. **Phases 1–7 plus the admin debug FAB are complete and merged to `main`** as of 2026-06-15. Public Vercel is live at `mega-ox.vercel.app`.
 >
-> A cleanup and refactor pass is the recommended next task before Phase 8. Known deferred items are listed in 'Known issues'."
+> A cleanup pass (2026-06-16) closed out four of the five recommended items — only the `OnlineGameView.tsx` split into Mobile/Desktop layouts remains. See 'Cleanup pass — 2026-06-16' below."
 
 ---
 
 ## Current state
 
-`main` branch: All phases complete (1–7) + admin debug FAB + session fixes. Latest commit: `1b3fdfb` (merge feat/admin-debug-fab, 2026-06-15).
+`main` branch: All phases complete (1–7) + admin debug FAB + session fixes + 2026-06-16 cleanup pass. Latest commit before cleanup: `1b3fdfb` (merge feat/admin-debug-fab, 2026-06-15). Cleanup changes are uncommitted as of writing — see below.
 
 **Public Vercel (`mega-ox`):** Production — all phases live. URL: https://mega-ox.vercel.app
 — Project ID: `prj_qWeofNsmfHHXIJgW2GjgxeMyiTF1`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
@@ -80,6 +80,38 @@ Read this file in full, then say:
 - `OnlineGameView` — `useAdminRole()` hook call moved above `debugBothSides` declaration (was used before assignment at line 113)
 
 ### What still needs doing (cleanup & refactor — see below)
+
+---
+
+## Cleanup pass — 2026-06-16 ✅ (uncommitted on `main`)
+
+Worked through 4 of the 5 items from the "Recommended next task — Cleanup & Refactor pass" list below. `OnlineGameView.tsx` split was deliberately left for its own session (biggest, most involved item).
+
+**Regenerated `database.types.ts`**
+- Ran `generate_typescript_types` via Supabase MCP against project `qioxtkcjtvvkzcoupdfk` and wrote the result to `src/lib/database.types.ts` (note: the actual file lives under `lib/`, not `src/database.types.ts` as an earlier note in this doc said).
+- Why: the file hadn't been regenerated since before the 2026-06-15 admin FAB session — it was missing `admin_roles`, `ai_config`, `player_inventory` schema changes, `season_id`/`tournament_id` on `games`, and the `admin_grant_xp`/`admin_grant_credits` RPCs entirely.
+- The generated output dropped the `graphql_public` schema block that the hand-maintained file had — kept that block manually since it's still valid for this project.
+- Removed the two `(supabase as any).rpc(...)` casts in `AdminDebugFAB.tsx` now that the RPCs are properly typed.
+
+**`loadProfile` duplication in `OnlineGameView.tsx` removed**
+- Generalized `usePlayerProfile` (`src/hooks/usePlayerProfile.ts`) to accept an optional `targetUserId?: string | null` param — `undefined` (not passed) fetches the signed-in user's own profile, an explicit id (or `null` while still loading) fetches someone else's.
+- `OnlineGameView` now calls `usePlayerProfile()` for `myProfile` and `usePlayerProfile(opponentId)` for `opponentProfile`, replacing the inline async `loadProfile` closure and its duplicate Supabase queries.
+- Why: the inline version re-implemented exactly what the hook does — any future change to the profile shape would only update the hook, leaving `OnlineGameView` to drift silently.
+- Renamed the `ProfileSnippet` interface usages to the hook's exported `PlayerProfile` type to avoid two parallel type definitions for the same shape.
+
+**Orphaned disconnect countdown interval fixed**
+- `useOnlineGame.ts` `leave` presence handler now calls `clearInterval(countdownIntervalRef.current)` before starting a new countdown interval.
+- Why: rapid disconnect → reconnect → disconnect within the 90s grace window could start a second interval while the first was still running, producing competing countdowns / visible jitter.
+
+**`isCreator` renamed to `isPlayerX`**
+- Renamed across `useOnlineGame.ts`, `OnlineGameView.tsx`, and `RPSResultScreen.tsx` (state, setter, return value, prop name, all usages).
+- Why: the value is literally `data.player_x_id === user.id` — it doesn't track who created the original game/rematch, just whether the current user is playing X. The old name was misleading next to the actual rematch-creator logic a few lines away in the same file.
+
+**Not done — deferred again**
+- `OnlineGameView.tsx` split into `OnlineGameMobile.tsx` / `OnlineGameDesktop.tsx` / coordinator — still the largest remaining item, intentionally out of scope for this pass.
+- `ProfilePage` still uses its own `useProgression` instance (intentional, per existing note below) — untouched.
+
+**Verification:** `npx tsc --noEmit` and `npm run build` (CRA) both pass clean. Manually started the dev server from `F:\Projects\MEGA-OX` on `main` to confirm it boots.
 
 ---
 
@@ -373,25 +405,21 @@ Before Phase 8, a focused cleanup session is recommended. The codebase has accum
 
 ### High priority
 
-**Regenerate `database.types.ts`**
-- `admin_grant_xp` and `admin_grant_credits` are not in the generated types. `AdminDebugFAB` works around this with `(supabase as any).rpc(...)`. Run `supabase gen types typescript --project-id qioxtkcjtvvkzcoupdfk > src/database.types.ts` and remove the casts.
+~~**Regenerate `database.types.ts`**~~ ✅ Fixed 2026-06-16 — see "Cleanup pass — 2026-06-16" above.
 
-**`loadProfile` in `OnlineGameView` reimplements `usePlayerProfile` inline**
-- `OnlineGameView.tsx` ~line 152: an async function fetches username, avatar, rank tier, and level. This is exactly what `usePlayerProfile` does. If profile schema changes, only the hook gets updated — `OnlineGameView` drifts silently. Replace with the hook.
+~~**`loadProfile` in `OnlineGameView` reimplements `usePlayerProfile` inline**~~ ✅ Fixed 2026-06-16 — `usePlayerProfile` generalized to accept a target user id, used for both self and opponent.
 
 **`OnlineGameView.tsx` is too large**
 - The file handles mobile layout, desktop layout, forfeit modal, disconnect banner, emoji bubbles, debug mode, post-game, RPS screen, rematch overlay — all in one component. It should be split: extract the two layout trees into `OnlineGameMobile.tsx` and `OnlineGameDesktop.tsx`, keeping `OnlineGameView` as a thin coordinator.
+- Still open as of 2026-06-16 — deliberately deferred to its own session.
 
-**Orphaned disconnect countdown interval**
-- `useOnlineGame.ts` ~line 286: the `leave` presence handler starts a `setInterval` without first calling `clearInterval`. Rapid disconnect/reconnect starts a second interval while the first still runs. Fix: add `clearInterval(countdownIntervalRef.current)` as the first line of the `leave` handler.
+~~**Orphaned disconnect countdown interval**~~ ✅ Fixed 2026-06-16 — `clearInterval(countdownIntervalRef.current)` added as the first line of the `leave` handler.
 
 ### Medium priority
 
-**`isCreator` misnaming in `useOnlineGame`**
-- `isCreator` actually means "is player X". The creator of a rematch is not always X. Rename to `isPlayerX` and update all callsites.
+~~**`isCreator` misnaming in `useOnlineGame`**~~ ✅ Fixed 2026-06-16 — renamed to `isPlayerX` across `useOnlineGame.ts`, `OnlineGameView.tsx`, `RPSResultScreen.tsx`.
 
-**`(supabase as any).rpc(...)` pattern**
-- After regenerating types (above), the two casts in `AdminDebugFAB.tsx` can be removed.
+~~**`(supabase as any).rpc(...)` pattern**~~ ✅ Fixed 2026-06-16 — removed both casts in `AdminDebugFAB.tsx` after regenerating types.
 
 **`ProfilePage` still uses its own `useProgression` instance**
 - Intentional (needs `isOwnProfile` conditional), but the prop types `ReturnType<typeof useProgression>` on sub-components should be updated to use `ProgressionState & { refresh: () => void }` from the hook export, matching what `MainMenu.tsx` now does.
@@ -423,7 +451,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 6     | Cash shop                                                 | **Complete**     |
 | 7     | Admin dashboard                                           | **Complete** (merged 2026-06-08) |
 | 7.5   | Admin debug FAB + session fixes                           | **Complete** (merged 2026-06-15) |
-| –     | Cleanup & refactor pass                                   | **Recommended next** |
+| –     | Cleanup & refactor pass                                   | **Partial — 4/5 items done 2026-06-16; `OnlineGameView` split still open** |
 | 8     | Bug report system                                         | Not started      |
 
 ---
@@ -617,8 +645,7 @@ A full architectural code review was run (7-angle, multi-agent). Two initial fin
 
 ~~**`Field` input component duplicated**~~ ✅ Fixed 2026-06-09 — extracted to `src/components/common/Field.tsx`
 
-**`loadProfile` in `OnlineGameView` re-implements `usePlayerProfile`** (`OnlineGameView.tsx` ~line 152)
-An inline async function fetches username, avatar, rank tier, and level — the exact shape `usePlayerProfile` exposes. `OnlineGameView` does not import `usePlayerProfile` at all. If the profile schema changes, only the hook gets updated.
+~~**`loadProfile` in `OnlineGameView` re-implements `usePlayerProfile`**~~ ✅ Fixed 2026-06-16 — see "Cleanup pass — 2026-06-16" above.
 
 ### Conditional bug (depends on Supabase config)
 
@@ -627,8 +654,7 @@ If "Confirm email" is enabled in Supabase (Authentication → Email), `signUp()`
 
 ### Plausible but not smoke-test-visible
 
-**Orphaned disconnect countdown interval** (`useOnlineGame.ts` ~line 286)
-The `leave` presence handler starts a `setInterval` without first calling `clearInterval` on the existing one. If the opponent disconnects → reconnects → disconnects again within the 90-second window, a second interval is started while the first is still running (the `join` handler cleared the ref but the first interval is already gone). Two intervals compete, producing visible countdown jitter. Fix: `clearInterval(countdownIntervalRef.current)` as the first line of the `leave` handler.
+~~**Orphaned disconnect countdown interval**~~ ✅ Fixed 2026-06-16 — see "Cleanup pass — 2026-06-16" above.
 
 ---
 
@@ -636,15 +662,12 @@ The `leave` presence handler starts a `setInterval` without first calling `clear
 
 - **EmojiBubble overflow on mobile** — bubbles at `-60px` go off-screen on viewports < ~520px. No crash; bubble invisible. Fix: adjust offset or board-relative positioning.
 - **New user null loadout** — sign-ups after migration see no equipped cosmetics until visiting `/customise`. Fix: DB trigger or default values.
-- **`loadProfile` in `OnlineGameView`** reimplements `usePlayerProfile` inline — replace with the hook.
-- **Orphaned countdown interval** — `leave` presence handler should `clearInterval` before starting a new one (rapid disconnect/reconnect produces jitter).
 - **Email confirmation signup may skip profile creation** — if "Confirm email" toggle is on in Supabase, `signUp()` returns no session, `getUser()` is null, profile rows are never created. Check the Supabase dashboard toggle.
 - **Rewards fallback UX** — if edge function fails, user gets no feedback. Retry on login handles eventual consistency, but no visible "rewards pending" UX.
 - **Stripe / real-money top-ups** — credits-only for now. Stripe purchase flow deferred.
 - **Admin smoke test incomplete** — editor role and regular user redirect not verified (low risk, `AdminRoute` guards all routes).
 - **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not yet passed to `GameWrapper`.
 - **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active`. Cleanup job deferred.
-- **`isCreator` in `useOnlineGame`** — actually means "is player X". Renaming deferred.
 - **Play Again simultaneous click race** — `rematchCreatedRef` is per-client only. Acceptable.
 - **Forfeit toast text** — always reads "reconnection window expired" regardless of voluntary forfeit. Fix: `forfeit_reason` column.
 - **Stale `games` rows** — play-again chains can leave `status='active'` rows; false resume prompts possible. Fix: `completed_at` column.

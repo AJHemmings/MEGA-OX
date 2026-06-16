@@ -41,73 +41,168 @@ export type Database = {
     Tables: {
       achievements: {
         Row: {
+          condition_key: string
+          description: string
+          icon_url: string | null
           id: string
           key: string
           name: string
-          description: string
-          condition_key: string
-          threshold: number
-          reward_xp: number
           reward_credits: number
           reward_skin_id: string | null
-          icon_url: string | null
+          reward_xp: number
+          threshold: number
         }
         Insert: {
+          condition_key: string
+          description: string
+          icon_url?: string | null
           id?: string
           key: string
           name: string
-          description: string
-          condition_key: string
-          threshold: number
-          reward_xp?: number
           reward_credits?: number
           reward_skin_id?: string | null
-          icon_url?: string | null
+          reward_xp?: number
+          threshold: number
         }
         Update: {
+          condition_key?: string
+          description?: string
+          icon_url?: string | null
           id?: string
           key?: string
           name?: string
-          description?: string
-          condition_key?: string
-          threshold?: number
-          reward_xp?: number
           reward_credits?: number
           reward_skin_id?: string | null
-          icon_url?: string | null
+          reward_xp?: number
+          threshold?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "achievements_reward_skin_id_fkey"
+            columns: ["reward_skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "admin_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_config: {
+        Row: {
+          difficulty: string
+          id: string
+          rule_name: string
+          strength: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          difficulty: string
+          id?: string
+          rule_name: string
+          strength: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          difficulty?: string
+          id?: string
+          rule_name?: string
+          strength?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "ai_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cosmetic_items: {
         Row: {
           animated: boolean
+          archived: boolean
           asset_url: string | null
+          featured: boolean
           id: string
           name: string
           price: number | null
           rarity: string
           source: string
           type: string
+          visible: boolean
         }
         Insert: {
           animated?: boolean
+          archived?: boolean
           asset_url?: string | null
+          featured?: boolean
           id?: string
           name: string
           price?: number | null
           rarity: string
           source: string
           type: string
+          visible?: boolean
         }
         Update: {
           animated?: boolean
+          archived?: boolean
           asset_url?: string | null
+          featured?: boolean
           id?: string
           name?: string
           price?: number | null
           rarity?: string
           source?: string
           type?: string
+          visible?: boolean
         }
         Relationships: []
       }
@@ -203,14 +298,14 @@ export type Database = {
           next_micro_board: number | null
           next_player: string
           player_o_id: string | null
+          player_o_rewards_retry_count: number
+          player_o_rewards_status: string
           player_x_id: string | null
+          player_x_rewards_retry_count: number
+          player_x_rewards_status: string
           rematch_game_id: string | null
           rematch_o_intent: string | null
           rematch_x_intent: string | null
-          player_x_rewards_status: string
-          player_x_rewards_retry_count: number
-          player_o_rewards_status: string
-          player_o_rewards_retry_count: number
           rewards_retry_count: number
           rewards_status: string
           rps_creator_pick: string | null
@@ -231,14 +326,14 @@ export type Database = {
           next_micro_board?: number | null
           next_player?: string
           player_o_id?: string | null
+          player_o_rewards_retry_count?: number
+          player_o_rewards_status?: string
           player_x_id?: string | null
+          player_x_rewards_retry_count?: number
+          player_x_rewards_status?: string
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
-          player_x_rewards_status?: string
-          player_x_rewards_retry_count?: number
-          player_o_rewards_status?: string
-          player_o_rewards_retry_count?: number
           rewards_retry_count?: number
           rewards_status?: string
           rps_creator_pick?: string | null
@@ -259,14 +354,14 @@ export type Database = {
           next_micro_board?: number | null
           next_player?: string
           player_o_id?: string | null
+          player_o_rewards_retry_count?: number
+          player_o_rewards_status?: string
           player_x_id?: string | null
+          player_x_rewards_retry_count?: number
+          player_x_rewards_status?: string
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
-          player_x_rewards_status?: string
-          player_x_rewards_retry_count?: number
-          player_o_rewards_status?: string
-          player_o_rewards_retry_count?: number
           rewards_retry_count?: number
           rewards_status?: string
           rps_creator_pick?: string | null
@@ -279,6 +374,20 @@ export type Database = {
           winner?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "games_forfeit_player_id_fkey"
+            columns: ["forfeit_player_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "games_forfeit_player_id_fkey"
+            columns: ["forfeit_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_player_o_id_fkey"
             columns: ["player_o_id"]
@@ -428,21 +537,29 @@ export type Database = {
       }
       player_achievements: {
         Row: {
-          user_id: string
           achievement_id: string
           unlocked_at: string
+          user_id: string
         }
         Insert: {
-          user_id: string
           achievement_id: string
           unlocked_at?: string
+          user_id: string
         }
         Update: {
-          user_id?: string
           achievement_id?: string
           unlocked_at?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "player_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_inventory: {
         Row: {
@@ -489,22 +606,22 @@ export type Database = {
       }
       player_progression: {
         Row: {
-          user_id: string
-          xp: number
           level: number
           total_credits_earned: number
+          user_id: string
+          xp: number
         }
         Insert: {
+          level?: number
+          total_credits_earned?: number
           user_id: string
           xp?: number
-          level?: number
-          total_credits_earned?: number
         }
         Update: {
-          user_id?: string
-          xp?: number
           level?: number
           total_credits_earned?: number
+          user_id?: string
+          xp?: number
         }
         Relationships: []
       }
@@ -595,27 +712,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_active_avatar"
-            columns: ["active_avatar_id"]
-            isOneToOne: false
-            referencedRelation: "cosmetic_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_active_badge"
-            columns: ["active_badge_id"]
-            isOneToOne: false
-            referencedRelation: "cosmetic_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_active_banner"
-            columns: ["active_banner_id"]
-            isOneToOne: false
-            referencedRelation: "cosmetic_items"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_active_board"
             columns: ["active_board_id"]
             isOneToOne: false
@@ -632,6 +728,27 @@ export type Database = {
           {
             foreignKeyName: "fk_active_theme"
             columns: ["active_theme_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_active_avatar_id_fkey"
+            columns: ["active_avatar_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_active_badge_id_fkey"
+            columns: ["active_badge_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_active_banner_id_fkey"
+            columns: ["active_banner_id"]
             isOneToOne: false
             referencedRelation: "cosmetic_items"
             referencedColumns: ["id"]
@@ -711,10 +828,45 @@ export type Database = {
         ]
       }
       reward_config: {
-        Row: { key: string; value: number }
-        Insert: { key: string; value: number }
-        Update: { key?: string; value?: number }
+        Row: {
+          key: string
+          value: number
+        }
+        Insert: {
+          key: string
+          value: number
+        }
+        Update: {
+          key?: string
+          value?: number
+        }
         Relationships: []
+      }
+      rps_picks: {
+        Row: {
+          game_id: string
+          pick: string
+          user_id: string
+        }
+        Insert: {
+          game_id: string
+          pick: string
+          user_id: string
+        }
+        Update: {
+          game_id?: string
+          pick?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rps_picks_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       season_prizes: {
         Row: {
@@ -850,6 +1002,33 @@ export type Database = {
           rules_config?: Json | null
           start_date?: string
           status?: string
+        }
+        Relationships: []
+      }
+      skins: {
+        Row: {
+          asset_url: string
+          created_at: string
+          id: string
+          name: string
+          price: number | null
+          type: string
+        }
+        Insert: {
+          asset_url?: string
+          created_at?: string
+          id?: string
+          name: string
+          price?: number | null
+          type: string
+        }
+        Update: {
+          asset_url?: string
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number | null
+          type?: string
         }
         Relationships: []
       }
@@ -1069,12 +1248,102 @@ export type Database = {
           },
         ]
       }
+      user_equipped_skins: {
+        Row: {
+          board_skin_id: string | null
+          marker_o_skin_id: string | null
+          marker_x_skin_id: string | null
+          user_id: string
+          won_board_o_skin_id: string | null
+          won_board_x_skin_id: string | null
+        }
+        Insert: {
+          board_skin_id?: string | null
+          marker_o_skin_id?: string | null
+          marker_x_skin_id?: string | null
+          user_id: string
+          won_board_o_skin_id?: string | null
+          won_board_x_skin_id?: string | null
+        }
+        Update: {
+          board_skin_id?: string | null
+          marker_o_skin_id?: string | null
+          marker_x_skin_id?: string | null
+          user_id?: string
+          won_board_o_skin_id?: string | null
+          won_board_x_skin_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_equipped_skins_board_skin_id_fkey"
+            columns: ["board_skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_equipped_skins_marker_o_skin_id_fkey"
+            columns: ["marker_o_skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_equipped_skins_marker_x_skin_id_fkey"
+            columns: ["marker_x_skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_equipped_skins_won_board_o_skin_id_fkey"
+            columns: ["won_board_o_skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_equipped_skins_won_board_x_skin_id_fkey"
+            columns: ["won_board_x_skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_skins: {
+        Row: {
+          acquired_at: string
+          skin_id: string
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          skin_id: string
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          skin_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_skins_skin_id_fkey"
+            columns: ["skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       leaderboard: {
         Row: {
           avatar_url: string | null
           draws: number | null
+          level: number | null
           losses: number | null
           player_id: string | null
           position: number | null
@@ -1086,10 +1355,15 @@ export type Database = {
       }
     }
     Functions: {
-      purchase_item: {
-        Args: { p_item_id: string }
-        Returns: Json
+      admin_grant_credits: { Args: { amount: number }; Returns: undefined }
+      admin_grant_xp: { Args: { amount: number }; Returns: undefined }
+      increment_credits: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: undefined
       }
+      is_admin: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
+      purchase_item: { Args: { p_item_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

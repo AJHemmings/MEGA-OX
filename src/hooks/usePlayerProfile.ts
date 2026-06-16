@@ -12,9 +12,11 @@ export interface PlayerProfile {
   level: number;
 }
 
-export const usePlayerProfile = () => {
+// `targetUserId` left undefined fetches the signed-in user's own profile;
+// pass an explicit id (or null while it's still loading) to fetch someone else's.
+export const usePlayerProfile = (targetUserId?: string | null) => {
   const { user } = useAuth();
-  const userId = user?.id;
+  const userId = targetUserId === undefined ? user?.id : (targetUserId ?? undefined);
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
 
   useEffect(() => {

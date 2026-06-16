@@ -33,6 +33,7 @@ import EmojiBubble from './EmojiBubble';
 import { useProgressionContext } from '../../contexts/ProgressionContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useAdminRole } from '../../hooks/useAdminRole';
+import { usePlayerProfile, PlayerProfile } from '../../hooks/usePlayerProfile';
 import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
@@ -69,14 +70,7 @@ const CountdownRing: React.FC<{ seconds: number; total: number }> = ({ seconds, 
   );
 };
 
-interface ProfileSnippet {
-  username: string;
-  rank_tier: string;
-  level: number;
-  avatar_url: string | null;
-}
-
-const PlayerAvatar: React.FC<{ profile: ProfileSnippet | null; fallback: string; size: number; color: string }> = ({ profile, fallback, size, color }) => (
+const PlayerAvatar: React.FC<{ profile: PlayerProfile | null; fallback: string; size: number; color: string }> = ({ profile, fallback, size, color }) => (
   <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
     <div style={{ width: size, height: size, borderRadius: '50%', border: `2px solid ${color}44`, overflow: 'hidden', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' as const }}>
       {profile?.avatar_url
@@ -103,7 +97,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const {
     game, status, myMarker, winner, placeMarker,
     rpsResultPicks, rpsRound, dismissRPSResult,
-    isCreator, opponentConnected, disconnectCountdown,
+    isPlayerX, opponentConnected, disconnectCountdown,
     rematchGameId, forfeitPlayerId,
     myRematchIntent, opponentRematchIntent, signalRematchIntent,
     submitRPSPick, myEmoji, opponentEmoji, sendEmoji,
@@ -128,8 +122,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const [postGameLoading, setPostGameLoading]     = useState(false);
   const [rpsResultShown, setRpsResultShown]       = useState(false);
   const [matchType, setMatchType]                 = useState<string>('friendly');
-  const [myProfile, setMyProfile]                 = useState<ProfileSnippet | null>(null);
-  const [opponentProfile, setOpponentProfile]     = useState<ProfileSnippet | null>(null);
+  const [opponentId, setOpponentId]               = useState<string | null>(null);
 
   const rematchGameIdRef      = useRef<string | null>(null);
   const overlayShownRef       = useRef(false);
@@ -149,7 +142,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const wonByForfeit      = forfeitPlayerId !== null;
   const opponentForfeited = forfeitPlayerId !== null && forfeitPlayerId !== user?.id;
 
-  // ── Load opponent + my profiles & match type ──
+  // ── Resolve opponent id & match type ──
   useEffect(() => {
     if (!user || !myMarker) return;
     (async () => {
@@ -158,29 +151,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         .eq('id', gameId).single();
       if (!gameRow) return;
       if (gameRow.match_type) setMatchType(gameRow.match_type);
-
-      const opponentId = myMarker === 'X' ? gameRow.player_o_id : gameRow.player_x_id;
-      if (!opponentId) return;
-
-      const loadProfile = async (uid: string): Promise<ProfileSnippet | null> => {
-        const [{ data: p }, { data: prog }] = await Promise.all([
-          supabase.from('profiles').select('username, avatar_url, player_stats(rank_tier)').eq('id', uid).single(),
-          supabase.from('player_progression').select('level').eq('user_id', uid).single(),
-        ]);
-        if (!p) return null;
-        return {
-          username:  p.username,
-          rank_tier: (p as any).player_stats?.rank_tier ?? 'Challenger',
-          level:     prog?.level ?? 1,
-          avatar_url: p.avatar_url,
-        };
-      };
-
-      const [me, opp] = await Promise.all([loadProfile(user.id), loadProfile(opponentId)]);
-      setMyProfile(me);
-      setOpponentProfile(opp);
+      setOpponentId(myMarker === 'X' ? gameRow.player_o_id : gameRow.player_x_id);
     })();
   }, [gameId, user, myMarker]);
+
+  const myProfile = usePlayerProfile();
+  const opponentProfile = usePlayerProfile(opponentId);
 
   // ── Preserved logic ──
 
@@ -349,7 +325,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   if (rpsResultPicks) {
     const result: RPSResult = resolveRPS(rpsResultPicks.creator, rpsResultPicks.joiner);
-    return <RPSResultScreen creatorPick={rpsResultPicks.creator} joinerPick={rpsResultPicks.joiner} isCreator={isCreator} result={result} onContinue={handleRPSContinue} />;
+    return <RPSResultScreen creatorPick={rpsResultPicks.creator} joinerPick={rpsResultPicks.joiner} isPlayerX={isPlayerX} result={result} onContinue={handleRPSContinue} />;
   }
 
   if (status === 'rps' && !rpsResultShown) {
@@ -605,7 +581,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   }
 
   // ── Desktop layout ──
-  const DesktopPanel: React.FC<{ profile: ProfileSnippet | null; marker: 'X' | 'O'; isSelf: boolean; isActive: boolean }> = ({ profile, marker, isSelf, isActive }) => {
+  const DesktopPanel: React.FC<{ profile: PlayerProfile | null; marker: 'X' | 'O'; isSelf: boolean; isActive: boolean }> = ({ profile, marker, isSelf, isActive }) => {
     const color = marker === 'X' ? tokens.accent : tokens.loss;
     const microWins = game.macroBoard.microBoards.filter(mb => mb.winner === marker).length;
     return (

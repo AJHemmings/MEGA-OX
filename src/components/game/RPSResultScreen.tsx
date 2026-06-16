@@ -8,7 +8,7 @@ import Glass from '../common/Glass';
 interface RPSResultScreenProps {
   creatorPick: RPSPick;
   joinerPick:  RPSPick;
-  isCreator:   boolean;
+  isPlayerX:   boolean;
   result:      RPSResult;
   onContinue:  () => void;
 }
@@ -16,9 +16,9 @@ interface RPSResultScreenProps {
 const EMOJI: Record<RPSPick, string> = { rock: '🪨', paper: '📄', scissors: '✂️' };
 
 const RPSResultScreen: React.FC<RPSResultScreenProps> = ({
-  creatorPick, joinerPick, isCreator, result, onContinue,
+  creatorPick, joinerPick, isPlayerX, result, onContinue,
 }) => {
-  const iWin = (result === 'p1' && isCreator) || (result === 'p2' && !isCreator);
+  const iWin = (result === 'p1' && isPlayerX) || (result === 'p2' && !isPlayerX);
   const outcomeText = result === 'draw'
     ? "It's a draw — re-picking…"
     : iWin ? 'You go first!' : 'Opponent goes first!';
@@ -44,14 +44,14 @@ const RPSResultScreen: React.FC<RPSResultScreenProps> = ({
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 56, marginBottom: 8 }}>{EMOJI[creatorPick]}</div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>
-                  {isCreator ? 'YOU' : 'OPPONENT'}
+                  {isPlayerX ? 'YOU' : 'OPPONENT'}
                 </div>
               </div>
               <div style={{ fontSize: 18, fontWeight: 900, color: tokens.textDim }}>vs</div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 56, marginBottom: 8 }}>{EMOJI[joinerPick]}</div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4 }}>
-                  {isCreator ? 'OPPONENT' : 'YOU'}
+                  {isPlayerX ? 'OPPONENT' : 'YOU'}
                 </div>
               </div>
             </div>
