@@ -34,7 +34,7 @@ export const useOnlineGame = (gameId: string) => {
   // Increments on each draw round — used as key on RPSScreen to force remount and reset its
   // internal myPick/waiting state so the player can pick again cleanly.
   const [rpsRound, setRpsRound] = useState(0);
-  const [isPlayerX, setIsCreator] = useState(false);
+  const [isPlayerX, setIsPlayerX] = useState(false);
   const [joinerId, setJoinerId] = useState<string | null>(null);
   const [opponentConnected, setOpponentConnected] = useState(true);
   const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
@@ -75,7 +75,7 @@ export const useOnlineGame = (gameId: string) => {
     setStatus(data.status as OnlineGameStatus);
     setMyMarker(data.player_x_id === user.id ? 'X' : 'O');
     setWinner(data.winner);
-    setIsCreator(data.player_x_id === user.id);
+    setIsPlayerX(data.player_x_id === user.id);
     setJoinerId(data.player_o_id);
     setOpponentId(data.player_x_id === user.id ? data.player_o_id : data.player_x_id);
     setForfeitPlayerId(data.forfeit_player_id ?? null);
