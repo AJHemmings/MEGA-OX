@@ -4,15 +4,15 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phases 1–7 plus the admin debug FAB are complete and merged to `main`** as of 2026-06-15. Public Vercel is live at `mega-ox.vercel.app`.
+> "I've read the handover. **Phases 1–7, the admin debug FAB, and the full cleanup & refactor pass are complete and merged to `main`** as of 2026-06-16. Public Vercel is live at `mega-ox.vercel.app`.
 >
-> A cleanup pass (2026-06-16) closed out four of the five recommended items — only the `OnlineGameView.tsx` split into Mobile/Desktop layouts remains. See 'Cleanup pass — 2026-06-16' below."
+> The codebase is clean and ready for Phase 8 (bug report system). See 'OnlineGameView split + UI polish — 2026-06-16' and 'Cleanup pass — 2026-06-16' below for what was done this session."
 
 ---
 
 ## Current state
 
-`main` branch: All phases complete (1–7) + admin debug FAB + session fixes + 2026-06-16 cleanup pass. Latest commit before cleanup: `1b3fdfb` (merge feat/admin-debug-fab, 2026-06-15). Cleanup changes are uncommitted as of writing — see below.
+`main` branch: All phases complete (1–7) + admin debug FAB + full cleanup & refactor pass. Latest commits: `b03f173` (cleanup pass), `fadde7d` (setter rename fix caught in code review), `978e71f` (OnlineGameView split + mobile/desktop UI polish) — all 2026-06-16, pushed to both `origin` and `private`.
 
 **Public Vercel (`mega-ox`):** Production — all phases live. URL: https://mega-ox.vercel.app
 — Project ID: `prj_qWeofNsmfHHXIJgW2GjgxeMyiTF1`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
@@ -107,11 +107,38 @@ Worked through 4 of the 5 items from the "Recommended next task — Cleanup & Re
 - Renamed across `useOnlineGame.ts`, `OnlineGameView.tsx`, and `RPSResultScreen.tsx` (state, setter, return value, prop name, all usages).
 - Why: the value is literally `data.player_x_id === user.id` — it doesn't track who created the original game/rematch, just whether the current user is playing X. The old name was misleading next to the actual rematch-creator logic a few lines away in the same file.
 
-**Not done — deferred again**
-- `OnlineGameView.tsx` split into `OnlineGameMobile.tsx` / `OnlineGameDesktop.tsx` / coordinator — still the largest remaining item, intentionally out of scope for this pass.
-- `ProfilePage` still uses its own `useProgression` instance (intentional, per existing note below) — untouched.
+**Also: setter rename fix caught in code review (`fadde7d`)**
+- The `isCreator`→`isPlayerX` rename in the cleanup pass missed the setter (`setIsCreator`) — the lowercase find/replace didn't catch the capital-I form. Caught via a post-commit `/code-review low` pass in the same session and fixed in a follow-up commit.
 
-**Verification:** `npx tsc --noEmit` and `npm run build` (CRA) both pass clean. Manually started the dev server from `F:\Projects\MEGA-OX` on `main` to confirm it boots.
+**Not done (intentional)**
+- `ProfilePage` still uses its own `useProgression` instance — intentional, needs the `isOwnProfile` conditional.
+
+**Verification:** `npx tsc --noEmit` and `npm run build` (CRA) both pass clean after each commit.
+
+---
+
+## OnlineGameView split + UI polish — 2026-06-16 ✅ (commit `978e71f`)
+
+Completed the final cleanup item: split `OnlineGameView.tsx` into sibling layout components following the `MobileLayout`/`DesktopLayout` pattern already used in `MainMenu.tsx` (same file, not new files — confirmed consistent with existing codebase convention after checking all other screens).
+
+**Architecture**
+- `OnlineGameView` remains the coordinator: all hooks, state, effects, and derived values stay there. Computed fragments (forfeit modal, vsStrip, turnPill, completeState, etc.) are passed down as `React.ReactNode` since they're byte-identical between both layouts.
+- `OnlineGameMobile` and `OnlineGameDesktop` are sibling `const` components defined in the same file, selected at the bottom via `{isMobile ? <OnlineGameMobile {...layoutProps} /> : <OnlineGameDesktop {...layoutProps} />}` inside the shared `SkinProvider`/`PageBackground`/overlay wrapper.
+- `DesktopPanel` (was defined inline on every desktop render, capturing `game`/`status`/`sendEmoji` via closure) promoted to a proper top-level sibling component with explicit props — consistent with how `PlayerAvatar`/`CountdownRing` were already defined.
+- `handleHeaderAction` callback extracted (was duplicated as two identical inline arrow functions — one for BackButton, one for `⋯` — in both layouts).
+
+**Detection: `useIsMobile()` unchanged** — `window.innerWidth < 640`, reactive to resize. Already used in 14 files; confirmed the right approach for this screen.
+
+**Responsive fixes found while testing**
+- MacroBoard's grid uses fixed `repeat(3, 150px)` (~490px total) — the same scaling fix `GameWrapper.tsx` already had for single-player was never applied to the online game view. Added the same `transform: scale(availW/490)` wrapper to `OnlineGameMobile`'s board canvas.
+- Desktop 3-column grid used bare `1fr` side columns, which can't shrink below their content's natural size — at narrower desktop widths the whole grid overflowed and the board was clipped. Changed to `minmax(0, 1fr)`.
+
+**Mobile player card and emoji UI polish**
+- Removed "Micro Boards Won" stat from `DesktopPanel` (and the now-dead `microWins`/`leftMicroWins`/`rightMicroWins` plumbing).
+- Level badge moved off avatar overlay corner → inline next to username. Fixed a follow-on overflow bug: the inline badge+name row needed `minWidth:0`/`flex:1` on the name div, and `minWidth:0` on the card containers themselves, or the full-width username prevented ellipsis truncation and pushed the opponent card off-screen.
+- Turn-state pill relocated to between the board and emoji panel on mobile.
+- Player cards made taller (avatar 48px, vertical padding 16px) with the freed space.
+- `EmojiBubble` reworked: dropped the `side`/`offset` absolute-overlay-beside-board approach (was always off-screen on mobile due to only 14px page padding vs 60px offset), and now sits `position:absolute` anchored to the bottom of each player's card (`top: calc(100% + 6px)`), with an `align` prop (`left`/`center`/`right`). Never affects layout flow — appears and disappears without pushing anything.
 
 ---
 
@@ -409,9 +436,7 @@ Before Phase 8, a focused cleanup session is recommended. The codebase has accum
 
 ~~**`loadProfile` in `OnlineGameView` reimplements `usePlayerProfile` inline**~~ ✅ Fixed 2026-06-16 — `usePlayerProfile` generalized to accept a target user id, used for both self and opponent.
 
-**`OnlineGameView.tsx` is too large**
-- The file handles mobile layout, desktop layout, forfeit modal, disconnect banner, emoji bubbles, debug mode, post-game, RPS screen, rematch overlay — all in one component. It should be split: extract the two layout trees into `OnlineGameMobile.tsx` and `OnlineGameDesktop.tsx`, keeping `OnlineGameView` as a thin coordinator.
-- Still open as of 2026-06-16 — deliberately deferred to its own session.
+~~**`OnlineGameView.tsx` is too large**~~ ✅ Fixed 2026-06-16 — see "OnlineGameView split + UI polish — 2026-06-16" above.
 
 ~~**Orphaned disconnect countdown interval**~~ ✅ Fixed 2026-06-16 — `clearInterval(countdownIntervalRef.current)` added as the first line of the `leave` handler.
 
@@ -426,7 +451,7 @@ Before Phase 8, a focused cleanup session is recommended. The codebase has accum
 
 ### Low priority / deferred
 
-- **EmojiBubble overflow on mobile** — bubbles at `-60px` go off-screen on viewports < ~520px
+- ~~**EmojiBubble overflow on mobile**~~ ✅ Fixed 2026-06-16 — bubble now `position:absolute` anchored to player card, never goes off-screen.
 - **Email confirmation signup skips profile creation** — if "Confirm email" is on in Supabase, profile rows are never created
 - **Rewards fallback UX** — no visible feedback if edge function fails; retry on login handles eventual consistency
 - **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not passed to `GameWrapper`
@@ -451,8 +476,8 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 6     | Cash shop                                                 | **Complete**     |
 | 7     | Admin dashboard                                           | **Complete** (merged 2026-06-08) |
 | 7.5   | Admin debug FAB + session fixes                           | **Complete** (merged 2026-06-15) |
-| –     | Cleanup & refactor pass                                   | **Partial — 4/5 items done 2026-06-16; `OnlineGameView` split still open** |
-| 8     | Bug report system                                         | Not started      |
+| –     | Cleanup & refactor pass                                   | **Complete — 2026-06-16** (all 5 items + responsive board fixes + emoji/UI polish) |
+| 8     | Bug report system                                         | Not started — **recommended next**      |
 
 ---
 
@@ -492,6 +517,9 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | `BackButton` shared component (Escape key, 40px target) | Done — 2026-06-15 |
 | `ProgressionContext` (shared state, live grant refresh) | Done — 2026-06-15 |
 | Default items on signup (trigger fix + backfill) | Done — 2026-06-15 |
+| `OnlineGameView` split into Mobile/Desktop layouts (same-file pattern) | Done — 2026-06-16 |
+| MacroBoard responsive scaling in online multiplayer view | Done — 2026-06-16 |
+| EmojiBubble anchored to player card (no layout shift, no off-screen) | Done — 2026-06-16 |
 
 ---
 
@@ -660,7 +688,6 @@ If "Confirm email" is enabled in Supabase (Authentication → Email), `signUp()`
 
 ## Known issues / deferred
 
-- **EmojiBubble overflow on mobile** — bubbles at `-60px` go off-screen on viewports < ~520px. No crash; bubble invisible. Fix: adjust offset or board-relative positioning.
 - **New user null loadout** — sign-ups after migration see no equipped cosmetics until visiting `/customise`. Fix: DB trigger or default values.
 - **Email confirmation signup may skip profile creation** — if "Confirm email" toggle is on in Supabase, `signUp()` returns no session, `getUser()` is null, profile rows are never created. Check the Supabase dashboard toggle.
 - **Rewards fallback UX** — if edge function fails, user gets no feedback. Retry on login handles eventual consistency, but no visible "rewards pending" UX.
