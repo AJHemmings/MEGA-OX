@@ -15,13 +15,14 @@ import BackButton from '../common/BackButton';
 import { ShopItemCard } from './ShopItemCard';
 import { PurchaseConfirmModal } from './PurchaseConfirmModal';
 
-type STab = 'avatar' | 'banner' | 'skins';
+type STab = 'avatar' | 'banner' | 'skins' | 'emoji';
 type SkinsSubTab = 'markers' | 'board' | 'theme';
 
 const TABS: { key: STab; label: string }[] = [
-  { key: 'avatar', label: 'Avatar' },
-  { key: 'banner', label: 'Banner' },
-  { key: 'skins',  label: 'Skins'  },
+  { key: 'avatar', label: 'Avatar'  },
+  { key: 'banner', label: 'Banner'  },
+  { key: 'skins',  label: 'Skins'   },
+  { key: 'emoji',  label: 'Emojis'  },
 ];
 
 const SKINS_SUB_TABS: { key: SkinsSubTab; label: string }[] = [

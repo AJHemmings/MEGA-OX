@@ -13,6 +13,16 @@ const ResumeGameToast: React.FC = () => {
   const { activeGameId, forfeitedGameId } = useActiveGame(user?.id ?? null, location.pathname);
 
   const [showForfeitToast, setShowForfeitToast] = useState(false);
+  const [debugForfeit, setDebugForfeit] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      setDebugForfeit(true);
+      setTimeout(() => setDebugForfeit(false), 5000);
+    };
+    window.addEventListener('debug:show-forfeit-toast', handler);
+    return () => window.removeEventListener('debug:show-forfeit-toast', handler);
+  }, []);
 
   // Only show forfeit notification on the main menu, once per game ID
   useEffect(() => {
@@ -65,11 +75,11 @@ const ResumeGameToast: React.FC = () => {
     );
   }
 
-  if (showForfeitToast) {
+  if (showForfeitToast || debugForfeit) {
     return (
       <div style={{ ...toastStyle, border: '1px solid #ff6b35' }}>
         <p style={{ margin: 0, fontSize: '14px', color: '#a0aec0' }}>
-          You were forfeited from your last game after the reconnection window expired.
+          You were forfeited from your last game.
         </p>
       </div>
     );

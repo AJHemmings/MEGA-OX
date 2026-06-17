@@ -19,6 +19,7 @@ const SignUpPage: React.FC = () => {
   const [password, setPassword]     = useState('');
   const [error, setError]           = useState('');
   const [loading, setLoading]       = useState(false);
+  const [confirmed, setConfirmed]   = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle');
 
   // Debounced username availability check
@@ -45,7 +46,7 @@ const SignUpPage: React.FC = () => {
     const { error } = await signUp(email, password, username);
     setLoading(false);
     if (error) setError(error.message);
-    else navigate('/menu');
+    else setConfirmed(true);
   };
 
   const usernameIcon = (() => {
@@ -54,6 +55,30 @@ const SignUpPage: React.FC = () => {
     if (usernameStatus === 'taken') return <span style={{ fontSize: 16, color: tokens.loss }}>✗</span>;
     return null;
   })();
+
+  if (confirmed) {
+    return (
+      <PageBackground>
+        <div style={{
+          fontFamily: tokens.font, color: tokens.text,
+          minHeight: '100vh', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', padding: '24px',
+        }}>
+          <Glass style={{ maxWidth: 390, width: '100%', textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 16 }}>📬</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Check your email</div>
+            <div style={{ fontSize: 14, color: tokens.textMuted, lineHeight: 1.6 }}>
+              We sent a confirmation link to <strong style={{ color: tokens.text }}>{email}</strong>.
+              Click it to activate your account — then come back and log in.
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <PrimaryButton fullWidth onClick={() => navigate('/login')}>Go to Login</PrimaryButton>
+            </div>
+          </Glass>
+        </div>
+      </PageBackground>
+    );
+  }
 
   return (
     <PageBackground>

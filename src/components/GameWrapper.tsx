@@ -41,6 +41,7 @@ interface GameWrapperProps {
   navExtra?: React.ReactNode;
   difficulty?: 'easy' | 'medium' | 'hard';
   demoMode?: boolean;
+  p1GoesFirst?: boolean;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────
@@ -100,7 +101,7 @@ const ScoreChip: React.FC<{ x: number; o: number }> = ({ x, o }) => (
 // ─── Main component ───────────────────────────────────────────────
 
 const GameWrapper: React.FC<GameWrapperProps> = ({
-  gameMode, onBackToMenu, onGameOver, navExtra, difficulty = 'easy', demoMode = false,
+  gameMode, onBackToMenu, onGameOver, navExtra, difficulty = 'easy', demoMode = false, p1GoesFirst,
 }) => {
   const { game, gameOver, winner, onPlaceMarker, resetGame, lastMove } = useGameLogic();
   const { config: aiConfig } = useAiConfig();
@@ -174,13 +175,17 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
     resetGame();
   };
 
-  const getPlayerName = (marker: string) =>
-    gameMode === "single" ? (marker === "X" ? "You" : "AI") : `Player ${marker}`;
+  const getPlayerName = (marker: string) => {
+    if (gameMode === "single") return marker === "X" ? "You" : "AI";
+    if (p1GoesFirst == null) return `Player ${marker}`;
+    const p1Marker = p1GoesFirst ? "X" : "O";
+    return marker === p1Marker ? "Player 1" : "Player 2";
+  };
 
   const getWinnerText = () => {
     if (winner === Marker.None) return "It's a draw!";
     if (gameMode === "single") return winner === Marker.X ? "You Win! 🎉" : "AI Wins! 🤖";
-    return `Player ${winner} Wins!`;
+    return `${getPlayerName(winner)} Wins!`;
   };
 
   const activeMarker = game.currentPlayer.marker;

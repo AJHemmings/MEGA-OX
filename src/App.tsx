@@ -46,11 +46,10 @@ const LocalGameRoute: React.FC = () => {
     return <LocalRPSScreen onResult={setP1GoesFirst} />;
   }
 
-  // p1GoesFirst is intentionally not passed to GameWrapper yet —
-  // Phase 6 will wire it to control which player's board skin is displayed.
   return (
     <GameWrapper
       gameMode="local"
+      p1GoesFirst={p1GoesFirst}
       onBackToMenu={() => navigate('/multiplayer')}
     />
   );

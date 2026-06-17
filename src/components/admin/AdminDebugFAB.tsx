@@ -169,6 +169,17 @@ export const AdminDebugFAB: React.FC = () => {
 
             <Divider />
 
+            {/* ── Toasts ── */}
+            <SectionLabel text="Toasts" />
+            <SecondaryButton fullWidth onClick={() => {
+              window.dispatchEvent(new CustomEvent('debug:show-forfeit-toast'));
+              close();
+            }}>
+              Trigger Forfeit Toast
+            </SecondaryButton>
+
+            <Divider />
+
             {/* ── Quick Nav ── */}
             <SectionLabel text="Quick Nav" />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
