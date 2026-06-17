@@ -62,24 +62,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Create profile on first sign-in after email confirmation.
+      // username is stored in user_metadata during signUp; only email-signup
+      // users have it. If no profile row exists yet, create it now.
+      if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && session?.user?.user_metadata?.username) {
+        const u = session.user;
+        supabase.from('profiles').select('id').eq('id', u.id).maybeSingle()
+          .then(({ data: existing }) => {
+            if (!existing) {
+              supabase.from('profiles').insert({ id: u.id, username: u.user_metadata.username });
+            }
+          });
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signUp = async (email: string, password: string, username: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error };
-
-    // Create profile (triggers auto-create of stats, balance, streak)
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({ id: user.id, username });
-      if (profileError) return { error: profileError };
-    }
-    return { error: null };
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username } },
+    });
+    return { error: error ?? null };
   };
 
   const signIn = async (email: string, password: string) => {
