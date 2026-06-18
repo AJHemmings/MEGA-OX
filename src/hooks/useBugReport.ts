@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { captureContext } from '../lib/errorCapture';
 import { SerializedState } from '../lib/gameSerializer';
+import { Json } from '../lib/database.types';
 
 type SubmitResult = 'ok' | 'rate_limited' | 'error';
 
@@ -20,12 +21,11 @@ export function useBugReport() {
     setSubmitting(true);
     try {
       const context = captureContext({ gameId: args.gameId, gameState: args.gameState });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).rpc('submit_bug_report', {
+      const { error } = await supabase.rpc('submit_bug_report', {
         p_title:       args.title,
         p_description: args.description,
         p_category:    args.category,
-        p_context:     context,
+        p_context:     context as unknown as Json,
       });
 
       if (error) {
