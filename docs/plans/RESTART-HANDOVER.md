@@ -4,9 +4,23 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phases 1–8, the admin debug FAB, the full cleanup & refactor pass, deferred quick wins, stale game cleanup, and the bug report system are complete.** Phase 8 is on branch `feat/phase8-bug-reports` — not yet merged to `main`. Public Vercel is live at `mega-ox.vercel.app`.
+> "I've read the handover. **Phase 8 (bug report system) is complete on branch `feat/phase8-bug-reports` and is NOT YET MERGED to `main`.** Everything is implemented and type-checks clean. The only remaining steps are: smoke test → merge → push to both remotes.
 >
-> The immediate next step is to merge `feat/phase8-bug-reports` → `main` and push to both remotes, then smoke test the bug report flow. See 'Phase 8 — Bug Report System — 2026-06-18' below for what was built."
+> Smoke test checklist:
+> 1. `npm start` → log in → Main menu → "Report a Bug" footer link → submit → success
+> 2. Submit 4 reports rapidly → 4th should hit the rate limit
+> 3. Log in as admin → `/admin/bugs` → report visible, update status/notes
+> 4. In-game: click 🐛 → submit → check context JSON in admin panel
+>
+> After smoke tests pass:
+> ```
+> git checkout main
+> git merge feat/phase8-bug-reports
+> git push
+> git push private main
+> ```
+>
+> See 'Phase 8 — Bug Report System — 2026-06-18' below for full details of what was built."
 
 ---
 
