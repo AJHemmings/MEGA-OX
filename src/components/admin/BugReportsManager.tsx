@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAdminBugReports, BugReport, BugReportStatus } from '../../hooks/useAdminBugReports';
 import { tokens } from '../../styles/tokens';
 import Glass from '../common/Glass';
@@ -65,6 +65,12 @@ interface DetailPanelProps {
 const DetailPanel: React.FC<DetailPanelProps> = ({ report, updateStatus, updateNotes }) => {
   const [notes, setNotes] = useState(report.admin_notes ?? '');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
   const handleNotesChange = useCallback((value: string) => {
     setNotes(value);
@@ -272,64 +278,49 @@ interface ReportRowProps {
   report: BugReport;
   isSelected: boolean;
   onSelect: (id: string) => void;
-  updateStatus: (id: string, status: BugReportStatus) => Promise<void>;
-  updateNotes: (id: string, notes: string) => Promise<void>;
 }
 
-const ReportRow: React.FC<ReportRowProps> = ({ report, isSelected, onSelect, updateStatus, updateNotes }) => {
+const ReportRow: React.FC<ReportRowProps> = ({ report, isSelected, onSelect }) => {
   const username = report.profiles?.username ?? report.user_id;
   const date = new Date(report.created_at).toLocaleDateString();
 
   return (
-    <div>
-      <div
-        onClick={() => onSelect(report.id)}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-          gap: 12,
-          alignItems: 'center',
-          padding: '10px 14px',
-          borderRadius: isSelected ? '8px 8px 0 0' : 8,
-          cursor: 'pointer',
-          background: isSelected
-            ? 'rgba(0,212,170,0.08)'
-            : 'rgba(255,255,255,0.03)',
-          border: isSelected
-            ? `1px solid rgba(0,212,170,0.25)`
-            : '1px solid rgba(255,255,255,0.06)',
-          borderBottom: isSelected ? 'none' : undefined,
-          transition: 'background 0.15s',
-          marginBottom: isSelected ? 0 : 4,
-        }}
-      >
-        <div style={{ fontSize: 13, fontWeight: 700, color: tokens.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {report.title}
-        </div>
-        <div style={{ fontSize: 12, color: tokens.textMuted }}>
-          {report.category}
-        </div>
-        <div style={{ fontSize: 12, color: tokens.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {username}
-        </div>
-        <div style={{ fontSize: 12, color: tokens.textMuted }}>
-          {date}
-        </div>
-        <div>
-          <StatusBadge status={report.status} />
-        </div>
+    <div
+      onClick={() => onSelect(report.id)}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
+        gap: 12,
+        alignItems: 'center',
+        padding: '10px 14px',
+        borderRadius: isSelected ? '8px 8px 0 0' : 8,
+        cursor: 'pointer',
+        background: isSelected
+          ? 'rgba(0,212,170,0.08)'
+          : 'rgba(255,255,255,0.03)',
+        border: isSelected
+          ? `1px solid rgba(0,212,170,0.25)`
+          : '1px solid rgba(255,255,255,0.06)',
+        borderBottom: isSelected ? 'none' : undefined,
+        transition: 'background 0.15s',
+        marginBottom: isSelected ? 0 : 4,
+      }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 700, color: tokens.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {report.title}
       </div>
-
-      {isSelected && (
-        <DetailPanel
-          key={report.id}
-          report={report}
-          updateStatus={updateStatus}
-          updateNotes={updateNotes}
-        />
-      )}
-
-      {isSelected && <div style={{ marginBottom: 4 }} />}
+      <div style={{ fontSize: 12, color: tokens.textMuted }}>
+        {report.category}
+      </div>
+      <div style={{ fontSize: 12, color: tokens.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {username}
+      </div>
+      <div style={{ fontSize: 12, color: tokens.textMuted }}>
+        {date}
+      </div>
+      <div>
+        <StatusBadge status={report.status} />
+      </div>
     </div>
   );
 };
@@ -344,6 +335,8 @@ const BugReportsManager: React.FC = () => {
   const filtered = activeTab === 'all'
     ? reports
     : reports.filter(r => r.status === activeTab);
+
+  const selectedReport = reports.find(r => r.id === selectedId) ?? null;
 
   const handleSelect = (id: string) => {
     setSelectedId(prev => (prev === id ? null : id));
@@ -430,10 +423,17 @@ const BugReportsManager: React.FC = () => {
             report={report}
             isSelected={selectedId === report.id}
             onSelect={handleSelect}
+          />
+        ))}
+
+        {selectedReport && (
+          <DetailPanel
+            key={selectedReport.id}
+            report={selectedReport}
             updateStatus={updateStatus}
             updateNotes={updateNotes}
           />
-        ))}
+        )}
       </div>
 
     </div>
