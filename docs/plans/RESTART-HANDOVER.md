@@ -4,15 +4,15 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phases 1–7, the admin debug FAB, and the full cleanup & refactor pass are complete and merged to `main`** as of 2026-06-16. Public Vercel is live at `mega-ox.vercel.app`.
+> "I've read the handover. **Phases 1–7, the admin debug FAB, the full cleanup & refactor pass, deferred quick wins, and stale game cleanup are complete and merged to `main`** as of 2026-06-18. Public Vercel is live at `mega-ox.vercel.app`.
 >
-> The codebase is clean and ready for Phase 8 (bug report system). See 'OnlineGameView split + UI polish — 2026-06-16' and 'Cleanup pass — 2026-06-16' below for what was done this session."
+> The codebase is clean and ready for Phase 8 (bug report system). See 'Stale game cleanup — 2026-06-18' below for what was done last session."
 
 ---
 
 ## Current state
 
-`main` branch: All phases complete (1–7) + admin debug FAB + full cleanup & refactor pass. Latest commits: `b03f173` (cleanup pass), `fadde7d` (setter rename fix caught in code review), `978e71f` (OnlineGameView split + mobile/desktop UI polish) — all 2026-06-16, pushed to both `origin` and `private`.
+`main` branch: All phases complete (1–7) + admin debug FAB + full cleanup & refactor pass + deferred quick wins + stale game cleanup. Latest commits: merge `fix/stale-game-cleanup` (2026-06-18) — pushed to both `origin` and `private`.
 
 **Public Vercel (`mega-ox`):** Production — all phases live. URL: https://mega-ox.vercel.app
 — Project ID: `prj_qWeofNsmfHHXIJgW2GjgxeMyiTF1`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
@@ -139,6 +139,62 @@ Completed the final cleanup item: split `OnlineGameView.tsx` into sibling layout
 - Turn-state pill relocated to between the board and emoji panel on mobile.
 - Player cards made taller (avatar 48px, vertical padding 16px) with the freed space.
 - `EmojiBubble` reworked: dropped the `side`/`offset` absolute-overlay-beside-board approach (was always off-screen on mobile due to only 14px page padding vs 60px offset), and now sits `position:absolute` anchored to the bottom of each player's card (`top: calc(100% + 6px)`), with an `align` prop (`left`/`center`/`right`). Never affects layout flow — appears and disappears without pushing anything.
+
+---
+
+## Stale game cleanup — 2026-06-18 ✅ (merged to main)
+
+**Branch:** `fix/stale-game-cleanup` (merged and deleted)
+
+### What was built
+
+**`cleanup_abandoned_games()` SQL function + pg_cron schedule** (migration `20260618000001`)
+- `SECURITY DEFINER` function that runs every 10 minutes via pg_cron (`*/10 * * * *`)
+- Closes stale games with `status = 'complete'`, `winner = NULL`, `forfeit_player_id = NULL` (abandoned — no rewards triggered)
+- Thresholds: `active` games with no move for 10+ min; `rps` games stuck 30+ min; `waiting` lobbies older than 24 hours
+- Guard: `forfeit_player_id IS NULL` on the `active` UPDATE prevents overwriting a legitimate forfeit already written by the remaining player's 90-second countdown
+- Also deletes orphaned `rps_picks` rows for games that have been non-rps for 30+ minutes
+- `REVOKE EXECUTE ... FROM PUBLIC` prevents authenticated clients from calling it directly via RPC
+
+**`useActiveGame.ts` defensive filter**
+- Added `tenMinAgo` (10-minute threshold) alongside existing `thirtyMinAgo`
+- Active-game query now filters: `and(status.eq.active,updated_at.gte.${tenMinAgo})` — matches the pg_cron threshold
+- Prevents false "Resume Game" toasts immediately, even before the first cron run
+- No changes to `useOnlineGame.ts`, `ResumeGameToast.tsx`, or the post-game edge function
+
+### Fixes
+- **Double-disconnect**: both players leaving simultaneously no longer leaves a game stuck in `active` forever
+- **Stale play-again chains**: accumulated `active` rows from abandoned rematch games are now cleaned up automatically
+- **False resume toasts**: `useActiveGame` will no longer surface games with no activity in the past 10 minutes
+
+---
+
+## Deferred quick wins — 2026-06-17 ✅ (merged to main, commit `7a5eaa5`)
+
+**Branch:** `fix/quick-wins` (merged and deleted)
+
+### What was fixed
+
+**Email confirmation signup** (`AuthContext.tsx`, `SignUpPage.tsx`)
+- Root cause: `signUp()` returned no session if "Confirm email" is on in Supabase. `getUser()` → null → `if (user)` block skipped → no profile/stats/currency rows ever created.
+- Fix: `signUp()` now passes `{ data: { username } }` to store the username in `user_metadata`. Profile row creation moved into `onAuthStateChange` on `SIGNED_IN` and `INITIAL_SESSION` events — these fire on the confirmation redirect, so profile rows are always created regardless of email-confirmation setting.
+- `SignUpPage` now shows a "Check your email" confirmation screen and does not navigate to `/menu`.
+- Also: `handle_new_profile()` DB trigger updated live to include a `player_progression` insert — Phase 3 migration had added this to the function but the change was never applied to the prod trigger, so new signups since Phase 3 were missing their progression row.
+
+**`p1GoesFirst` wired through** (`App.tsx`, `GameWrapper.tsx`)
+- Was stored in `App.tsx` state from `LocalRPSScreen` result but never passed down to `GameWrapper`.
+- Fix: `p1GoesFirst` passed as prop to `GameWrapper`; player display names now show "Player 1" / "Player 2" based on who won RPS rather than always "X" / "O".
+
+**Forfeit toast text** (`ResumeGameToast.tsx`)
+- Was always "reconnection window expired" regardless of whether the forfeit was voluntary or triggered by disconnect timeout.
+- Fix: message now distinguishes the two cases.
+
+**Admin Debug FAB: Toasts section** (`AdminDebugFAB.tsx`)
+- New "Toasts" section added to the FAB panel with a "Trigger Forfeit Toast" button — lets admins test the toast UX without simulating a real forfeit.
+
+**Shop Emojis tab** (`ShopPage.tsx`)
+- Fourth tab added to `/shop` for emojis; backed by the existing `useShop` emoji fetch.
+- Admin EmojiManager items surface here automatically — no data changes needed.
 
 ---
 
@@ -452,10 +508,10 @@ Before Phase 8, a focused cleanup session is recommended. The codebase has accum
 ### Low priority / deferred
 
 - ~~**EmojiBubble overflow on mobile**~~ ✅ Fixed 2026-06-16 — bubble now `position:absolute` anchored to player card, never goes off-screen.
-- **Email confirmation signup skips profile creation** — if "Confirm email" is on in Supabase, profile rows are never created
+- ~~**Email confirmation signup skips profile creation**~~ ✅ Fixed 2026-06-17 — profile created in `onAuthStateChange`; `handle_new_profile()` trigger patched live.
+- ~~**`p1GoesFirst` from `LocalRPSScreen`**~~ ✅ Fixed 2026-06-17 — wired through `App.tsx` → `GameWrapper`.
+- ~~**Forfeit toast text**~~ ✅ Fixed 2026-06-17 — distinguishes voluntary forfeit vs reconnection timeout.
 - **Rewards fallback UX** — no visible feedback if edge function fails; retry on login handles eventual consistency
-- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not passed to `GameWrapper`
-- **Forfeit toast text** — reads "reconnection window expired" for voluntary forfeit too
 - **Stale `games` rows** — play-again chains can leave `status='active'` rows; false resume prompts possible
 
 ---
@@ -477,6 +533,8 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | 7     | Admin dashboard                                           | **Complete** (merged 2026-06-08) |
 | 7.5   | Admin debug FAB + session fixes                           | **Complete** (merged 2026-06-15) |
 | –     | Cleanup & refactor pass                                   | **Complete — 2026-06-16** (all 5 items + responsive board fixes + emoji/UI polish) |
+| –     | Deferred quick wins                                       | **Complete — 2026-06-17** (email confirmation, p1GoesFirst, forfeit toast, emoji shop tab) |
+| –     | Stale game cleanup                                        | **Complete — 2026-06-18** (pg_cron cleanup function + useActiveGame filter) |
 | 8     | Bug report system                                         | Not started — **recommended next**      |
 
 ---
@@ -689,15 +747,15 @@ If "Confirm email" is enabled in Supabase (Authentication → Email), `signUp()`
 ## Known issues / deferred
 
 - **New user null loadout** — sign-ups after migration see no equipped cosmetics until visiting `/customise`. Fix: DB trigger or default values.
-- **Email confirmation signup may skip profile creation** — if "Confirm email" toggle is on in Supabase, `signUp()` returns no session, `getUser()` is null, profile rows are never created. Check the Supabase dashboard toggle.
+- ~~**Email confirmation signup may skip profile creation**~~ ✅ Fixed 2026-06-17.
 - **Rewards fallback UX** — if edge function fails, user gets no feedback. Retry on login handles eventual consistency, but no visible "rewards pending" UX.
 - **Stripe / real-money top-ups** — credits-only for now. Stripe purchase flow deferred.
 - **Admin smoke test incomplete** — editor role and regular user redirect not verified (low risk, `AdminRoute` guards all routes).
-- **`p1GoesFirst` from `LocalRPSScreen`** — stored in `App.tsx` but not yet passed to `GameWrapper`.
-- **Double-disconnect edge case** — if both players disconnect simultaneously, game stays `active`. Cleanup job deferred.
+- ~~**`p1GoesFirst` from `LocalRPSScreen`**~~ ✅ Fixed 2026-06-17 — wired to `GameWrapper`.
+- ~~**Double-disconnect edge case**~~ ✅ Fixed 2026-06-18 — `cleanup_abandoned_games()` pg_cron closes stale active games every 10 minutes.
 - **Play Again simultaneous click race** — `rematchCreatedRef` is per-client only. Acceptable.
-- **Forfeit toast text** — always reads "reconnection window expired" regardless of voluntary forfeit. Fix: `forfeit_reason` column.
-- **Stale `games` rows** — play-again chains can leave `status='active'` rows; false resume prompts possible. Fix: `completed_at` column.
+- ~~**Forfeit toast text**~~ ✅ Fixed 2026-06-17.
+- ~~**Stale `games` rows**~~ ✅ Fixed 2026-06-18 — pg_cron cleanup + `useActiveGame` 10-minute filter.
 
 ---
 
