@@ -29,6 +29,7 @@ import EmojiManager from './components/admin/EmojiManager';
 import AchievementsManager from './components/admin/AchievementsManager';
 import ShopManager from './components/admin/ShopManager';
 import AiTuner from './components/admin/AiTuner';
+import BugReportsManager from './components/admin/BugReportsManager';
 
 // Thin wrappers so GameWrapper gets a real navigate callback from the router
 const TrainingRoute: React.FC = () => {
@@ -118,6 +119,9 @@ const App: React.FC = () => {
           } />
           <Route path="/admin/ai-tuner" element={
             <AdminRoute requiredRole="super_admin"><AdminLayout><AiTuner /></AdminLayout></AdminRoute>
+          } />
+          <Route path="/admin/bugs" element={
+            <AdminRoute><AdminLayout><BugReportsManager /></AdminLayout></AdminRoute>
           } />
         </Route>
 
