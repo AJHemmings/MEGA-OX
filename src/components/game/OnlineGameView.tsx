@@ -27,6 +27,8 @@ import {
   resumeAudio,
 } from '../../lib/sounds';
 import { callPostGameHandler } from '../../lib/postGame';
+import { serializeGame, SerializedState } from '../../lib/gameSerializer';
+import ReportBugModal from '../common/ReportBugModal';
 import { PostGameModal, PostGameResult } from '../progression/PostGameModal';
 import EmojiPanel from './EmojiPanel';
 import EmojiBubble from './EmojiBubble';
@@ -134,6 +136,7 @@ interface OnlineGameLayoutProps {
   matchType: string;
   matchTypePillVariant: string;
   onHeaderAction: () => void;
+  onBugReport: () => void;
   forfeitModal: React.ReactNode;
   disconnectWarning: React.ReactNode;
   vsStrip: React.ReactNode;
@@ -154,7 +157,7 @@ interface OnlineGameLayoutProps {
 }
 
 const OnlineGameMobile: React.FC<OnlineGameLayoutProps> = ({
-  status, matchType, matchTypePillVariant, onHeaderAction,
+  status, matchType, matchTypePillVariant, onHeaderAction, onBugReport,
   forfeitModal, disconnectWarning, vsStrip, turnPill, completeState, debugTurnPill,
   sendEmoji,
   microBoardsData, handlePlaceMarker, nextMicroBoardIndex, macroWinner,
@@ -166,7 +169,8 @@ const OnlineGameMobile: React.FC<OnlineGameLayoutProps> = ({
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0 12px' }}>
       <BackButton onClick={onHeaderAction} />
       <Pill variant={matchTypePillVariant as any}>{matchType.toUpperCase()}</Pill>
-      <div style={{ marginLeft: 'auto' }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <SecondaryButton size="sm" onClick={onBugReport}>🐛</SecondaryButton>
         <SecondaryButton size="sm" onClick={onHeaderAction}>⋯</SecondaryButton>
       </div>
     </div>
@@ -210,7 +214,7 @@ const OnlineGameMobile: React.FC<OnlineGameLayoutProps> = ({
 );
 
 const OnlineGameDesktop: React.FC<OnlineGameLayoutProps> = ({
-  status, matchType, matchTypePillVariant, onHeaderAction,
+  status, matchType, matchTypePillVariant, onHeaderAction, onBugReport,
   forfeitModal, disconnectWarning, turnPill, completeState, debugTurnPill,
   myEmoji, opponentEmoji, sendEmoji,
   microBoardsData, handlePlaceMarker, nextMicroBoardIndex, macroWinner,
@@ -227,7 +231,8 @@ const OnlineGameDesktop: React.FC<OnlineGameLayoutProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <BackButton onClick={onHeaderAction} />
         <Pill variant={matchTypePillVariant as any}>{matchType.toUpperCase()}</Pill>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <SecondaryButton size="sm" onClick={onBugReport}>🐛 Report a Bug</SecondaryButton>
           <SecondaryButton size="sm" onClick={onHeaderAction}>⋯</SecondaryButton>
         </div>
       </div>
@@ -291,6 +296,8 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   }, [placeMarker, debugBothSides]);
 
   const [showForfeitModal, setShowForfeitModal]   = useState(false);
+  const [bugModalOpen, setBugModalOpen]           = useState(false);
+  const [bugGameState, setBugGameState]           = useState<SerializedState | null>(null);
   const [rematchOverlay, setRematchOverlay]       = useState<'agreed' | 'opted_out' | null>(null);
   const [waitCountdown, setWaitCountdown]         = useState<number | null>(null);
   const [postGameResult, setPostGameResult]       = useState<PostGameResult | null>(null);
@@ -429,6 +436,11 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     if (status === 'active') setShowForfeitModal(true);
     else navigate('/menu');
   }, [status, navigate]);
+
+  const handleBugReport = useCallback(() => {
+    setBugGameState(game ? serializeGame(game) : null);
+    setBugModalOpen(true);
+  }, [game]);
 
   useEffect(() => {
     if (status !== 'active') return;
@@ -709,7 +721,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   );
 
   const layoutProps: OnlineGameLayoutProps = {
-    status, matchType, matchTypePillVariant, onHeaderAction: handleHeaderAction,
+    status, matchType, matchTypePillVariant, onHeaderAction: handleHeaderAction, onBugReport: handleBugReport,
     forfeitModal, disconnectWarning, vsStrip, turnPill, completeState, debugTurnPill,
     myEmoji, opponentEmoji, sendEmoji,
     microBoardsData, handlePlaceMarker, nextMicroBoardIndex: game.nextMicroBoardIndex, macroWinner,
@@ -730,6 +742,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
             xpNeededForLevel={progression.xpNeededForLevel}
             xpToNext={progression.xpToNext}
             onContinue={() => setPostGameResult(null)}
+          />
+        )}
+        {bugModalOpen && (
+          <ReportBugModal
+            onClose={() => setBugModalOpen(false)}
+            gameId={gameId}
+            gameState={bugGameState}
           />
         )}
       </PageBackground>
