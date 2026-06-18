@@ -4,15 +4,17 @@
 
 Read this file in full, then say:
 
-> "I've read the handover. **Phases 1–7, the admin debug FAB, the full cleanup & refactor pass, deferred quick wins, and stale game cleanup are complete and merged to `main`** as of 2026-06-18. Public Vercel is live at `mega-ox.vercel.app`.
+> "I've read the handover. **Phases 1–8, the admin debug FAB, the full cleanup & refactor pass, deferred quick wins, stale game cleanup, and the bug report system are complete.** Phase 8 is on branch `feat/phase8-bug-reports` — not yet merged to `main`. Public Vercel is live at `mega-ox.vercel.app`.
 >
-> The codebase is clean and ready for Phase 8 (bug report system). See 'Stale game cleanup — 2026-06-18' below for what was done last session."
+> The immediate next step is to merge `feat/phase8-bug-reports` → `main` and push to both remotes, then smoke test the bug report flow. See 'Phase 8 — Bug Report System — 2026-06-18' below for what was built."
 
 ---
 
 ## Current state
 
 `main` branch: All phases complete (1–7) + admin debug FAB + full cleanup & refactor pass + deferred quick wins + stale game cleanup. Latest commits: merge `fix/stale-game-cleanup` (2026-06-18) — pushed to both `origin` and `private`.
+
+`feat/phase8-bug-reports` branch: Phase 8 (bug report system) complete, NOT YET MERGED. Final commit: `fe43dfc` (wire /admin/bugs route + sidebar link, 2026-06-18). Needs merge to main + push to both remotes + smoke test before declaring Phase 8 done.
 
 **Public Vercel (`mega-ox`):** Production — all phases live. URL: https://mega-ox.vercel.app
 — Project ID: `prj_qWeofNsmfHHXIJgW2GjgxeMyiTF1`, Team: `team_1OpFieVAJDQLmmKEYGvVhGPi`
@@ -139,6 +141,45 @@ Completed the final cleanup item: split `OnlineGameView.tsx` into sibling layout
 - Turn-state pill relocated to between the board and emoji panel on mobile.
 - Player cards made taller (avatar 48px, vertical padding 16px) with the freed space.
 - `EmojiBubble` reworked: dropped the `side`/`offset` absolute-overlay-beside-board approach (was always off-screen on mobile due to only 14px page padding vs 60px offset), and now sits `position:absolute` anchored to the bottom of each player's card (`top: calc(100% + 6px)`), with an `align` prop (`left`/`center`/`right`). Never affects layout flow — appears and disappears without pushing anything.
+
+---
+
+## Phase 8 — Bug Report System — 2026-06-18 ✅ (branch `feat/phase8-bug-reports`, pending merge)
+
+**Design doc:** `docs/superpowers/specs/2026-06-18-phase8-bug-reports-design.md`
+**Implementation plan:** `docs/superpowers/plans/2026-06-18-phase8-bug-reports.md`
+
+### What was built
+
+**Database** (migration `20260618000002_bug_reports.sql`):
+- `bug_reports` table — 10 columns; CHECK constraints on `category` (`ui/game_logic/account/other`) and `status` (`open/in_progress/resolved/dismissed`); FK to `profiles.id`
+- `set_bug_reports_updated_at()` trigger — updates `updated_at` on every UPDATE
+- 4 RLS policies: INSERT own rows only; SELECT/UPDATE/DELETE admin-only
+- Column-level UPDATE grant: `GRANT UPDATE (status, admin_notes) TO authenticated` — prevents admins from overwriting title/description/context accidentally
+- `submit_bug_report(p_title, p_description, p_category, p_context)` SECURITY DEFINER RPC — runs as postgres (bypasses RLS for rate-limit COUNT), guards: auth.uid() IS NULL, profile not found, 3/hour rate limit; returns inserted UUID
+
+**Auto-context capture** (`src/lib/errorCapture.ts`):
+- Module-level singleton: `registered` flag prevents double-registration under React StrictMode
+- `initErrorCapture()` — wires `window.onerror` + `unhandledrejection` to a circular buffer (last 5 errors × 500 chars each)
+- `captureContext(opts?)` — returns `BugReportContext`: page, game_id, user_agent, screen, recent_errors, game_state (serialized if in-game)
+- Called once in `src/index.tsx` before `ReactDOM.createRoot`
+
+**Player-facing UI:**
+- `src/hooks/useBugReport.ts` — calls `submit_bug_report` RPC; maps `rate_limit_exceeded` → `'rate_limited'`; returns `{ submit, submitting }`
+- `src/components/common/ReportBugModal.tsx` — 4 stages: form / submitting / rate_limited / error / success (auto-close 3s via useRef timer with cleanup); title + category dropdown + description textarea
+- **Entry: Main menu** (`MainMenu.tsx`) — small "Report a Bug" text link in footer, auth-gated, on both MobileLayout and DesktopLayout
+- **Entry: In-game** (`OnlineGameView.tsx`) — `🐛` button alongside existing `⋯` in both OnlineGameMobile and OnlineGameDesktop headers; game state serialized at click time
+
+**Admin section:**
+- `src/hooks/useAdminBugReports.ts` — fetches `*, profiles(username)`; exports `BugReport` and `BugReportStatus` types; `updateStatus` and `updateNotes` are separate functions with optimistic local updates
+- `src/components/admin/BugReportsManager.tsx` — 5-tab filter (All/Open/In Progress/Resolved/Dismissed); list rows with Title/Category/Username/Date/Status badge; inline DetailPanel with `key={report.id}` (remount on selection change); context breakdown (page/screen/browser/game_id/recent errors/game state); admin notes textarea debounced 500ms with useEffect cleanup; status dropdown fires immediately
+- `/admin/bugs` route added to `App.tsx`; "Bug Reports" added to `NAV_EDITOR` in `AdminLayout.tsx`
+
+### Still to do before Phase 8 is fully live
+
+1. **Merge `feat/phase8-bug-reports` → `main`**
+2. **Push to both remotes** (`git push` + `git push private main`)
+3. **Smoke test:** Submit a bug report from the main menu → check `/admin/bugs` shows it → update status → verify DB row
 
 ---
 
@@ -535,7 +576,7 @@ Full design doc: `docs/plans/2026-03-18-product-roadmap-design.md`
 | –     | Cleanup & refactor pass                                   | **Complete — 2026-06-16** (all 5 items + responsive board fixes + emoji/UI polish) |
 | –     | Deferred quick wins                                       | **Complete — 2026-06-17** (email confirmation, p1GoesFirst, forfeit toast, emoji shop tab) |
 | –     | Stale game cleanup                                        | **Complete — 2026-06-18** (pg_cron cleanup function + useActiveGame filter) |
-| 8     | Bug report system                                         | Not started — **recommended next**      |
+| 8     | Bug report system                                         | **Branch complete** — pending merge + smoke test (2026-06-18) |
 
 ---
 
@@ -819,6 +860,12 @@ If "Confirm email" is enabled in Supabase (Authentication → Email), `signUp()`
 | `src/components/admin/SkinsManager.tsx`           | `/admin/skins` — cosmetic_items CRUD                                                                                                                                                 |
 | `src/components/admin/AchievementsManager.tsx`    | `/admin/achievements` — achievements CRUD                                                                                                                                            |
 | `src/components/admin/AiTuner.tsx`                | `/admin/ai-tuner` — difficulty sliders → `ai_config` table                                                                                                                          |
+| `src/lib/errorCapture.ts`                         | Global error capture singleton — `initErrorCapture()`, `captureContext()`, `getRecentErrors()`; call `initErrorCapture()` once in `index.tsx` before ReactDOM |
+| `src/hooks/useBugReport.ts`                       | Hook wrapping `submit_bug_report` RPC — returns `{ submit, submitting }`; maps rate_limit_exceeded → 'rate_limited' |
+| `src/components/common/ReportBugModal.tsx`        | Bug report modal — form/submitting/rate_limited/success stages; 3s auto-close via useRef timer |
+| `src/hooks/useAdminBugReports.ts`                 | Admin hook — fetches bug_reports with profiles join; `updateStatus`/`updateNotes` with optimistic updates |
+| `src/components/admin/BugReportsManager.tsx`      | `/admin/bugs` — 5-tab filter, inline DetailPanel, debounced notes, immediate status updates |
+| `supabase/migrations/20260618000002_bug_reports.sql` | Bug reports table, trigger, RLS, column grant, submit_bug_report SECURITY DEFINER RPC |
 | `docs/plans/2026-03-18-product-roadmap-design.md` | Full approved product roadmap                                                                                                                                                        |
 | `docs/plans/2026-03-19-testing-benchmarks.md`     | Live testing checklist                                                                                                                                                               |
 
@@ -861,5 +908,5 @@ Supabase project ref: **`qioxtkcjtvvkzcoupdfk`**
 
 ## Open questions (resolve at each phase's detail design)
 
-- Bug reports: email notifications to admin on new submission? (Phase 8)
+- Bug reports: email notifications to admin on new submission? (Phase 8 decision: no — admin checks dashboard manually. Revisit if volume grows.)
 - Stripe integration: real-money top-up flow, pricing tiers (deferred from Phase 6)
