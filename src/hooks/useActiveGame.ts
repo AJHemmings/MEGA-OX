@@ -21,6 +21,7 @@ export const useActiveGame = (userId: string | null, pathname: string): ActiveGa
       setActiveGameId(null);
       setForfeitedGameId(null);
 
+      const tenMinAgo    = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
       // Active or in-RPS game. 'rps' rows are filtered to the last 30 minutes — abandoned
@@ -29,7 +30,7 @@ export const useActiveGame = (userId: string | null, pathname: string): ActiveGa
         .from('games')
         .select('id')
         .or(`player_x_id.eq.${userId},player_o_id.eq.${userId}`)
-        .or(`status.eq.active,and(status.eq.rps,updated_at.gte.${thirtyMinAgo})`)
+        .or(`and(status.eq.active,updated_at.gte.${tenMinAgo}),and(status.eq.rps,updated_at.gte.${thirtyMinAgo})`)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
