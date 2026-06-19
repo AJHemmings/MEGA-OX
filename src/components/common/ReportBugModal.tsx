@@ -123,7 +123,7 @@ const ReportBugModal: React.FC<Props> = ({ onClose, gameId, gameState }) => {
               <div>
                 <label style={labelStyle}>Category</label>
                 <select
-                  style={{ ...inputStyle, cursor: 'pointer' }}
+                  style={{ ...inputStyle, cursor: 'pointer', colorScheme: 'dark' }}
                   value={category}
                   onChange={e => setCategory(e.target.value)}
                   disabled={stage === 'submitting'}

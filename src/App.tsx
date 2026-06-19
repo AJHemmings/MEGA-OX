@@ -21,6 +21,7 @@ import CustomisePage from './components/profile/CustomisePage';
 import ShopPage from './components/shop/ShopPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import GuestLandingPage from './components/GuestLandingPage';
+import ResetPasswordPage from './components/auth/ResetPasswordPage';
 import DemoGamePage from './components/DemoGamePage';
 import { AdminRoute } from './components/admin/AdminRoute';
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -83,6 +84,7 @@ const App: React.FC = () => {
         <Route path="/demo" element={<DemoGamePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/season" element={<SeasonPage />} />
         <Route path="/how-to-play" element={<HowToPlaySelectPage />} />
