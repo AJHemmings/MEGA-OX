@@ -24,6 +24,7 @@ IMPLEMENTATION.md
 docs/design/
 docs/issues/
 docs/superpowers/
+docs/plans/RESTART-HANDOVER.md
 
 # Git worktrees & tooling
 .worktrees/

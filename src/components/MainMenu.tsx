@@ -23,6 +23,7 @@ import { LevelBadge } from './progression/LevelBadge';
 import { XPProgressBar } from './progression/XPProgressBar';
 import NewsSlideshow from './layout/NewsSlideshow';
 import { Modal } from './modal';
+import ReportBugModal from './common/ReportBugModal';
 
 // ── helpers ───────────────────────────────────────────────────
 
@@ -248,6 +249,7 @@ interface LayoutProps {
   onSignOut: () => void;
   navigate: ReturnType<typeof useNavigate>;
   adminRole: string | null;
+  user: { id: string } | null;
 }
 
 const MOBILE_NAV = [
@@ -258,9 +260,10 @@ const MOBILE_NAV = [
 ];
 
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, navigate, adminRole,
+  profile, progression, recentGames, initial, onPlay, onMode, navigate, adminRole, user,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bugModalOpen, setBugModalOpen] = useState(false);
 
   return (
   <div style={{
@@ -442,6 +445,25 @@ const MobileLayout: React.FC<LayoutProps> = ({
       </div>
       <NewsSlideshow />
     </Glass>
+
+    {/* Bug report link — authenticated users only */}
+    {user && (
+      <div style={{ textAlign: 'center', marginTop: 16 }}>
+        <button
+          onClick={() => setBugModalOpen(true)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontFamily: tokens.font, fontSize: 12, fontWeight: 600,
+            color: tokens.textDim, padding: 0,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = tokens.textMuted; }}
+          onMouseLeave={e => { e.currentTarget.style.color = tokens.textDim; }}
+        >
+          Report a Bug
+        </button>
+      </div>
+    )}
+    {bugModalOpen && <ReportBugModal onClose={() => setBugModalOpen(false)} />}
   </div>
   );
 };
@@ -449,8 +471,10 @@ const MobileLayout: React.FC<LayoutProps> = ({
 // ── desktop layout ────────────────────────────────────────────
 
 const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate, adminRole,
-}) => (
+  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate, adminRole, user,
+}) => {
+  const [bugModalOpen, setBugModalOpen] = useState(false);
+  return (
   <div style={{ minHeight: '100vh', fontFamily: tokens.font }}>
     {/* Header */}
     <div style={{
@@ -654,13 +678,33 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
         </Glass>
       </div>
     </div>
+
+    {/* Bug report link — authenticated users only */}
+    {user && (
+      <div style={{ textAlign: 'center', padding: '12px 60px 24px' }}>
+        <button
+          onClick={() => setBugModalOpen(true)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontFamily: tokens.font, fontSize: 12, fontWeight: 600,
+            color: tokens.textDim, padding: 0,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = tokens.textMuted; }}
+          onMouseLeave={e => { e.currentTarget.style.color = tokens.textDim; }}
+        >
+          Report a Bug
+        </button>
+      </div>
+    )}
+    {bugModalOpen && <ReportBugModal onClose={() => setBugModalOpen(false)} />}
   </div>
-);
+  );
+};
 
 // ── main component ────────────────────────────────────────────
 
 const MainMenu: React.FC = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const profile = usePlayerProfile();
   const recentGames = useRecentGames();
@@ -720,6 +764,7 @@ const MainMenu: React.FC = () => {
     onSignOut: signOut,
     navigate,
     adminRole,
+    user: user ?? null,
   };
 
   return (

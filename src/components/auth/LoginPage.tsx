@@ -9,12 +9,15 @@ import Field from '../common/Field';
 import BackButton from '../common/BackButton';
 
 const LoginPage: React.FC = () => {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, sendPasswordReset } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [email, setEmail]             = useState('');
+  const [password, setPassword]       = useState('');
+  const [error, setError]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [forgotMode, setForgotMode]   = useState(false);
+  const [resetSent, setResetSent]     = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +27,15 @@ const LoginPage: React.FC = () => {
     setLoading(false);
     if (error) setError(error.message);
     else navigate('/menu');
+  };
+
+  const handleForgot = async () => {
+    if (!email.trim()) { setError('Enter your email address above first.'); return; }
+    setResetLoading(true);
+    setError('');
+    await sendPasswordReset(email.trim());
+    setResetLoading(false);
+    setResetSent(true);
   };
 
   return (
@@ -55,30 +67,71 @@ const LoginPage: React.FC = () => {
 
           {/* Form card */}
           <Glass style={{ marginBottom: 16 }}>
-            <form onSubmit={handleSubmit}>
-              <Field label="Email" type="email" value={email} onChange={setEmail} hasError={!!error} />
-              <div style={{ position: 'relative' }}>
-                <Field label="Password" type="password" value={password} onChange={setPassword} hasError={!!error} />
-                <button
-                  type="button"
-                  onClick={() => {/* TODO: forgot password */}}
-                  style={{
-                    position: 'absolute', top: 0, right: 0,
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: tokens.accent, fontSize: 12, fontWeight: 700, fontFamily: tokens.font,
-                    padding: 0,
-                  }}
-                >
-                  Forgot password?
-                </button>
-              </div>
-              {error && (
-                <div style={{ fontSize: 13, color: tokens.loss, marginBottom: 12, fontWeight: 600 }}>{error}</div>
-              )}
-              <PrimaryButton type="submit" disabled={loading} fullWidth>
-                {loading ? 'Signing in…' : 'Log In'}
-              </PrimaryButton>
-            </form>
+            {forgotMode ? (
+              <>
+                {resetSent ? (
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: tokens.accent, marginBottom: 8 }}>Check your email</div>
+                    <div style={{ fontSize: 13, color: tokens.textMuted, marginBottom: 20 }}>
+                      We sent a reset link to <strong style={{ color: tokens.text }}>{email}</strong>. Click it to set a new password.
+                    </div>
+                    <button
+                      onClick={() => { setForgotMode(false); setResetSent(false); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.accent, fontWeight: 700, fontSize: 13, fontFamily: tokens.font, padding: 0 }}
+                    >
+                      Back to login
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: tokens.text, marginBottom: 4 }}>Reset your password</div>
+                    <div style={{ fontSize: 13, color: tokens.textMuted, marginBottom: 20 }}>
+                      Enter your email and we'll send you a reset link.
+                    </div>
+                    <Field label="Email" type="email" value={email} onChange={setEmail} hasError={!!error} />
+                    {error && (
+                      <div style={{ fontSize: 13, color: tokens.loss, marginBottom: 12, fontWeight: 600 }}>{error}</div>
+                    )}
+                    <PrimaryButton onClick={handleForgot} disabled={resetLoading} fullWidth>
+                      {resetLoading ? 'Sending…' : 'Send Reset Link'}
+                    </PrimaryButton>
+                    <div style={{ textAlign: 'center', marginTop: 16 }}>
+                      <button
+                        onClick={() => { setForgotMode(false); setError(''); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: tokens.accent, fontWeight: 700, fontSize: 13, fontFamily: tokens.font, padding: 0 }}
+                      >
+                        Back to login
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <Field label="Email" type="email" value={email} onChange={setEmail} hasError={!!error} />
+                <div style={{ position: 'relative' }}>
+                  <Field label="Password" type="password" value={password} onChange={setPassword} hasError={!!error} />
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(true); setError(''); }}
+                    style={{
+                      position: 'absolute', top: 0, right: 0,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: tokens.accent, fontSize: 12, fontWeight: 700, fontFamily: tokens.font,
+                      padding: 0,
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+                {error && (
+                  <div style={{ fontSize: 13, color: tokens.loss, marginBottom: 12, fontWeight: 600 }}>{error}</div>
+                )}
+                <PrimaryButton type="submit" disabled={loading} fullWidth>
+                  {loading ? 'Signing in…' : 'Log In'}
+                </PrimaryButton>
+              </form>
+            )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
               <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
