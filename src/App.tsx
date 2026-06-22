@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import MainMenu from './components/MainMenu';
 import MultiplayerMenu from './components/MultiplayerMenu';
@@ -31,6 +31,9 @@ import AchievementsManager from './components/admin/AchievementsManager';
 import ShopManager from './components/admin/ShopManager';
 import AiTuner from './components/admin/AiTuner';
 import BugReportsManager from './components/admin/BugReportsManager';
+import { PresenceProvider } from './contexts/PresenceContext';
+import { FriendsDrawer } from './components/friends/FriendsDrawer';
+import { supabase } from './lib/supabase';
 
 // Thin wrappers so GameWrapper gets a real navigate callback from the router
 const TrainingRoute: React.FC = () => {
@@ -75,9 +78,72 @@ const RootRoute: React.FC = () => {
   return <GuestLandingPage />;
 };
 
-const App: React.FC = () => {
+// AppShell sits inside AuthProvider so it can call useAuth() and hold
+// friends drawer state. PresenceProvider wraps everything so any child
+// component can broadcast/read presence.
+const AppShell: React.FC = () => {
+  const { user } = useAuth();
+  const [friendsOpen, setFriendsOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) {
+      setPendingCount(0);
+      return;
+    }
+
+    (supabase as any)
+      .from('friendships')
+      .select('*', { count: 'exact', head: true })
+      .eq('addressee_id', userId)
+      .eq('status', 'pending')
+      .then(({ count }: { count: number | null }) => setPendingCount(count ?? 0));
+
+    const channel = (supabase as any)
+      .channel(`pending-badge-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, async () => {
+        const { count } = await (supabase as any)
+          .from('friendships')
+          .select('*', { count: 'exact', head: true })
+          .eq('addressee_id', userId)
+          .eq('status', 'pending');
+        setPendingCount(count ?? 0);
+      })
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
+  }, [user]);
+
   return (
-    <AuthProvider>
+    <PresenceProvider>
+      {/* Friends icon — fixed overlay, only shown when logged in */}
+      {user && (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              onClick={() => setFriendsOpen(true)}
+              title="Friends"
+              style={{
+                background: 'none', border: 'none', color: '#fff',
+                fontSize: 20, cursor: 'pointer', padding: '4px 8px',
+              }}
+            >👥</button>
+            {pendingCount > 0 && (
+              <span style={{
+                position: 'absolute', top: 0, right: 0,
+                background: '#ef4444', color: '#fff',
+                borderRadius: '50%', width: 16, height: 16,
+                fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, pointerEvents: 'none',
+              }}>
+                {pendingCount > 9 ? '9+' : pendingCount}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<RootRoute />} />
@@ -129,6 +195,16 @@ const App: React.FC = () => {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      <FriendsDrawer isOpen={friendsOpen} onClose={() => setFriendsOpen(false)} />
+    </PresenceProvider>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppShell />
     </AuthProvider>
   );
 };
