@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 interface LeaderboardRow {
@@ -17,23 +17,32 @@ export function FriendsLeaderboard() {
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadRef = useRef<() => void>(() => {});
 
-  async function load() {
-    setLoading(true);
-    setError(null);
-    const { data, error: rpcError } = await (supabase as any).rpc('get_friends_leaderboard');
-    if (rpcError) { setError("Couldn't load leaderboard."); setLoading(false); return; }
-    setRows(data ?? []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    let mounted = true;
 
-  useEffect(() => { load(); }, []);
+    async function load() {
+      setLoading(true);
+      setError(null);
+      const { data, error: rpcError } = await (supabase as any).rpc('get_friends_leaderboard');
+      if (!mounted) return;
+      if (rpcError) { setError("Couldn't load leaderboard."); setLoading(false); return; }
+      setRows(data ?? []);
+      setLoading(false);
+    }
+
+    loadRef.current = load;
+    load();
+
+    return () => { mounted = false; };
+  }, []);
 
   if (loading) return <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Loading…</p>;
   if (error) return (
     <div>
       <p style={{ color: '#f87171', fontSize: 13 }}>{error}</p>
-      <button onClick={load} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, background: '#6c63ff', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}>
+      <button onClick={() => loadRef.current()} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, background: '#6c63ff', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}>
         Retry
       </button>
     </div>
