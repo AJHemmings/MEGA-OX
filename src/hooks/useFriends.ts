@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export interface FriendProfile {
@@ -32,8 +32,10 @@ export function useFriends(): UseFriendsReturn {
   const [pendingIncoming, setPendingIncoming] = useState<FriendRequest[]>([]);
   const [pendingOutgoing, setPendingOutgoing] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelIdRef = useRef(`friendships-${Math.random().toString(36).slice(2)}`);
 
   const fetchFriends = useCallback(async () => {
+    setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -62,6 +64,8 @@ export function useFriends(): UseFriendsReturn {
       const otherProfile = isSender ? row.addressee : row.requester;
       const otherId = isSender ? row.addressee_id : row.requester_id;
 
+      if (!otherProfile) return; // skip if profile was deleted
+
       if (row.status === 'accepted') {
         accepted.push({ profile: { ...otherProfile, id: otherId } });
       } else if (row.status === 'pending') {
@@ -83,7 +87,7 @@ export function useFriends(): UseFriendsReturn {
     fetchFriends();
 
     const channel = supabase
-      .channel('friendships-changes')
+      .channel(channelIdRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, fetchFriends)
       .subscribe();
 
@@ -107,13 +111,16 @@ export function useFriends(): UseFriendsReturn {
   async function removeFriend(friendId: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { error } = await (supabase as any)
-      .from('friendships')
-      .delete()
-      .or(
-        `and(requester_id.eq.${user.id},addressee_id.eq.${friendId}),and(requester_id.eq.${friendId},addressee_id.eq.${user.id})`
-      );
-    if (error) { console.error('removeFriend error:', error); return; }
+
+    // Try both directions — one will match, the other is a safe no-op
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      (supabase as any).from('friendships').delete()
+        .eq('requester_id', user.id).eq('addressee_id', friendId),
+      (supabase as any).from('friendships').delete()
+        .eq('requester_id', friendId).eq('addressee_id', user.id),
+    ]);
+
+    if (e1 && e2) { console.error('removeFriend error:', e1); return; }
     await fetchFriends();
   }
 
