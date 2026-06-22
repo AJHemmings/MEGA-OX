@@ -50,13 +50,19 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
             await channel.track({ userId: user.id, status: 'online' });
           }
           if (status === 'CHANNEL_ERROR') {
+            channelRef.current?.unsubscribe();
+            channelRef.current = null;
             setTimeout(join, 3000);
           }
         });
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') join();
+      if (event === 'SIGNED_IN') {
+        channelRef.current?.unsubscribe();
+        channelRef.current = null;
+        join();
+      }
       if (event === 'SIGNED_OUT') {
         channelRef.current?.unsubscribe();
         channelRef.current = null;
