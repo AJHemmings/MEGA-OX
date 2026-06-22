@@ -4,6 +4,7 @@ import { Game } from '../models/Game';
 import { deserializeGame, serializeGame, SerializedState } from '../lib/gameSerializer';
 import { useAuth } from '../contexts/AuthContext';
 import { resolveRPS, RPSPick } from '../lib/rps';
+import { usePresenceContext } from '../contexts/PresenceContext';
 
 export type OnlineGameStatus = 'loading' | 'waiting' | 'rps' | 'active' | 'complete';
 export type RematchIntent = 'play_again' | 'back_to_menu';
@@ -25,6 +26,7 @@ const advanceStatus = (prev: OnlineGameStatus, next: string): OnlineGameStatus =
 
 export const useOnlineGame = (gameId: string) => {
   const { user } = useAuth();
+  const { broadcastStatus } = usePresenceContext();
   const [game, setGame] = useState<Game | null>(null);
   const [status, setStatus] = useState<OnlineGameStatus>('loading');
   const [myMarker, setMyMarker] = useState<'X' | 'O' | null>(null);
@@ -63,6 +65,16 @@ export const useOnlineGame = (gameId: string) => {
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
+
+  // Broadcast presence status when game transitions to active or complete.
+  // A single effect on `status` covers all paths (RPS resolution, postgres_changes, broadcast).
+  useEffect(() => {
+    if (status === 'active') {
+      broadcastStatus('in_game', gameId);
+    } else if (status === 'complete') {
+      broadcastStatus('online');
+    }
+  }, [status, gameId, broadcastStatus]);
 
   const fetchGameState = useCallback(async () => {
     if (!user || !gameId) return;
@@ -331,13 +343,16 @@ export const useOnlineGame = (gameId: string) => {
     channelRef.current = channel;
 
     return () => {
+      // Fire-and-forget: player is leaving the game, mark them online again.
+      // Must come before removeChannel; no setState calls after this point.
+      broadcastStatus('online');
       supabase.removeChannel(channel);
       channelRef.current = null;
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
       if (myEmojiTimerRef.current) clearTimeout(myEmojiTimerRef.current);
       if (opponentEmojiTimerRef.current) clearTimeout(opponentEmojiTimerRef.current);
     };
-  }, [gameId, user, fetchGameState]);
+  }, [gameId, user, fetchGameState, broadcastStatus]);
 
   useEffect(() => {
     if (disconnectCountdown !== 0 || !myMarker || !opponentId || status !== 'active') return;
