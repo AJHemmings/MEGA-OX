@@ -22,13 +22,15 @@ const PresenceContext = createContext<PresenceContextType>({
 export function PresenceProvider({ children }: { children: React.ReactNode }) {
   const [presenceMap, setPresenceMap] = useState<Record<string, PresencePayload>>({});
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    let isMounted = true;
+    isMountedRef.current = true;
 
     async function join() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !isMounted) return;
+      if (!user || !isMountedRef.current) return;
 
       const channel = supabase.channel('presence:global', {
         config: { presence: { key: user.id } },
@@ -41,9 +43,12 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
           const state = channel.presenceState<PresencePayload>();
           const map: Record<string, PresencePayload> = {};
           Object.entries(state).forEach(([key, presences]) => {
-            if (presences.length > 0) map[key] = presences[0];
+            if (presences.length > 0) {
+              const p = presences[0];
+              if (p.userId && p.status) map[key] = p;
+            }
           });
-          if (isMounted) setPresenceMap(map);
+          if (isMountedRef.current) setPresenceMap(map);
         })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
@@ -52,7 +57,7 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
           if (status === 'CHANNEL_ERROR') {
             channelRef.current?.unsubscribe();
             channelRef.current = null;
-            setTimeout(join, 3000);
+            retryTimerRef.current = setTimeout(join, 3000);
           }
         });
     }
@@ -66,24 +71,26 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_OUT') {
         channelRef.current?.unsubscribe();
         channelRef.current = null;
-        if (isMounted) setPresenceMap({});
+        if (isMountedRef.current) setPresenceMap({});
       }
     });
 
-    join();
-
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       channelRef.current?.unsubscribe();
       listener.subscription.unsubscribe();
     };
   }, []);
 
-  function broadcastStatus(status: OnlineStatus, gameId?: string) {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+  async function broadcastStatus(status: OnlineStatus, gameId?: string) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user || !channelRef.current) return;
-      channelRef.current.track({ userId: user.id, status, ...(gameId ? { gameId } : {}) });
-    });
+      await channelRef.current.track({ userId: user.id, status, ...(gameId ? { gameId } : {}) });
+    } catch (err) {
+      console.error('broadcastStatus failed:', err);
+    }
   }
 
   return (
