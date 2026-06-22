@@ -742,6 +742,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
             xpNeededForLevel={progression.xpNeededForLevel}
             xpToNext={progression.xpToNext}
             onContinue={() => setPostGameResult(null)}
+            opponentId={opponentId}
           />
         )}
         {bugModalOpen && (

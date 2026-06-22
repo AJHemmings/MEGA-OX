@@ -7,6 +7,7 @@ import Glass from '../common/Glass';
 import PrimaryButton from '../common/PrimaryButton';
 import SecondaryButton from '../common/SecondaryButton';
 import { Coin, SparkleIcon } from '../icons';
+import { supabase } from '../../lib/supabase';
 
 export interface PostGameResult {
   xpAwarded: number;
@@ -37,7 +38,10 @@ interface PostGameModalProps {
   opponent?: string;
   matchType?: string;
   onRematch?: () => void;
+  opponentId?: string | null;
 }
+
+type FriendStatus = 'unknown' | 'friends' | 'pending' | 'sent';
 
 const RESULT_CONFIG = {
   win:  { eyebrow: 'VICTORY', headline: 'You Win!',  color: tokens.win,  bg: 'linear-gradient(135deg, rgba(0,212,170,0.25), rgba(124,77,255,0.20))' },
@@ -47,7 +51,7 @@ const RESULT_CONFIG = {
 
 export const PostGameModal: React.FC<PostGameModalProps> = ({
   result, level, xpIntoLevel, xpNeededForLevel, xpToNext,
-  onContinue, gameResult, opponent, matchType, onRematch,
+  onContinue, gameResult, opponent, matchType, onRematch, opponentId,
 }) => {
   // Animate XP bar fill from 0 → actual on mount
   const [animatedXp, setAnimatedXp] = useState(0);
@@ -55,6 +59,47 @@ export const PostGameModal: React.FC<PostGameModalProps> = ({
     const t = setTimeout(() => setAnimatedXp(xpIntoLevel), 120);
     return () => clearTimeout(t);
   }, [xpIntoLevel]);
+
+  const [friendStatus, setFriendStatus] = useState<FriendStatus>('unknown');
+
+  // Check friendship status on mount (only for online games with a known opponent)
+  useEffect(() => {
+    if (!opponentId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data, error } = await (supabase as any)
+        .from('friendships')
+        .select('status, requester_id')
+        .or(
+          `and(requester_id.eq.${user.id},addressee_id.eq.${opponentId}),` +
+          `and(requester_id.eq.${opponentId},addressee_id.eq.${user.id})`
+        )
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) { console.error('PostGameModal friendship check error:', error); return; }
+      if (!data) { setFriendStatus('unknown'); return; }
+      if (data.status === 'accepted') { setFriendStatus('friends'); return; }
+      if (data.status === 'pending') {
+        // 'pending' from our side = we sent it; from their side = they sent, we haven't accepted
+        setFriendStatus(data.requester_id === user.id ? 'pending' : 'pending');
+        return;
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [opponentId]);
+
+  const handleAddFriend = async () => {
+    if (!opponentId) return;
+    try {
+      const { error } = await (supabase as any).rpc('send_friend_request', { p_addressee_id: opponentId });
+      if (error) { console.error('send_friend_request error:', error); return; }
+      setFriendStatus('sent');
+    } catch (err) {
+      console.error('handleAddFriend error:', err);
+    }
+  };
 
   const fillPct = level >= MAX_LEVEL ? 100 : Math.min(100, (animatedXp / xpNeededForLevel) * 100);
   const cfg = gameResult ? RESULT_CONFIG[gameResult] : null;
@@ -180,6 +225,37 @@ export const PostGameModal: React.FC<PostGameModalProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Add Friend row — only for online games with a known opponent */}
+          {opponentId && friendStatus === 'unknown' && (
+            <div style={{ marginBottom: 12 }}>
+              <button
+                onClick={handleAddFriend}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(108,99,255,0.45)',
+                  background: 'rgba(108,99,255,0.15)',
+                  color: '#6c63ff',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  fontFamily: tokens.font,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s ease',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(108,99,255,0.28)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(108,99,255,0.15)'; }}
+              >
+                ➕ Add Friend
+              </button>
+            </div>
+          )}
+          {opponentId && (friendStatus === 'sent' || friendStatus === 'pending') && (
+            <div style={{ marginBottom: 12, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#00c48c' }}>
+              Request sent ✓
             </div>
           )}
 
