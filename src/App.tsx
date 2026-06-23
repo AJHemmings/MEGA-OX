@@ -93,23 +93,22 @@ const AppShell: React.FC = () => {
       return;
     }
 
-    (supabase as any)
-      .from('friendships')
-      .select('*', { count: 'exact', head: true })
-      .eq('addressee_id', userId)
-      .eq('status', 'pending')
-      .then(({ count }: { count: number | null }) => setPendingCount(count ?? 0));
+    async function refreshCount() {
+      const [{ count: friendCount }, { count: inviteCount }] = await Promise.all([
+        (supabase as any).from('friendships').select('*', { count: 'exact', head: true })
+          .eq('addressee_id', userId).eq('status', 'pending'),
+        (supabase as any).from('game_invites').select('*', { count: 'exact', head: true })
+          .eq('challenged_id', userId).eq('status', 'pending'),
+      ]);
+      setPendingCount((friendCount ?? 0) + (inviteCount ?? 0));
+    }
+
+    refreshCount();
 
     const channel = (supabase as any)
       .channel(`pending-badge-${userId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, async () => {
-        const { count } = await (supabase as any)
-          .from('friendships')
-          .select('*', { count: 'exact', head: true })
-          .eq('addressee_id', userId)
-          .eq('status', 'pending');
-        setPendingCount(count ?? 0);
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, refreshCount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_invites' }, refreshCount)
       .subscribe();
 
     return () => { channel.unsubscribe(); };
@@ -196,7 +195,7 @@ const AppShell: React.FC = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      <FriendsDrawer isOpen={friendsOpen} onClose={() => setFriendsOpen(false)} />
+      {user && <FriendsDrawer isOpen={friendsOpen} onClose={() => setFriendsOpen(false)} />}
     </PresenceProvider>
   );
 };

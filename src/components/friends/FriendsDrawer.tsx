@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFriends } from '../../hooks/useFriends';
+import { useGameInvites } from '../../hooks/useGameInvites';
 import { FriendsList } from './FriendsList';
 import { AddFriendSearch } from './AddFriendSearch';
 import { PendingRequests } from './PendingRequests';
+import { IncomingChallenges } from './IncomingChallenges';
 import { FriendsLeaderboard } from './FriendsLeaderboard';
 
 interface FriendsDrawerProps {
@@ -15,6 +18,17 @@ type DrawerTab = 'friends' | 'leaderboard';
 export function FriendsDrawer({ isOpen, onClose }: FriendsDrawerProps) {
   const [activeTab, setActiveTab] = useState<DrawerTab>('friends');
   const friends = useFriends();
+  const invites = useGameInvites();
+  const navigate = useNavigate();
+
+  // Challenger: navigate when the challenged player accepts
+  useEffect(() => {
+    if (invites.acceptedGameId) {
+      invites.clearAcceptedGame();
+      onClose();
+      navigate(`/game/${invites.acceptedGameId}`);
+    }
+  }, [invites.acceptedGameId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isOpen) return null;
 
@@ -87,6 +101,11 @@ export function FriendsDrawer({ isOpen, onClose }: FriendsDrawerProps) {
                 ...friends.pendingIncoming.map(r => r.profile.id),
                 ...friends.pendingOutgoing.map(r => r.profile.id),
               ]} />
+              <IncomingChallenges
+                invites={invites.receivedInvites}
+                onRespond={invites.respondToChallenge}
+                onNavigate={(gameId) => { onClose(); navigate(`/game/${gameId}`); }}
+              />
               <PendingRequests
                 requests={friends.pendingIncoming}
                 onRespond={friends.respondToRequest}
@@ -95,10 +114,14 @@ export function FriendsDrawer({ isOpen, onClose }: FriendsDrawerProps) {
                 friends={friends.acceptedFriends}
                 loading={friends.loading}
                 onRemove={friends.removeFriend}
+                onBlock={friends.blockFriend}
+                sentInvites={invites.sentInvites}
+                onChallenge={invites.sendChallenge}
+                onCancelChallenge={invites.cancelChallenge}
               />
             </>
           )}
-          {activeTab === 'leaderboard' && <FriendsLeaderboard />}
+          {activeTab === 'leaderboard' && <FriendsLeaderboard compact />}
         </div>
       </div>
     </>

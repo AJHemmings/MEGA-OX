@@ -24,6 +24,7 @@ interface UseFriendsReturn {
   sendFriendRequest: (addresseeId: string) => Promise<void>;
   respondToRequest: (requesterId: string, action: 'accept' | 'decline' | 'block') => Promise<void>;
   removeFriend: (friendId: string) => Promise<void>;
+  blockFriend: (friendId: string) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -106,6 +107,18 @@ export function useFriends(): UseFriendsReturn {
       p_action: action,
     });
     if (error) throw new Error(error.message);
+    await fetchFriends();
+  }
+
+  async function blockFriend(friendId: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await Promise.all([
+      (supabase as any).from('friendships').delete().eq('requester_id', user.id).eq('addressee_id', friendId),
+      (supabase as any).from('friendships').delete().eq('requester_id', friendId).eq('addressee_id', user.id),
+    ]);
+    await (supabase as any).from('friendships').insert({ requester_id: user.id, addressee_id: friendId, status: 'blocked' });
+    await fetchFriends();
   }
 
   async function removeFriend(friendId: string) {
@@ -132,6 +145,7 @@ export function useFriends(): UseFriendsReturn {
     sendFriendRequest,
     respondToRequest,
     removeFriend,
+    blockFriend,
     refetch: fetchFriends,
   };
 }
