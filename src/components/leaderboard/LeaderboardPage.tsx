@@ -9,6 +9,7 @@ import Glass from '../common/Glass';
 import BackButton from '../common/BackButton';
 import TabBar from '../common/TabBar';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
+import { FriendsLeaderboard } from '../friends/FriendsLeaderboard';
 
 interface LeaderboardEntry {
   position: number;
@@ -87,10 +88,12 @@ const LeaderboardPage: React.FC = () => {
 
       <Switcher active={tab} onChange={setTab} />
 
-      {tab !== 'Global' ? (
-        <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>
-          {tab === 'Friends' ? 'Friends leaderboard coming soon.' : 'No active season.'}
-        </div>
+      {tab === 'Friends' ? (
+        user
+          ? <FriendsLeaderboard />
+          : <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>Log in to see your friends leaderboard.</div>
+      ) : tab === 'Season' ? (
+        <div style={{ color: tokens.textDim, textAlign: 'center', padding: 40 }}>No active season.</div>
       ) : loading ? (
         <div style={{ color: tokens.textMuted, textAlign: 'center', padding: 40 }}>Loading…</div>
       ) : (

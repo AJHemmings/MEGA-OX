@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -265,6 +265,122 @@ export type Database = {
           },
         ]
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          requester_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          requester_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          requester_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_invites: {
+        Row: {
+          challenged_id: string
+          challenger_id: string
+          created_at: string | null
+          game_id: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          challenged_id: string
+          challenger_id: string
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          challenged_id?: string
+          challenger_id?: string
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_invites_challenged_id_fkey"
+            columns: ["challenged_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "game_invites_challenged_id_fkey"
+            columns: ["challenged_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_invites_challenger_id_fkey"
+            columns: ["challenger_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "game_invites_challenger_id_fkey"
+            columns: ["challenger_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_invites_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_moves: {
         Row: {
           cell_index: number
@@ -324,6 +440,8 @@ export type Database = {
           game_code: string | null
           id: string
           match_type: string
+          mm_o_confirmed: boolean | null
+          mm_x_confirmed: boolean | null
           next_micro_board: number | null
           next_player: string
           player_o_id: string | null
@@ -352,6 +470,8 @@ export type Database = {
           game_code?: string | null
           id?: string
           match_type?: string
+          mm_o_confirmed?: boolean | null
+          mm_x_confirmed?: boolean | null
           next_micro_board?: number | null
           next_player?: string
           player_o_id?: string | null
@@ -380,6 +500,8 @@ export type Database = {
           game_code?: string | null
           id?: string
           match_type?: string
+          mm_o_confirmed?: boolean | null
+          mm_x_confirmed?: boolean | null
           next_micro_board?: number | null
           next_player?: string
           player_o_id?: string | null
@@ -485,35 +607,48 @@ export type Database = {
       }
       matchmaking_queue: {
         Row: {
-          joined_at: string | null
+          created_at: string | null
+          game_id: string | null
+          id: string
           match_type: string
-          mmr: number
-          player_id: string
+          status: string
+          user_id: string
         }
         Insert: {
-          joined_at?: string | null
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
           match_type?: string
-          mmr: number
-          player_id: string
+          status?: string
+          user_id: string
         }
         Update: {
-          joined_at?: string | null
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
           match_type?: string
-          mmr?: number
-          player_id?: string
+          status?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "matchmaking_queue_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: true
+            foreignKeyName: "matchmaking_queue_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matchmaking_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "leaderboard"
             referencedColumns: ["player_id"]
           },
           {
-            foreignKeyName: "matchmaking_queue_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: true
+            foreignKeyName: "matchmaking_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1387,13 +1522,48 @@ export type Database = {
       admin_grant_credits: { Args: { amount: number }; Returns: undefined }
       admin_grant_xp: { Args: { amount: number }; Returns: undefined }
       cleanup_abandoned_games: { Args: never; Returns: undefined }
+      confirm_match: {
+        Args: { p_accept: boolean; p_game_id: string }
+        Returns: undefined
+      }
+      get_friends_leaderboard: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          draws: number
+          level: number
+          losses: number
+          mmr: number
+          rank_tier: string
+          user_id: string
+          username: string
+          wins: number
+          xp: number
+        }[]
+      }
       increment_credits: {
         Args: { p_amount: number; p_user_id: string }
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      join_matchmaking_queue: {
+        Args: { p_initial_state: Json; p_match_type: string }
+        Returns: {
+          out_game_id: string
+          out_opponent_id: string
+        }[]
+      }
+      leave_matchmaking_queue: { Args: never; Returns: undefined }
       purchase_item: { Args: { p_item_id: string }; Returns: Json }
+      respond_to_friend_request: {
+        Args: { p_action: string; p_requester_id: string }
+        Returns: undefined
+      }
+      send_friend_request: {
+        Args: { p_addressee_id: string }
+        Returns: undefined
+      }
       submit_bug_report: {
         Args: {
           p_category: string
@@ -1438,13 +1608,13 @@ export type Tables<
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
         DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-      DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-    ? R
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
-  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
@@ -1464,12 +1634,12 @@ export type TablesInsert<
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-    ? I
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
     : never
-  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
@@ -1489,12 +1659,12 @@ export type TablesUpdate<
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
     : never
-  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
@@ -1510,8 +1680,8 @@ export type Enums<
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
@@ -1527,11 +1697,12 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
     Enums: {},
   },
 } as const
+
