@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Friend } from '../../hooks/useFriends';
 import { GameInvite } from '../../hooks/useGameInvites';
 import { usePresenceContext } from '../../contexts/PresenceContext';
@@ -22,7 +21,6 @@ const STATUS_DOT: Record<string, { color: string; label: string }> = {
 
 export function FriendsList({ friends, loading, onRemove, onBlock, sentInvites, onChallenge, onCancelChallenge }: FriendsListProps) {
   const { presenceMap } = usePresenceContext();
-  const navigate = useNavigate();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   if (loading) return <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Loading friends…</p>;
@@ -35,7 +33,7 @@ export function FriendsList({ friends, loading, onRemove, onBlock, sentInvites, 
     return (order[statusA] ?? 2) - (order[statusB] ?? 2);
   });
 
-  const menuItems = (profileId: string, username: string): { label: string; color: string; disabled?: boolean; action: () => void }[] => {
+  const menuItems = (profileId: string): { label: string; color: string; disabled?: boolean; action: () => void }[] => {
     const pendingInvite = sentInvites.find(inv => inv.challenged_id === profileId);
     const challengeItem = pendingInvite
       ? { label: '⏳  Cancel invite', color: 'rgba(255,255,255,0.5)', action: () => { onCancelChallenge(pendingInvite.id); setOpenMenuId(null); } }
@@ -116,7 +114,7 @@ export function FriendsList({ friends, loading, onRemove, onBlock, sentInvites, 
                 borderRadius: 8, overflow: 'hidden', minWidth: 170,
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
               }}>
-                {menuItems(profile.id, profile.username).map(item => (
+                {menuItems(profile.id).map(item => (
                   <button
                     key={item.label}
                     onClick={item.disabled ? undefined : item.action}

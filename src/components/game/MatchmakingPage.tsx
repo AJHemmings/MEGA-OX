@@ -51,7 +51,6 @@ const MatchmakingPage: React.FC = () => {
 
   // Matchmaking state
   const [mmGameId, setMmGameId]                   = useState<string | null>(null);
-  const [mmMyRole, setMmMyRole]                   = useState<'X' | 'O' | null>(null);
   const [mmMyConfirmed, setMmMyConfirmed]         = useState<boolean | null>(null);
   const [mmOppConfirmed, setMmOppConfirmed]       = useState<boolean | null>(null);
   const [mmOppName, setMmOppName]                 = useState('Opponent');
@@ -107,7 +106,6 @@ const MatchmakingPage: React.FC = () => {
               setMmMyConfirmed(null);
               setMmOppConfirmed(null);
               setMmGameId(null);
-              setMmMyRole(null);
               setMmOppName('Opponent');
               setElapsed(0);
               setView('searching');
@@ -157,7 +155,6 @@ const MatchmakingPage: React.FC = () => {
         if (row.status === 'matched' && row.game_id) {
           queueSub.unsubscribe();
           setMmGameId(row.game_id);
-          setMmMyRole('X'); // was waiting, so opponent joined → I'm X
           setView('confirming');
           subscribeToMMGame(row.game_id, 'X');
         }
@@ -178,7 +175,6 @@ const MatchmakingPage: React.FC = () => {
           // Matched immediately — I'm O (the joiner)
           queueSub.unsubscribe();
           setMmGameId(row.out_game_id);
-          setMmMyRole('O');
           setView('confirming');
           subscribeToMMGame(row.out_game_id, 'O');
         }
