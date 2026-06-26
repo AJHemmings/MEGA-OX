@@ -190,6 +190,11 @@ const MatchmakingPage: React.FC = () => {
     };
   }, [view, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleCancelSearch = async () => {
+    await (supabase as any).rpc('leave_matchmaking_queue');
+    navigate('/multiplayer');
+  };
+
   const handleMMConfirm = async (accept: boolean) => {
     if (!mmGameId) return;
     setMmMyConfirmed(accept); // optimistic
@@ -293,7 +298,7 @@ const MatchmakingPage: React.FC = () => {
         {view === 'searching' && (
           <>
             <div style={headerStyle}>
-              <BackButton onClick={() => navigate('/multiplayer')} />
+              <BackButton onClick={handleCancelSearch} />
               <span style={{ fontSize: 18, fontWeight: 800 }}>Searching…</span>
             </div>
 
@@ -346,7 +351,7 @@ const MatchmakingPage: React.FC = () => {
               ELAPSED · {elapsedFmt}
             </div>
 
-            <SecondaryButton onClick={() => navigate('/multiplayer')} fullWidth>Cancel</SecondaryButton>
+            <SecondaryButton onClick={handleCancelSearch} fullWidth>Cancel</SecondaryButton>
           </>
         )}
 
