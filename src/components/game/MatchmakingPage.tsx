@@ -217,6 +217,13 @@ const MatchmakingPage: React.FC = () => {
     if (!accept) navigate('/multiplayer');
   }, [mmGameId, navigate]);
 
+  // Auto-decline on countdown expiry if player has not responded
+  useEffect(() => {
+    if (confirmSecondsLeft === 0 && view === 'confirming') {
+      if (mmMyConfirmed === null) handleMMConfirm(false);
+    }
+  }, [confirmSecondsLeft, view, mmMyConfirmed, handleMMConfirm]);
+
   // --- Code-based game logic (unchanged) ---
 
   const createGame = async () => {
