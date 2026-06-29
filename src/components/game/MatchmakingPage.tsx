@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -195,12 +195,12 @@ const MatchmakingPage: React.FC = () => {
     navigate('/multiplayer');
   };
 
-  const handleMMConfirm = async (accept: boolean) => {
+  const handleMMConfirm = useCallback(async (accept: boolean) => {
     if (!mmGameId) return;
-    setMmMyConfirmed(accept); // optimistic
+    setMmMyConfirmed(accept);
     await (supabase as any).rpc('confirm_match', { p_game_id: mmGameId, p_accept: accept });
     if (!accept) navigate('/multiplayer');
-  };
+  }, [mmGameId, navigate]);
 
   // --- Code-based game logic (unchanged) ---
 
