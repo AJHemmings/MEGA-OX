@@ -55,6 +55,8 @@ const MatchmakingPage: React.FC = () => {
   const [mmOppConfirmed, setMmOppConfirmed]       = useState<boolean | null>(null);
   const [mmOppName, setMmOppName]                 = useState('Opponent');
 
+  const [confirmSecondsLeft, setConfirmSecondsLeft] = useState(20);
+
   const queueChannelRef   = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const mmGameChannelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const mountedRef        = useRef(true);
@@ -76,6 +78,19 @@ const MatchmakingPage: React.FC = () => {
       mmGameChannelRef.current?.unsubscribe();
     };
   }, []);
+
+  // Countdown interval for the confirming view
+  useEffect(() => {
+    if (view !== 'confirming') return;
+    setConfirmSecondsLeft(20);
+    const t = setInterval(() => {
+      setConfirmSecondsLeft(s => {
+        if (s <= 1) { clearInterval(t); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [view]);
 
   // --- Matchmaking helpers ---
 
