@@ -25,6 +25,14 @@ export function initErrorCapture(): void {
   };
 
   window.addEventListener('unhandledrejection', (e) => {
+    // Supabase Realtime uses the Web Locks API internally. In dev, React
+    // StrictMode double-invokes effects, causing the second channel subscription
+    // to steal the lock from the first. The resulting AbortError is harmless in
+    // production (StrictMode is dev-only) but triggers CRA's error overlay.
+    if (e.reason?.name === 'AbortError' && String(e.reason?.message).includes('Lock broken')) {
+      e.preventDefault();
+      return;
+    }
     const entry = (e.reason instanceof Error)
       ? (e.reason.stack ?? e.reason.message)
       : String(e.reason);

@@ -24,6 +24,16 @@
         min-height: 100vh;
       }
     </style>
+    <!-- Suppress dev-only Supabase Realtime Web Locks AbortError from CRA overlay.
+         Must run before React bundles load so it fires before CRA's handler. -->
+    <script>
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && e.reason.name === 'AbortError' &&
+            String(e.reason.message).indexOf('Lock broken') !== -1) {
+          e.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
