@@ -298,6 +298,13 @@ const MatchmakingPage: React.FC = () => {
 
   const elapsedFmt = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
 
+  const countdownColour =
+    confirmSecondsLeft > 10 ? tokens.text :
+    confirmSecondsLeft > 5  ? '#f59e0b' :
+    '#ef4444';
+
+  const countdownGlow = confirmSecondsLeft <= 5 ? '0 0 12px #ef444488' : 'none';
+
   const headerStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 12px', fontFamily: tokens.font,
   };
@@ -392,12 +399,28 @@ const MatchmakingPage: React.FC = () => {
                   <DotIndicator confirmed={mmOppConfirmed} label={mmOppName} />
                 </div>
 
-                <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: tokens.textMuted, minHeight: 18 }}>
-                  {mmMyConfirmed === null && 'Do you want to play?'}
-                  {mmMyConfirmed === true  && mmOppConfirmed === null  && `Waiting for ${mmOppName}…`}
-                  {mmMyConfirmed === true  && mmOppConfirmed === true  && 'Starting game…'}
-                  {mmMyConfirmed === true  && mmOppConfirmed === false && `${mmOppName} declined. Re-queuing…`}
-                  {mmMyConfirmed === false && 'You declined.'}
+                <div style={{ textAlign: 'center', marginTop: 20 }}>
+                  {mmMyConfirmed !== false && (
+                    <div style={{
+                      fontSize: 42,
+                      fontWeight: 900,
+                      fontFamily: 'monospace',
+                      color: countdownColour,
+                      textShadow: countdownGlow,
+                      lineHeight: 1,
+                      marginBottom: 8,
+                      transition: 'color 0.3s, text-shadow 0.3s',
+                    }}>
+                      {Math.max(0, confirmSecondsLeft)}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 13, color: tokens.textMuted, minHeight: 18 }}>
+                    {mmMyConfirmed === null && `Do you want to play? (${Math.max(0, confirmSecondsLeft)}s)`}
+                    {mmMyConfirmed === true  && mmOppConfirmed === null  && `Waiting for ${mmOppName}… (${Math.max(0, confirmSecondsLeft)}s)`}
+                    {mmMyConfirmed === true  && mmOppConfirmed === true  && 'Starting game…'}
+                    {mmMyConfirmed === true  && mmOppConfirmed === false && `${mmOppName} declined. Re-queuing…`}
+                    {mmMyConfirmed === false && 'You declined.'}
+                  </div>
                 </div>
               </div>
             </Glass>
