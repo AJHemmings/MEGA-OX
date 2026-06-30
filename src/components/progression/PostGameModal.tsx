@@ -49,6 +49,46 @@ const RESULT_CONFIG = {
   draw: { eyebrow: 'DRAW',    headline: 'Draw',      color: tokens.draw, bg: 'linear-gradient(135deg, rgba(160,174,192,0.20), rgba(124,77,255,0.15))' },
 } as const;
 
+interface RewardsFallbackModalProps {
+  gameResult?: 'win' | 'loss' | 'draw';
+  opponent?: string;
+  onContinue: () => void;
+}
+
+export const RewardsFallbackModal: React.FC<RewardsFallbackModalProps> = ({ gameResult, opponent, onContinue }) => {
+  const cfg = gameResult ? RESULT_CONFIG[gameResult] : null;
+  const cardWidth = { maxWidth: 440, width: 'calc(100% - 40px)' };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,13,31,0.85)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, fontFamily: tokens.font }}>
+      <Glass padding={0} style={{ ...cardWidth, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', padding: '28px 22px', background: cfg?.bg ?? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', textAlign: 'center', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, ${cfg?.color ?? tokens.textMuted}44 0%, transparent 70%)`, pointerEvents: 'none' }} />
+          <div style={{ position: 'relative' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: cfg?.color ?? tokens.textMuted, letterSpacing: 1.5, marginBottom: 8 }}>
+              {cfg?.eyebrow ?? 'GAME COMPLETE'}
+            </div>
+            <div style={{ fontSize: 30, fontWeight: 900, color: tokens.text, marginBottom: 6 }}>
+              {cfg?.headline ?? 'Game Over'}
+            </div>
+            {opponent && (
+              <div style={{ fontSize: 13, color: tokens.textMuted }}>vs {opponent}</div>
+            )}
+          </div>
+        </div>
+        <div style={{ padding: '20px 22px' }}>
+          <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(249,168,37,0.08)', border: '1px solid rgba(249,168,37,0.20)', marginBottom: 20, textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: tokens.textMuted, lineHeight: 1.5 }}>
+              Rewards couldn't be processed this time. They'll be applied automatically next time you log in.
+            </div>
+          </div>
+          <PrimaryButton onClick={onContinue} fullWidth>Continue</PrimaryButton>
+        </div>
+      </Glass>
+    </div>
+  );
+};
+
 export const PostGameModal: React.FC<PostGameModalProps> = ({
   result, level, xpIntoLevel, xpNeededForLevel, xpToNext,
   onContinue, gameResult, opponent, matchType, onRematch, opponentId,
