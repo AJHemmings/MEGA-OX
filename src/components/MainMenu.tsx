@@ -24,6 +24,8 @@ import { XPProgressBar } from './progression/XPProgressBar';
 import NewsSlideshow from './layout/NewsSlideshow';
 import { Modal } from './modal';
 import ReportBugModal from './common/ReportBugModal';
+import { callPostGameHandler } from '../lib/postGame';
+import { PostGameModal, PostGameResult } from './progression/PostGameModal';
 
 // ── helpers ───────────────────────────────────────────────────
 
@@ -250,6 +252,9 @@ interface LayoutProps {
   navigate: ReturnType<typeof useNavigate>;
   adminRole: string | null;
   user: { id: string } | null;
+  hasPendingRewards: boolean;
+  recoveryLoading: boolean;
+  onRecover: () => void;
 }
 
 const MOBILE_NAV = [
@@ -260,7 +265,7 @@ const MOBILE_NAV = [
 ];
 
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, navigate, adminRole, user,
+  profile, progression, recentGames, initial, onPlay, onMode, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bugModalOpen, setBugModalOpen] = useState(false);
@@ -352,7 +357,27 @@ const MobileLayout: React.FC<LayoutProps> = ({
       }}>
         MEGA OX
       </span>
-      <CreditChip amount={progression.credits} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {hasPendingRewards && (
+          <button
+            onClick={onRecover}
+            disabled={recoveryLoading}
+            style={{
+              fontSize: 10, fontWeight: 700, color: '#f9a825',
+              padding: '3px 8px', borderRadius: 20,
+              background: 'rgba(249,168,37,0.12)',
+              border: '1px solid rgba(249,168,37,0.30)',
+              whiteSpace: 'nowrap' as const,
+              cursor: recoveryLoading ? 'default' : 'pointer',
+              fontFamily: tokens.font,
+              opacity: recoveryLoading ? 0.6 : 1,
+            }}
+          >
+            {recoveryLoading ? 'Recovering…' : 'Request recovery'}
+          </button>
+        )}
+        <CreditChip amount={progression.credits} />
+      </div>
     </div>
 
     {/* Player card */}
@@ -471,7 +496,7 @@ const MobileLayout: React.FC<LayoutProps> = ({
 // ── desktop layout ────────────────────────────────────────────
 
 const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate, adminRole, user,
+  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [bugModalOpen, setBugModalOpen] = useState(false);
   return (
@@ -527,6 +552,24 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
 
       {/* Right cluster */}
       <div id="menu-profile" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        {hasPendingRewards && (
+          <button
+            onClick={onRecover}
+            disabled={recoveryLoading}
+            style={{
+              fontSize: 11, fontWeight: 700, color: '#f9a825',
+              padding: '4px 10px', borderRadius: 20,
+              background: 'rgba(249,168,37,0.12)',
+              border: '1px solid rgba(249,168,37,0.30)',
+              whiteSpace: 'nowrap' as const,
+              cursor: recoveryLoading ? 'default' : 'pointer',
+              fontFamily: tokens.font,
+              opacity: recoveryLoading ? 0.6 : 1,
+            }}
+          >
+            {recoveryLoading ? 'Recovering…' : 'Request recovery'}
+          </button>
+        )}
         <CreditChip amount={progression.credits} />
         <button
           onClick={() => profile && navigate(`/profile/${profile.username}`)}
@@ -719,12 +762,61 @@ const MainMenu: React.FC = () => {
   const [_activeSeason, setActiveSeason] = useState(false);
   const [_activeTournament, setActiveTournament] = useState(false);
 
+  const [hasPendingRewards, setHasPendingRewards] = useState(false);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryResult, setRecoveryResult] = useState<PostGameResult | null>(null);
+
+  const checkPendingRewards = useCallback(async () => {
+    if (!user?.id) return;
+    const [{ data: asX }, { data: asO }] = await Promise.all([
+      supabase.from('games').select('id')
+        .eq('status', 'complete').eq('player_x_id', user.id)
+        .in('player_x_rewards_status', ['pending', 'processing'])
+        .lt('player_x_rewards_retry_count', 3),
+      supabase.from('games').select('id')
+        .eq('status', 'complete').eq('player_o_id', user.id)
+        .in('player_o_rewards_status', ['pending', 'processing'])
+        .lt('player_o_rewards_retry_count', 3),
+    ]);
+    setHasPendingRewards(((asX?.length ?? 0) + (asO?.length ?? 0)) > 0);
+  }, [user?.id]);
+
+  const handleRecover = useCallback(async () => {
+    if (!user?.id || recoveryLoading) return;
+    setRecoveryLoading(true);
+    const [{ data: asX }, { data: asO }] = await Promise.all([
+      supabase.from('games').select('id')
+        .eq('status', 'complete').eq('player_x_id', user.id)
+        .in('player_x_rewards_status', ['pending', 'processing'])
+        .lt('player_x_rewards_retry_count', 3),
+      supabase.from('games').select('id')
+        .eq('status', 'complete').eq('player_o_id', user.id)
+        .in('player_o_rewards_status', ['pending', 'processing'])
+        .lt('player_o_rewards_retry_count', 3),
+    ]);
+    const gameIds = [...(asX ?? []), ...(asO ?? [])].map((g: any) => g.id);
+    let firstResult: PostGameResult | null = null;
+    for (const gameId of gameIds) {
+      const result = await callPostGameHandler(gameId).catch(() => null);
+      if (result && !result.alreadyProcessed && !firstResult) firstResult = result;
+    }
+    setRecoveryLoading(false);
+    if (firstResult) {
+      setRecoveryResult(firstResult);
+      progression.refresh();
+    }
+    // Always re-check — clears the button if everything came back alreadyProcessed
+    await checkPendingRewards();
+  }, [user?.id, recoveryLoading, progression, checkPendingRewards]);
+
   useEffect(() => {
     supabase.from('seasons').select('id').eq('status', 'active').limit(1)
       .then(({ data }) => setActiveSeason((data?.length ?? 0) > 0));
     supabase.from('tournaments').select('id').in('status', ['registration', 'active']).limit(1)
       .then(({ data }) => setActiveTournament((data?.length ?? 0) > 0));
   }, []);
+
+  useEffect(() => { checkPendingRewards(); }, [checkPendingRewards]);
 
   const startIntro = useCallback(() => {
     introJs()
@@ -765,6 +857,9 @@ const MainMenu: React.FC = () => {
     navigate,
     adminRole,
     user: user ?? null,
+    hasPendingRewards,
+    recoveryLoading,
+    onRecover: handleRecover,
   };
 
   return (
@@ -775,6 +870,18 @@ const MainMenu: React.FC = () => {
       }
 
       {isMobile && <TabBar username={profile?.username} />}
+
+      {/* Recovery rewards modal */}
+      {recoveryResult && (
+        <PostGameModal
+          result={recoveryResult}
+          level={progression.level}
+          xpIntoLevel={progression.xpIntoLevel}
+          xpNeededForLevel={progression.xpNeededForLevel}
+          xpToNext={progression.xpToNext}
+          onContinue={() => setRecoveryResult(null)}
+        />
+      )}
 
       {/* Login streak modal */}
       {streakData?.reward && !streakDismissed && (

@@ -25,8 +25,10 @@ export const useRecentGames = () => {
       .then(async ({ data }) => {
         if (!data) return;
         const formatted = await Promise.all(data.map(async (g) => {
-          const opponentId = (g.player_x_id === user.id ? g.player_o_id : g.player_x_id) ?? '';
-          const { data: opp } = await supabase.from('profiles').select('username').eq('id', opponentId).single();
+          const opponentId = g.player_x_id === user.id ? g.player_o_id : g.player_x_id;
+          const { data: opp } = opponentId
+            ? await supabase.from('profiles').select('username').eq('id', opponentId).single()
+            : { data: null };
           const myMarker = g.player_x_id === user.id ? 'X' : 'O';
           const result: 'Win' | 'Loss' | 'Draw' =
             g.winner === 'draw' ? 'Draw' :

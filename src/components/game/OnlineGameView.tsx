@@ -29,7 +29,7 @@ import {
 import { callPostGameHandler } from '../../lib/postGame';
 import { serializeGame, SerializedState } from '../../lib/gameSerializer';
 import ReportBugModal from '../common/ReportBugModal';
-import { PostGameModal, PostGameResult } from '../progression/PostGameModal';
+import { PostGameModal, PostGameResult, RewardsFallbackModal } from '../progression/PostGameModal';
 import EmojiPanel from './EmojiPanel';
 import EmojiBubble from './EmojiBubble';
 import { useProgressionContext } from '../../contexts/ProgressionContext';
@@ -301,6 +301,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const [rematchOverlay, setRematchOverlay]       = useState<'agreed' | 'opted_out' | null>(null);
   const [waitCountdown, setWaitCountdown]         = useState<number | null>(null);
   const [postGameResult, setPostGameResult]       = useState<PostGameResult | null>(null);
+  const [postGameFailed, setPostGameFailed]       = useState(false);
   const [postGameLoading, setPostGameLoading]     = useState(false);
   const [rpsResultShown, setRpsResultShown]       = useState(false);
   const [matchType, setMatchType]                 = useState<string>('friendly');
@@ -354,6 +355,8 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       if (result && !result.alreadyProcessed) {
         setPostGameResult(result);
         refreshProgression();
+      } else if (!result) {
+        setPostGameFailed(true);
       }
     });
   }, [status, gameId, refreshProgression, debugBothSides]);
@@ -367,6 +370,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     rematchNavFiredRef.current = false;
     postGameCalledRef.current = false;
     setPostGameResult(null);
+    setPostGameFailed(false);
     setPostGameLoading(false);
   }, [gameId]);
 
@@ -743,6 +747,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
             xpToNext={progression.xpToNext}
             onContinue={() => setPostGameResult(null)}
             opponentId={opponentId}
+          />
+        )}
+        {postGameFailed && !postGameResult && (
+          <RewardsFallbackModal
+            gameResult={winner === 'draw' ? 'draw' : winner === myMarker ? 'win' : 'loss'}
+            opponent={opponentProfile?.username ?? undefined}
+            onContinue={() => setPostGameFailed(false)}
           />
         )}
         {bugModalOpen && (

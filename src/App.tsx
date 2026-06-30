@@ -32,6 +32,7 @@ import ShopManager from './components/admin/ShopManager';
 import AiTuner from './components/admin/AiTuner';
 import BugReportsManager from './components/admin/BugReportsManager';
 import { PresenceProvider } from './contexts/PresenceContext';
+import { ProgressionProvider } from './contexts/ProgressionContext';
 import { FriendsDrawer } from './components/friends/FriendsDrawer';
 import { supabase } from './lib/supabase';
 
@@ -203,7 +204,9 @@ const AppShell: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppShell />
+      <ProgressionProvider>
+        <AppShell />
+      </ProgressionProvider>
     </AuthProvider>
   );
 };
