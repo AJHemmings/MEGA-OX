@@ -88,9 +88,7 @@ Deno.serve(async (req) => {
   const statusCol = myMarker === 'X' ? 'player_x_rewards_status' : 'player_o_rewards_status'
   const retryCol = myMarker === 'X' ? 'player_x_rewards_retry_count' : 'player_o_rewards_retry_count'
 
-  if (myRewardsStatus === 'processing') {
-    return new Response(JSON.stringify({ processing: true }), { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-  }
+  // Early-exit for terminal / in-flight states before attempting the atomic claim
   if (myRewardsStatus === 'complete') {
     return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
@@ -98,7 +96,31 @@ Deno.serve(async (req) => {
     return new Response('Permanently failed', { status: 422, headers: corsHeaders })
   }
 
-  await supabase.from('games').update({ [statusCol]: 'processing' }).eq('id', gameId)
+  // Atomic claim: UPDATE only succeeds if status is still 'pending'.
+  // This closes the race window — two simultaneous requests can't both claim the same game.
+  const { data: claimed } = await supabase
+    .from('games')
+    .update({ [statusCol]: 'processing' })
+    .eq('id', gameId)
+    .eq(statusCol, 'pending')
+    .select('id')
+
+  if (!claimed || claimed.length === 0) {
+    // Another request already moved the status out of 'pending'
+    const { data: current } = await supabase
+      .from('games')
+      .select(statusCol)
+      .eq('id', gameId)
+      .single()
+    const currentStatus = current?.[statusCol as keyof typeof current]
+    if (currentStatus === 'complete') {
+      return new Response(JSON.stringify({ alreadyProcessed: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    if (currentStatus === 'processing') {
+      return new Response(JSON.stringify({ processing: true }), { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    return new Response('Concurrent request', { status: 409, headers: corsHeaders })
+  }
 
   try {
     // NOTE: game_moves currently only records the final move (1 row per game), so a
