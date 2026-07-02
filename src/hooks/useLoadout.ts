@@ -43,7 +43,7 @@ export function useLoadout(playerId: string | undefined) {
     setLoadout(l => { prev = l[slot]; return { ...l, [slot]: itemId }; });
     const { error } = await supabase
       .from('profiles')
-      .update({ [slot]: itemId })
+      .update({ [slot]: itemId } as Partial<Loadout>)
       .eq('id', playerId);
     if (error) {
       setLoadout(l => ({ ...l, [slot]: prev }));
