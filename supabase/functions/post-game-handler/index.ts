@@ -82,7 +82,11 @@ Deno.serve(async (req) => {
 
   // Each player processes their own rewards independently — use per-player columns so
   // the second player is not blocked by the first player's rewards_status.
-  const myMarker = game.player_x_id === userId ? 'X' : 'O'
+  // Self-play games (Local 2-player, same user as both markers) can't be disambiguated
+  // by userId alone — fall back to whichever slot hasn't been claimed yet.
+  const myMarker = game.player_x_id === game.player_o_id
+    ? (game.player_x_rewards_status !== 'complete' ? 'X' : 'O')
+    : (game.player_x_id === userId ? 'X' : 'O')
   const myRewardsStatus = myMarker === 'X' ? game.player_x_rewards_status : game.player_o_rewards_status
   const myRewardsRetryCount = myMarker === 'X' ? game.player_x_rewards_retry_count : game.player_o_rewards_retry_count
   const statusCol = myMarker === 'X' ? 'player_x_rewards_status' : 'player_o_rewards_status'

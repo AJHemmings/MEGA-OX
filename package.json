@@ -9,7 +9,7 @@
     "test": "react-scripts test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.2",
+    "@supabase/supabase-js": "^2.110.0",
     "intro.js": "^8.3.2",
     "leader-line-new": "^1.1.9",
     "lottie-react": "^2.4.1",

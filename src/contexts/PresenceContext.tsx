@@ -55,21 +55,21 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
             await channel.track({ userId: user.id, status: 'online' });
           }
           if (status === 'CHANNEL_ERROR') {
-            channelRef.current?.unsubscribe();
+            if (channelRef.current) await supabase.removeChannel(channelRef.current);
             channelRef.current = null;
             retryTimerRef.current = setTimeout(join, 3000);
           }
         });
     }
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_IN') {
-        channelRef.current?.unsubscribe();
+        if (channelRef.current) await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
         join();
       }
       if (event === 'SIGNED_OUT') {
-        channelRef.current?.unsubscribe();
+        if (channelRef.current) await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
         if (isMountedRef.current) setPresenceMap({});
       }
@@ -78,7 +78,7 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMountedRef.current = false;
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-      channelRef.current?.unsubscribe();
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
       listener.subscription.unsubscribe();
     };
   }, []);

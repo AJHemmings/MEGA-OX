@@ -172,7 +172,7 @@ export const useOnlineGame = (gameId: string) => {
               updatePayload.player_o_id = newPlayerOId;
             }
             // Update game first so joiner's fetchGameState sees the new status
-            await supabase.from('games').update(updatePayload).eq('id', gameId);
+            await supabase.from('games').update(updatePayload as any).eq('id', gameId);
             await (supabase as any).from('rps_picks').delete().eq('game_id', gameId);
             // Advance creator's own state without waiting for CDC
             setStatus(prev => advanceStatus(prev, 'active'));
@@ -563,7 +563,7 @@ export const useOnlineGame = (gameId: string) => {
     // Reliable path: write to DB — delivered via postgres_changes regardless of WebSocket state.
     // Broadcast fallback to REST API does not reliably fan out to WebSocket subscribers.
     const col = myMarker === 'X' ? 'rematch_x_intent' : 'rematch_o_intent';
-    supabase.from('games').update({ [col]: intent }).eq('id', gameId);
+    supabase.from('games').update({ [col]: intent } as any).eq('id', gameId);
     // Fast path: presence + broadcast for immediate delivery on healthy connections
     channelRef.current?.track({ user_id: user?.id, rematch_intent: intent });
     channelRef.current?.send({ type: 'broadcast', event: 'rematch_intent', payload: { intent } });
