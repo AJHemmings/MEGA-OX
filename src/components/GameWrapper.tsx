@@ -6,14 +6,7 @@ import MacroBoard from "./MacroBoard";
 import { useGameLogic } from "../hooks/useGameLogic";
 import { Modal } from "./modal";
 import { SkinProvider } from '../contexts/SkinContext';
-import {
-  DEFAULT_BOARD_SKIN,
-  DEFAULT_MARKER_X_SKIN,
-  DEFAULT_MARKER_O_SKIN,
-  DEFAULT_WON_BOARD_X_SKIN,
-  DEFAULT_WON_BOARD_O_SKIN,
-} from '../skins/defaults';
-import { GameSkins } from '../skins/types';
+import { DEFAULT_GAME_SKINS } from '../skins/defaults';
 import { playMarkerPlaced, playMicroBoardWon, playGameWon } from '../lib/sounds';
 import { tokens } from '../styles/tokens';
 import PageBackground from './common/PageBackground';
@@ -23,16 +16,9 @@ import SecondaryButton from './common/SecondaryButton';
 import Pill from './common/Pill';
 import BackButton from './common/BackButton';
 import { useIsMobile } from '../hooks/useIsMobile';
-
-const defaultGameSkins: GameSkins = {
-  boardSkin:      DEFAULT_BOARD_SKIN,
-  p1MarkerSkin:   DEFAULT_MARKER_X_SKIN,
-  p2MarkerSkin:   DEFAULT_MARKER_O_SKIN,
-  p1WonBoardSkin: DEFAULT_WON_BOARD_X_SKIN,
-  p2WonBoardSkin: DEFAULT_WON_BOARD_O_SKIN,
-};
-
-const BOARD_NAMES = ['Top-Left', 'Top', 'Top-Right', 'Left', 'Center', 'Right', 'Bottom-Left', 'Bottom', 'Bottom-Right'];
+import TurnPill from './game/TurnPill';
+import ScoreChip from './game/ScoreChip';
+import BoardCanvas from './game/BoardCanvas';
 
 interface GameWrapperProps {
   gameMode: "single" | "local";
@@ -84,19 +70,6 @@ const PlayerCard: React.FC<{
     </div>
   );
 };
-
-const ScoreChip: React.FC<{ x: number; o: number }> = ({ x, o }) => (
-  <div style={{
-    padding: '4px 8px', borderRadius: 10,
-    background: 'rgba(255,255,255,0.06)',
-    fontSize: 13, fontWeight: 900, fontFamily: 'monospace',
-    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, color: tokens.text,
-  }}>
-    <span style={{ color: tokens.accent }}>{x}</span>
-    <span style={{ color: tokens.textMuted }}>:</span>
-    <span style={{ color: tokens.loss }}>{o}</span>
-  </div>
-);
 
 // ─── Main component ───────────────────────────────────────────────
 
@@ -193,10 +166,6 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   const oIsActive = !gameOver && activeMarker === Marker.O;
   const isMyTurn  = !gameOver && (gameMode === 'local' || !isAiTurn);
 
-  const boardConstraint = game.nextMicroBoardIndex !== null
-    ? `PLAY IN ${BOARD_NAMES[game.nextMicroBoardIndex].toUpperCase()} BOARD`
-    : 'FREE CHOICE';
-
   const matchType    = demoMode ? 'DEMO MODE' : gameMode === 'single' ? 'TRAINING' : 'LOCAL';
   const pillVariant  = demoMode ? 'purple' : gameMode === 'single' ? 'gold' : 'teal';
 
@@ -226,16 +195,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
 
       {/* Turn pill */}
       {!gameOver && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-          {isMyTurn
-            ? <div style={{ padding: '6px 14px', borderRadius: tokens.rPill, background: 'rgba(0,212,170,0.15)', border: '1px solid rgba(0,212,170,0.35)', color: tokens.accent, fontSize: 11, fontWeight: 800, letterSpacing: 0.4 }}>
-                ▪ {boardConstraint}
-              </div>
-            : <div style={{ padding: '6px 14px', borderRadius: tokens.rPill, background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.35)', color: tokens.loss, fontSize: 11, fontWeight: 800, letterSpacing: 0.4 }}>
-                AI thinking…
-              </div>
-          }
-        </div>
+        <TurnPill isMyTurn={isMyTurn} nextMicroBoardIndex={game.nextMicroBoardIndex} waitingText="AI thinking…" />
       )}
 
       {/* Demo subtitle */}
@@ -274,29 +234,19 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
         </div>
       </Modal>
 
-      {/* Board canvas — scale to fit viewport while keeping all internal pixel values intact */}
-      {(() => {
-        const BOARD_PX = 490;
-        const availW = Math.min(524, window.innerWidth) - 28;
-        const scale  = Math.min(1, availW / BOARD_PX);
-        return (
-          <div style={{ overflow: 'hidden', height: Math.round(BOARD_PX * scale) }}>
-            <div style={{ width: BOARD_PX, height: BOARD_PX, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-              <MacroBoard
-                microBoards={microBoardsData}
-                onPlaceMarker={(micro, cell) => {
-                  if (gameMode === "single" && isAiTurn) return;
-                  const ok = onPlaceMarker(micro, cell);
-                  if (ok) playMarkerPlaced();
-                }}
-                nextMicroBoardIndex={game.nextMicroBoardIndex}
-                macroWinner={winner === Marker.None ? "" : winner}
-                lastMove={lastMove}
-              />
-            </div>
-          </div>
-        );
-      })()}
+      <BoardCanvas>
+        <MacroBoard
+          microBoards={microBoardsData}
+          onPlaceMarker={(micro, cell) => {
+            if (gameMode === "single" && isAiTurn) return;
+            const ok = onPlaceMarker(micro, cell);
+            if (ok) playMarkerPlaced();
+          }}
+          nextMicroBoardIndex={game.nextMicroBoardIndex}
+          macroWinner={winner === Marker.None ? "" : winner}
+          lastMove={lastMove}
+        />
+      </BoardCanvas>
 
       {/* Win result */}
       {gameOver && !onGameOver && (
@@ -320,7 +270,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
 
   // Desktop: wider container, same single-column layout (board is narrow by design)
   return (
-    <SkinProvider skins={defaultGameSkins}>
+    <SkinProvider skins={DEFAULT_GAME_SKINS}>
       <PageBackground>
         <div style={{ minHeight: '100vh', paddingBottom: 40, paddingTop: isMobile ? 0 : 20 }}>
           {chrome}

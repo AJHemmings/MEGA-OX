@@ -6,14 +6,10 @@ import { Marker } from '../../models/Game';
 import MacroBoard from '../MacroBoard';
 import { useOnlineGame } from '../../hooks/useOnlineGame';
 import { SkinProvider } from '../../contexts/SkinContext';
-import {
-  DEFAULT_BOARD_SKIN,
-  DEFAULT_MARKER_X_SKIN,
-  DEFAULT_MARKER_O_SKIN,
-  DEFAULT_WON_BOARD_X_SKIN,
-  DEFAULT_WON_BOARD_O_SKIN,
-} from '../../skins/defaults';
-import { GameSkins } from '../../skins/types';
+import { DEFAULT_GAME_SKINS } from '../../skins/defaults';
+import TurnPill from './TurnPill';
+import ScoreChip from './ScoreChip';
+import BoardCanvas from './BoardCanvas';
 import RPSScreen from './RPSScreen';
 import RPSResultScreen from './RPSResultScreen';
 import RematchOutcomeOverlay from './RematchOutcomeOverlay';
@@ -45,17 +41,8 @@ import Pill from '../common/Pill';
 import BackButton from '../common/BackButton';
 import { LevelBadge } from '../progression/LevelBadge';
 
-const defaultGameSkins: GameSkins = {
-  boardSkin:      DEFAULT_BOARD_SKIN,
-  p1MarkerSkin:   DEFAULT_MARKER_X_SKIN,
-  p2MarkerSkin:   DEFAULT_MARKER_O_SKIN,
-  p1WonBoardSkin: DEFAULT_WON_BOARD_X_SKIN,
-  p2WonBoardSkin: DEFAULT_WON_BOARD_O_SKIN,
-};
-
 const RING_RADIUS = 36;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-const BOARD_NAMES = ['Top-Left', 'Top', 'Top-Right', 'Left', 'Center', 'Right', 'Bottom-Left', 'Bottom', 'Bottom-Right'];
 
 const CountdownRing: React.FC<{ seconds: number; total: number }> = ({ seconds, total }) => {
   const strokeDashoffset = RING_CIRCUMFERENCE * (1 - seconds / total);
@@ -178,27 +165,17 @@ const OnlineGameMobile: React.FC<OnlineGameLayoutProps> = ({
     {vsStrip}
     {disconnectWarning}
 
-    {/* Board canvas — scale to fit viewport while keeping all internal pixel values intact */}
     <div style={{ position: 'relative' }}>
       {debugTurnPill}
-      {(() => {
-        const BOARD_PX = 490;
-        const availW = Math.min(524, window.innerWidth) - 28;
-        const scale  = Math.min(1, availW / BOARD_PX);
-        return (
-          <div style={{ overflow: 'hidden', height: Math.round(BOARD_PX * scale) }}>
-            <div style={{ width: BOARD_PX, height: BOARD_PX, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-              <MacroBoard
-                microBoards={microBoardsData}
-                onPlaceMarker={handlePlaceMarker}
-                nextMicroBoardIndex={nextMicroBoardIndex}
-                macroWinner={macroWinner}
-                lastMove={null}
-              />
-            </div>
-          </div>
-        );
-      })()}
+      <BoardCanvas>
+        <MacroBoard
+          microBoards={microBoardsData}
+          onPlaceMarker={handlePlaceMarker}
+          nextMicroBoardIndex={nextMicroBoardIndex}
+          macroWinner={macroWinner}
+          lastMove={null}
+        />
+      </BoardCanvas>
     </div>
 
     {turnPill}
@@ -575,10 +552,6 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   const macroWinner = game.macroBoard.winner === Marker.None ? '' : game.macroBoard.winner;
 
-  const boardConstraint = game.nextMicroBoardIndex !== null
-    ? `▪ PLAY IN ${BOARD_NAMES[game.nextMicroBoardIndex].toUpperCase()} BOARD`
-    : '▪ FREE CHOICE';
-
   const matchTypePillVariant = matchType === 'ranked' ? 'red' : matchType === 'friendly' ? 'teal' : 'gold';
 
   const myColor  = myMarker === 'X' ? tokens.accent : tokens.loss;
@@ -638,11 +611,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       </div>
 
       {/* Score chip */}
-      <div style={{ alignSelf: 'center', padding: '4px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', fontSize: 13, fontWeight: 900, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, color: tokens.text }}>
-        <span style={{ color: tokens.accent }}>{game.winCounts[Marker.X]}</span>
-        <span style={{ color: tokens.textMuted }}>:</span>
-        <span style={{ color: tokens.loss }}>{game.winCounts[Marker.O]}</span>
-      </div>
+      <ScoreChip x={game.winCounts[Marker.X]} o={game.winCounts[Marker.O]} style={{ alignSelf: 'center' }} />
 
       {/* Opponent column */}
       <div style={{
@@ -676,16 +645,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   // ── Turn pill ──
   const turnPill = status === 'active' && (
-    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-      {isMyTurn
-        ? <div style={{ padding: '6px 14px', borderRadius: tokens.rPill, background: 'rgba(0,212,170,0.15)', border: '1px solid rgba(0,212,170,0.35)', color: tokens.accent, fontSize: 11, fontWeight: 800, letterSpacing: 0.4 }}>
-            {boardConstraint}
-          </div>
-        : <div style={{ padding: '6px 14px', borderRadius: tokens.rPill, background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.35)', color: tokens.loss, fontSize: 11, fontWeight: 800, letterSpacing: 0.4 }}>
-            Opponent thinking
-          </div>
-      }
-    </div>
+    <TurnPill isMyTurn={isMyTurn} nextMicroBoardIndex={game.nextMicroBoardIndex} waitingText="Opponent thinking" />
   );
 
   // ── Complete state ──
@@ -733,7 +693,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   };
 
   return (
-    <SkinProvider skins={defaultGameSkins}>
+    <SkinProvider skins={DEFAULT_GAME_SKINS}>
       <PageBackground>
         {isMobile ? <OnlineGameMobile {...layoutProps} /> : <OnlineGameDesktop {...layoutProps} />}
 
