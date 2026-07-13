@@ -2,7 +2,7 @@
 // Provides three difficulty levels: Easy (random), Medium (rule-based), Hard (minimax).
 // No React imports — pure logic only.
 
-import { Game, Marker, MicroBoard } from "../models/Game";
+import { Game, Marker, MicroBoard, WIN_LINES } from "../models/Game";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -158,16 +158,6 @@ function filterPoisonSends(
 
 // ─── Heuristic evaluation for minimax ────────────────────────────────────────
 
-const MACRO_LINES = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6],
-];
 
 /**
  * Static evaluation of a game position from aiMarker's perspective.
@@ -179,7 +169,7 @@ function evaluate(game: Game, aiMarker: Marker): number {
   let score = 0;
 
   // Score each macro win line by how many micro boards each side owns in it
-  for (const line of MACRO_LINES) {
+  for (const line of WIN_LINES) {
     let aiCount = 0;
     let oppCount = 0;
 

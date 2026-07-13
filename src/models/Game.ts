@@ -16,6 +16,34 @@ export type Player = {
   marker: Marker;
 };
 
+// The 8 winning lines of a 3x3 board (rows, columns, diagonals).
+// Shared by micro boards, the macro board, and the AI evaluator.
+export const WIN_LINES = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8], // rows
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8], // cols
+  [0, 4, 8],
+  [2, 4, 6], // diagonals
+] as const;
+
+// Given the 9 markers of a 3x3 board (flat, index 0-8), return the marker
+// completing a winning line, or Marker.None if there is no winner.
+export function findLineWinner(markers: Marker[]): Marker {
+  for (const [a, b, c] of WIN_LINES) {
+    if (
+      markers[a] !== Marker.None &&
+      markers[a] === markers[b] &&
+      markers[a] === markers[c]
+    ) {
+      return markers[a];
+    }
+  }
+  return Marker.None;
+}
+
 export class Cell {
   marker: Marker;
 
@@ -53,33 +81,10 @@ export class MicroBoard {
     this.isFull = false;
   }
 
-  // Check if this microboard is won and return the winning Marker if so
-  // Existing comment: // Check if this microboard is won and return true if so
-  // Added: returns the Marker representing the winner or Marker.None if none.
+  // Check if this microboard is won; updates and returns the winning Marker
+  // (Marker.None if no winner).
   checkWinner(): Marker {
-    const lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8], // rows
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8], // cols
-      [0, 4, 8],
-      [2, 4, 6], // diagonals
-    ];
-
-    for (const [a, b, c] of lines) {
-      if (
-        this.cells[a].marker !== Marker.None &&
-        this.cells[a].marker === this.cells[b].marker &&
-        this.cells[a].marker === this.cells[c].marker
-      ) {
-        this.winner = this.cells[a].marker;
-        return this.winner;
-      }
-    }
-
-    this.winner = Marker.None;
+    this.winner = findLineWinner(this.cells.map((cell) => cell.marker));
     return this.winner;
   }
 
@@ -119,34 +124,9 @@ export class MacroBoard {
   }
 
   // Check if macro board is won according to micro board wins
-  // We map each microboard's winner into a 3x3 macro state and check classic
-  // Naughts and Crosses winning lines across those microboard winners.
+  // Each microboard's winner acts as one cell of a classic 3x3 board.
   checkWinner(): Marker {
-    const lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6],
-    ];
-
-    // Map microboard winners to macro board cells - empty if no winner microboard
-    const macroState = this.microBoards.map((mb) => mb.winner);
-
-    for (const [a, b, c] of lines) {
-      if (
-        macroState[a] !== Marker.None &&
-        macroState[a] === macroState[b] &&
-        macroState[a] === macroState[c]
-      ) {
-        this.winner = macroState[a];
-        return this.winner;
-      }
-    }
-    this.winner = Marker.None;
+    this.winner = findLineWinner(this.microBoards.map((mb) => mb.winner));
     return this.winner;
   }
 }
