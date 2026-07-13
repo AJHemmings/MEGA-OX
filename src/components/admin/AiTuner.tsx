@@ -100,7 +100,7 @@ const AiTuner: React.FC = () => {
       { difficulty: 'hard',   rule_name: 'minimax_depth',          strength: draft.hard.minimax_depth,            updated_by: user?.id ?? null },
     ];
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('ai_config')
       .upsert(rows, { onConflict: 'difficulty,rule_name' });
 

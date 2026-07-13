@@ -37,7 +37,7 @@ export function useGameInvites(): UseGameInvitesReturn {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('game_invites')
       .select(`
         id, challenger_id, challenged_id, game_id, status, created_at,
@@ -50,7 +50,11 @@ export function useGameInvites(): UseGameInvitesReturn {
 
     if (error) { console.error('useGameInvites fetch error:', error); setLoading(false); return; }
 
-    const rows: GameInvite[] = data ?? [];
+    const rows: GameInvite[] = (data ?? []).map(r => ({
+      ...r,
+      status: r.status as GameInvite['status'],
+      created_at: r.created_at ?? '',
+    }));
     const sent = rows.filter(r => r.challenger_id === user.id);
     const received = rows.filter(r => r.challenged_id === user.id && r.status === 'pending');
 
@@ -93,7 +97,7 @@ export function useGameInvites(): UseGameInvitesReturn {
 
     if (gameErr || !game) throw new Error('Could not create game');
 
-    const { error: inviteErr } = await (supabase as any).from('game_invites').insert({
+    const { error: inviteErr } = await supabase.from('game_invites').insert({
       challenger_id: user.id,
       challenged_id: challengedId,
       game_id: game.id,
@@ -113,11 +117,11 @@ export function useGameInvites(): UseGameInvitesReturn {
 
     if (accept) {
       await supabase.from('games').update({ player_o_id: user.id, status: 'rps' }).eq('id', invite.game_id);
-      await (supabase as any).from('game_invites').update({ status: 'accepted' }).eq('id', inviteId);
+      await supabase.from('game_invites').update({ status: 'accepted' }).eq('id', inviteId);
       await fetchInvites();
       return invite.game_id;
     } else {
-      await (supabase as any).from('game_invites').update({ status: 'declined' }).eq('id', inviteId);
+      await supabase.from('game_invites').update({ status: 'declined' }).eq('id', inviteId);
       await supabase.from('games').delete().eq('id', invite.game_id).eq('status', 'waiting');
       await fetchInvites();
       return null;
@@ -126,7 +130,7 @@ export function useGameInvites(): UseGameInvitesReturn {
 
   async function cancelChallenge(inviteId: string) {
     const invite = sentInvites.find(i => i.id === inviteId);
-    await (supabase as any).from('game_invites').delete().eq('id', inviteId);
+    await supabase.from('game_invites').delete().eq('id', inviteId);
     if (invite?.game_id) {
       await supabase.from('games').delete().eq('id', invite.game_id).eq('status', 'waiting');
     }

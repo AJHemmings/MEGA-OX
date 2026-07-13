@@ -139,7 +139,7 @@ export const useOnlineGame = (gameId: string) => {
 
     const poll = async () => {
       if (capturedThisRound) return;
-      const { data: picks } = await (supabase as any)
+      const { data: picks } = await supabase
         .from('rps_picks')
         .select('user_id, pick')
         .eq('game_id', gameId) as { data: Array<{ user_id: string; pick: string }> | null };
@@ -161,7 +161,7 @@ export const useOnlineGame = (gameId: string) => {
           const result = resolveRPS(creatorPick as RPSPick, joinerPick as RPSPick);
           if (result === 'draw') {
             // Delete picks — both clients see 0 rows → dismissRPSResult → rpsRound++ → new round
-            await (supabase as any).from('rps_picks').delete().eq('game_id', gameId);
+            await supabase.from('rps_picks').delete().eq('game_id', gameId);
           } else {
             const creatorWins = result === 'p1';
             const newPlayerXId = creatorWins ? user.id : joinerId!;
@@ -173,7 +173,7 @@ export const useOnlineGame = (gameId: string) => {
             }
             // Update game first so joiner's fetchGameState sees the new status
             await supabase.from('games').update(updatePayload as any).eq('id', gameId);
-            await (supabase as any).from('rps_picks').delete().eq('game_id', gameId);
+            await supabase.from('rps_picks').delete().eq('game_id', gameId);
             // Advance creator's own state without waiting for CDC
             setStatus(prev => advanceStatus(prev, 'active'));
             setMyMarker(newPlayerXId === user.id ? 'X' : 'O');
@@ -548,7 +548,7 @@ export const useOnlineGame = (gameId: string) => {
   // Upsert the player's pick into rps_picks. The polling effect handles the rest.
   const submitRPSPick = useCallback(async (pick: RPSPick): Promise<boolean> => {
     if (!user || !gameId) return false;
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('rps_picks')
       .upsert({ game_id: gameId, user_id: user.id, pick }, { onConflict: 'game_id,user_id' }) as { error: { message: string } | null };
     if (error) {

@@ -16,7 +16,7 @@ export function useAiConfig() {
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
-    const { data } = await (supabase as any).from('ai_config').select('difficulty,rule_name,strength');
+    const { data } = await supabase.from('ai_config').select('difficulty,rule_name,strength');
     if (!data) { setLoading(false); return; }
 
     const next: AiConfigValues = {

@@ -38,7 +38,7 @@ export function FriendsLeaderboard({ compact = false }: FriendsLeaderboardProps)
     async function load() {
       setLoading(true);
       setError(null);
-      const { data, error: rpcError } = await (supabase as any).rpc('get_friends_leaderboard');
+      const { data, error: rpcError } = await supabase.rpc('get_friends_leaderboard');
       if (!mounted) return;
       if (rpcError) { setError("Couldn't load leaderboard."); setLoading(false); return; }
       setRows(data ?? []);

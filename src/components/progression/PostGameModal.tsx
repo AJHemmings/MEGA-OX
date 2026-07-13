@@ -109,7 +109,7 @@ export const PostGameModal: React.FC<PostGameModalProps> = ({
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('friendships')
         .select('status, requester_id')
         .or(
@@ -133,7 +133,7 @@ export const PostGameModal: React.FC<PostGameModalProps> = ({
   const handleAddFriend = async () => {
     if (!opponentId) return;
     try {
-      const { error } = await (supabase as any).rpc('send_friend_request', { p_addressee_id: opponentId });
+      const { error } = await supabase.rpc('send_friend_request', { p_addressee_id: opponentId });
       if (error) { console.error('send_friend_request error:', error); return; }
       setFriendStatus('sent');
     } catch (err) {

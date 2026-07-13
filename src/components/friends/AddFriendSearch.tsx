@@ -29,7 +29,7 @@ export function AddFriendSearch({ excludeIds }: AddFriendSearchProps) {
     const { data: { user } } = await supabase.auth.getUser();
     const allExcluded = [...new Set([user?.id ?? '', ...excludeIds])];
 
-    const { data, error: fetchError } = await (supabase as any)
+    const { data, error: fetchError } = await supabase
       .from('profiles')
       .select('id, username')
       .ilike('username', trimmed)
@@ -48,7 +48,7 @@ export function AddFriendSearch({ excludeIds }: AddFriendSearchProps) {
   async function handleSend(addresseeId: string) {
     setError(null);
     try {
-      const { error: rpcError } = await (supabase as any).rpc('send_friend_request', { p_addressee_id: addresseeId });
+      const { error: rpcError } = await supabase.rpc('send_friend_request', { p_addressee_id: addresseeId });
       if (rpcError) throw new Error(rpcError.message);
       setSentTo(prev => new Set(prev).add(addresseeId));
     } catch (e: any) {

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { serializeGame } from '../../lib/gameSerializer';
+import type { Json } from '../../lib/database.types';
 import { Game } from '../../models/Game';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
 import { tokens } from '../../styles/tokens';
@@ -177,8 +178,10 @@ const MatchmakingPage: React.FC = () => {
       .subscribe(async (status) => {
         if (status !== 'SUBSCRIBED' || !mountedRef.current) return;
         // Call RPC after subscribing so we can't miss the match event
-        const initialState = serializeGame(new Game());
-        const { data, error: rpcErr } = await (supabase as any).rpc('join_matchmaking_queue', {
+        // SerializedState is plain JSON data but lacks the index signature the
+        // generated Json type requires, hence the cast at this boundary
+        const initialState = serializeGame(new Game()) as unknown as Json;
+        const { data, error: rpcErr } = await supabase.rpc('join_matchmaking_queue', {
           p_match_type: mode,
           p_initial_state: initialState,
         });
@@ -201,19 +204,19 @@ const MatchmakingPage: React.FC = () => {
     return () => {
       queueSub.unsubscribe();
       queueChannelRef.current = null;
-      void (supabase as any).rpc('leave_matchmaking_queue');
+      void supabase.rpc('leave_matchmaking_queue');
     };
   }, [view, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCancelSearch = async () => {
-    await (supabase as any).rpc('leave_matchmaking_queue');
+    await supabase.rpc('leave_matchmaking_queue');
     navigate('/multiplayer');
   };
 
   const handleMMConfirm = useCallback(async (accept: boolean) => {
     if (!mmGameId) return;
     setMmMyConfirmed(accept);
-    await (supabase as any).rpc('confirm_match', { p_game_id: mmGameId, p_accept: accept });
+    await supabase.rpc('confirm_match', { p_game_id: mmGameId, p_accept: accept });
     if (!accept) navigate('/multiplayer');
   }, [mmGameId, navigate]);
 

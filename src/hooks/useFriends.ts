@@ -42,7 +42,7 @@ export function useFriends(): UseFriendsReturn {
 
     // Cast to `any` because `friendships` was added to the DB after the last
     // type generation run. Types will be regenerated in a later Phase 9 task.
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('friendships')
       .select(`
         requester_id,
@@ -97,12 +97,12 @@ export function useFriends(): UseFriendsReturn {
 
   async function sendFriendRequest(addresseeId: string) {
     // RPCs added after last type generation — cast to `any` until types are regenerated.
-    const { error } = await (supabase as any).rpc('send_friend_request', { p_addressee_id: addresseeId });
+    const { error } = await supabase.rpc('send_friend_request', { p_addressee_id: addresseeId });
     if (error) throw new Error(error.message);
   }
 
   async function respondToRequest(requesterId: string, action: 'accept' | 'decline' | 'block') {
-    const { error } = await (supabase as any).rpc('respond_to_friend_request', {
+    const { error } = await supabase.rpc('respond_to_friend_request', {
       p_requester_id: requesterId,
       p_action: action,
     });
@@ -114,10 +114,10 @@ export function useFriends(): UseFriendsReturn {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await Promise.all([
-      (supabase as any).from('friendships').delete().eq('requester_id', user.id).eq('addressee_id', friendId),
-      (supabase as any).from('friendships').delete().eq('requester_id', friendId).eq('addressee_id', user.id),
+      supabase.from('friendships').delete().eq('requester_id', user.id).eq('addressee_id', friendId),
+      supabase.from('friendships').delete().eq('requester_id', friendId).eq('addressee_id', user.id),
     ]);
-    await (supabase as any).from('friendships').insert({ requester_id: user.id, addressee_id: friendId, status: 'blocked' });
+    await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: friendId, status: 'blocked' });
     await fetchFriends();
   }
 
@@ -127,9 +127,9 @@ export function useFriends(): UseFriendsReturn {
 
     // Try both directions — one will match, the other is a safe no-op
     const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      (supabase as any).from('friendships').delete()
+      supabase.from('friendships').delete()
         .eq('requester_id', user.id).eq('addressee_id', friendId),
-      (supabase as any).from('friendships').delete()
+      supabase.from('friendships').delete()
         .eq('requester_id', friendId).eq('addressee_id', user.id),
     ]);
 

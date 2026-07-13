@@ -88,17 +88,17 @@ const AppShell: React.FC = () => {
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    const userId = user?.id;
-    if (!userId) {
+    if (!user?.id) {
       setPendingCount(0);
       return;
     }
+    const userId = user.id;
 
     async function refreshCount() {
       const [{ count: friendCount }, { count: inviteCount }] = await Promise.all([
-        (supabase as any).from('friendships').select('*', { count: 'exact', head: true })
+        supabase.from('friendships').select('*', { count: 'exact', head: true })
           .eq('addressee_id', userId).eq('status', 'pending'),
-        (supabase as any).from('game_invites').select('*', { count: 'exact', head: true })
+        supabase.from('game_invites').select('*', { count: 'exact', head: true })
           .eq('challenged_id', userId).eq('status', 'pending'),
       ]);
       setPendingCount((friendCount ?? 0) + (inviteCount ?? 0));
@@ -106,7 +106,7 @@ const AppShell: React.FC = () => {
 
     refreshCount();
 
-    const channel = (supabase as any)
+    const channel = supabase
       .channel(`pending-badge-${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, refreshCount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_invites' }, refreshCount)
