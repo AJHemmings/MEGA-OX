@@ -9,7 +9,6 @@ import { useLoginStreak } from '../hooks/useLoginStreak';
 import { useAdminRole } from '../hooks/useAdminRole';
 import { useTutorial } from '../hooks/useTutorial';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { supabase } from '../lib/supabase';
 import introJs from 'intro.js';
 import 'intro.js/introjs.css';
 import { tokens } from '../styles/tokens';
@@ -24,7 +23,7 @@ import { XPProgressBar } from './progression/XPProgressBar';
 import NewsSlideshow from './layout/NewsSlideshow';
 import { Modal } from './modal';
 import ReportBugModal from './common/ReportBugModal';
-import { callPostGameHandler } from '../lib/postGame';
+import { callPostGameHandler, fetchPendingRewardGameIds } from '../lib/postGame';
 import { PostGameModal, PostGameResult } from './progression/PostGameModal';
 
 // ── helpers ───────────────────────────────────────────────────
@@ -759,8 +758,6 @@ const MainMenu: React.FC = () => {
 
   const [showDifficulty, setShowDifficulty] = useState(false);
   const [streakDismissed, setStreakDismissed] = useState(false);
-  const [_activeSeason, setActiveSeason] = useState(false);
-  const [_activeTournament, setActiveTournament] = useState(false);
 
   const [hasPendingRewards, setHasPendingRewards] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
@@ -768,33 +765,14 @@ const MainMenu: React.FC = () => {
 
   const checkPendingRewards = useCallback(async () => {
     if (!user?.id) return;
-    const [{ data: asX }, { data: asO }] = await Promise.all([
-      supabase.from('games').select('id')
-        .eq('status', 'complete').eq('player_x_id', user.id)
-        .in('player_x_rewards_status', ['pending', 'processing'])
-        .lt('player_x_rewards_retry_count', 3),
-      supabase.from('games').select('id')
-        .eq('status', 'complete').eq('player_o_id', user.id)
-        .in('player_o_rewards_status', ['pending', 'processing'])
-        .lt('player_o_rewards_retry_count', 3),
-    ]);
-    setHasPendingRewards(((asX?.length ?? 0) + (asO?.length ?? 0)) > 0);
+    const gameIds = await fetchPendingRewardGameIds(user.id);
+    setHasPendingRewards(gameIds.length > 0);
   }, [user?.id]);
 
   const handleRecover = useCallback(async () => {
     if (!user?.id || recoveryLoading) return;
     setRecoveryLoading(true);
-    const [{ data: asX }, { data: asO }] = await Promise.all([
-      supabase.from('games').select('id')
-        .eq('status', 'complete').eq('player_x_id', user.id)
-        .in('player_x_rewards_status', ['pending', 'processing'])
-        .lt('player_x_rewards_retry_count', 3),
-      supabase.from('games').select('id')
-        .eq('status', 'complete').eq('player_o_id', user.id)
-        .in('player_o_rewards_status', ['pending', 'processing'])
-        .lt('player_o_rewards_retry_count', 3),
-    ]);
-    const gameIds = [...(asX ?? []), ...(asO ?? [])].map((g: any) => g.id);
+    const gameIds = await fetchPendingRewardGameIds(user.id);
     let firstResult: PostGameResult | null = null;
     for (const gameId of gameIds) {
       const result = await callPostGameHandler(gameId).catch(() => null);
@@ -808,13 +786,6 @@ const MainMenu: React.FC = () => {
     // Always re-check — clears the button if everything came back alreadyProcessed
     await checkPendingRewards();
   }, [user?.id, recoveryLoading, progression, checkPendingRewards]);
-
-  useEffect(() => {
-    supabase.from('seasons').select('id').eq('status', 'active').limit(1)
-      .then(({ data }) => setActiveSeason((data?.length ?? 0) > 0));
-    supabase.from('tournaments').select('id').in('status', ['registration', 'active']).limit(1)
-      .then(({ data }) => setActiveTournament((data?.length ?? 0) > 0));
-  }, []);
 
   useEffect(() => { checkPendingRewards(); }, [checkPendingRewards]);
 
