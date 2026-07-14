@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { callPostGameHandler } from '../lib/postGame';
+import { callPostGameHandler, fetchPendingRewardGameIds } from '../lib/postGame';
 
 interface AuthContextType {
   user: User | null;
@@ -22,28 +22,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   async function processMissedRewards(userId: string) {
-    // Query games where THIS player's per-player rewards column is still pending/processing.
-    // Two passes: once as player_x, once as player_o.
-    const [{ data: asX }, { data: asO }] = await Promise.all([
-      supabase.from('games').select('id')
-        .eq('status', 'complete')
-        .eq('player_x_id', userId)
-        .in('player_x_rewards_status', ['pending', 'processing'])
-        .lt('player_x_rewards_retry_count', 3),
-      supabase.from('games').select('id')
-        .eq('status', 'complete')
-        .eq('player_o_id', userId)
-        .in('player_o_rewards_status', ['pending', 'processing'])
-        .lt('player_o_rewards_retry_count', 3),
-    ]);
-
-    const missed = [...(asX ?? []), ...(asO ?? [])];
-    if (missed.length === 0) return;
-
-    for (const game of missed) {
-      await callPostGameHandler(game.id).catch(() => {
-        // Silent failure — will retry next login
-      });
+    try {
+      const missed = await fetchPendingRewardGameIds(userId);
+      for (const gameId of missed) {
+        await callPostGameHandler(gameId).catch(() => {
+          // Silent failure — will retry next login
+        });
+      }
+    } catch {
+      // Query failed — will retry next login
     }
   }
 

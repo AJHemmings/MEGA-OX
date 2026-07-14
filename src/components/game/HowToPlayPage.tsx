@@ -4,6 +4,7 @@ import introJs from 'intro.js';
 import 'intro.js/introjs.css';
 import LeaderLine from 'leader-line-new';
 import MacroBoard from '../MacroBoard';
+import BoardCanvas from './BoardCanvas';
 import { Game, Marker } from '../../models/Game';
 import { BEGINNER_STEPS, INTERMEDIATE_STEPS, TutorialStep } from './tutorialScript';
 
@@ -199,8 +200,10 @@ const HowToPlayPage: React.FC = () => {
     winner: mb.winner ?? '',
   })) ?? Array(9).fill({ cells: Array(9).fill(''), winner: '' });
 
+  // 14px horizontal padding matches the other game screens — BoardCanvas's
+  // scale math assumes it, so wider padding would re-introduce overflow.
   return (
-    <div style={{ minHeight: '100vh', background: '#060d1f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: "'Nunito', system-ui, sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#060d1f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 14px', fontFamily: "'Nunito', system-ui, sans-serif" }}>
 
       {/* Hide the Intro.js Next button on steps where the player must click a cell.
           Using a stylesheet rule + body class so it survives intro.js DOM rebuilds. */}
@@ -214,14 +217,16 @@ const HowToPlayPage: React.FC = () => {
         ← Exit Tutorial
       </button>
 
-      {/* The game board — same components as the real game */}
-      <MacroBoard
-        microBoards={microBoards}
-        onPlaceMarker={handlePlaceMarker}
-        nextMicroBoardIndex={game.nextMicroBoardIndex ?? null}
-        macroWinner={game.macroBoard?.winner ?? ''}
-        lastMove={null}
-      />
+      {/* The game board — same components (and same narrow-viewport scaling) as the real game */}
+      <BoardCanvas>
+        <MacroBoard
+          microBoards={microBoards}
+          onPlaceMarker={handlePlaceMarker}
+          nextMicroBoardIndex={game.nextMicroBoardIndex ?? null}
+          macroWinner={game.macroBoard?.winner ?? ''}
+          lastMove={null}
+        />
+      </BoardCanvas>
     </div>
   );
 };
