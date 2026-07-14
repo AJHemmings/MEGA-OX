@@ -2,13 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { serializeGame } from '../lib/gameSerializer';
 import { Game } from '../models/Game';
+import type { Tables } from '../lib/database.types';
 
-export interface GameInvite {
-  id: string;
-  challenger_id: string;
-  challenged_id: string;
-  game_id: string | null;
-  status: 'pending' | 'accepted' | 'declined';
+const INVITE_STATUSES = ['pending', 'accepted', 'declined'] as const;
+export type InviteStatus = (typeof INVITE_STATUSES)[number];
+const isInviteStatus = (s: string): s is InviteStatus =>
+  (INVITE_STATUSES as readonly string[]).includes(s);
+
+// Column fields derive from the generated row type so a schema change is a
+// compile error here instead of a silent runtime mismatch; status is narrowed
+// to the known union by validation at fetch time.
+export interface GameInvite extends Pick<Tables<'game_invites'>, 'id' | 'challenger_id' | 'challenged_id' | 'game_id'> {
+  status: InviteStatus;
   created_at: string;
   challenger: { username: string } | null;
   challenged: { username: string } | null;
@@ -50,11 +55,13 @@ export function useGameInvites(): UseGameInvitesReturn {
 
     if (error) { console.error('useGameInvites fetch error:', error); setLoading(false); return; }
 
-    const rows: GameInvite[] = (data ?? []).map(r => ({
-      ...r,
-      status: r.status as GameInvite['status'],
-      created_at: r.created_at ?? '',
-    }));
+    // Skip rows with a status outside the known union (e.g. a value added to
+    // the DB before this code knows about it) rather than mislabelling them.
+    const rows: GameInvite[] = (data ?? []).flatMap(r =>
+      isInviteStatus(r.status)
+        ? [{ ...r, status: r.status, created_at: r.created_at ?? '' }]
+        : []
+    );
     const sent = rows.filter(r => r.challenger_id === user.id);
     const received = rows.filter(r => r.challenged_id === user.id && r.status === 'pending');
 
@@ -90,7 +97,7 @@ export function useGameInvites(): UseGameInvitesReturn {
     const initialState = serializeGame(new Game());
     const { data: game, error: gameErr } = await supabase.from('games').insert({
       player_x_id: user.id,
-      state: initialState as any,
+      state: initialState,
       match_type: 'friendly',
       status: 'waiting',
     }).select('id').single();

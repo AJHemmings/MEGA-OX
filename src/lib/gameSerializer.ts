@@ -1,12 +1,16 @@
 import { Game, Marker } from '../models/Game';
+import type { Json } from './database.types';
 
-export interface SerializedState {
+// A type alias (not an interface) so it is structurally assignable to the
+// generated Json type — callers can pass a SerializedState to games.state
+// inserts/updates and RPC args without casting.
+export type SerializedState = {
   boards: string[][];       // [microBoardIndex][cellIndex] = 'X' | 'O' | ''
   boardWinners: string[];
   macroWinner: string;
   currentPlayerIndex: number;
   nextMicroBoardIndex: number | null;
-}
+};
 
 export const serializeGame = (game: Game): SerializedState => ({
   boards: game.macroBoard.microBoards.map(mb => mb.cells.map(c => c.marker)),
@@ -16,7 +20,10 @@ export const serializeGame = (game: Game): SerializedState => ({
   nextMicroBoardIndex: game.nextMicroBoardIndex,
 });
 
-export const deserializeGame = (state: SerializedState): Game => {
+// Accepts raw Json so DB reads (games.state) don't need per-call-site casts —
+// this line is the single trusted boundary between DB JSON and the game model.
+export const deserializeGame = (rawState: SerializedState | Json): Game => {
+  const state = rawState as SerializedState;
   const game = new Game();
   state.boards.forEach((cells, mbIdx) => {
     cells.forEach((marker, cIdx) => {

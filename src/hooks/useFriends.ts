@@ -40,8 +40,6 @@ export function useFriends(): UseFriendsReturn {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Cast to `any` because `friendships` was added to the DB after the last
-    // type generation run. Types will be regenerated in a later Phase 9 task.
     const { data, error } = await supabase
       .from('friendships')
       .select(`
@@ -96,7 +94,6 @@ export function useFriends(): UseFriendsReturn {
   }, [fetchFriends]);
 
   async function sendFriendRequest(addresseeId: string) {
-    // RPCs added after last type generation — cast to `any` until types are regenerated.
     const { error } = await supabase.rpc('send_friend_request', { p_addressee_id: addresseeId });
     if (error) throw new Error(error.message);
   }

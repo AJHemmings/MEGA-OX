@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { serializeGame } from '../../lib/gameSerializer';
-import type { Json } from '../../lib/database.types';
 import { Game } from '../../models/Game';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
 import { tokens } from '../../styles/tokens';
@@ -178,9 +177,7 @@ const MatchmakingPage: React.FC = () => {
       .subscribe(async (status) => {
         if (status !== 'SUBSCRIBED' || !mountedRef.current) return;
         // Call RPC after subscribing so we can't miss the match event
-        // SerializedState is plain JSON data but lacks the index signature the
-        // generated Json type requires, hence the cast at this boundary
-        const initialState = serializeGame(new Game()) as unknown as Json;
+        const initialState = serializeGame(new Game());
         const { data, error: rpcErr } = await supabase.rpc('join_matchmaking_queue', {
           p_match_type: mode,
           p_initial_state: initialState,
@@ -238,7 +235,7 @@ const MatchmakingPage: React.FC = () => {
 
     const { data, error: err } = await supabase.from('games').insert({
       player_x_id: user.id,
-      state: initialState as any,
+      state: initialState,
       match_type: mode,
       game_code: newCode,
       status: 'waiting',

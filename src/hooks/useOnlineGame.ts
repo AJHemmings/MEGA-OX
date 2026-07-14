@@ -102,7 +102,7 @@ export const useOnlineGame = (gameId: string) => {
       // Only apply DB state if it's at least as current as local — prevents overwriting a
       // more recent broadcast state that landed before this fetch resolved
       if (dbMoveCount >= localMoveCountRef.current) {
-        const g = deserializeGame(data.state as any);
+        const g = deserializeGame(data.state);
         setGame(g);
         localMoveCountRef.current = dbMoveCount;
       }
@@ -142,7 +142,7 @@ export const useOnlineGame = (gameId: string) => {
       const { data: picks } = await supabase
         .from('rps_picks')
         .select('user_id, pick')
-        .eq('game_id', gameId) as { data: Array<{ user_id: string; pick: string }> | null };
+        .eq('game_id', gameId);
       if (!picks) return;
 
       if (picks.length === 2) {
@@ -389,7 +389,7 @@ export const useOnlineGame = (gameId: string) => {
       if (data.state && Object.keys(data.state).length > 0) {
         const dbMoveCount = countMoves(data.state as unknown as SerializedState);
         if (dbMoveCount > localMoveCountRef.current) {
-          setGame(deserializeGame(data.state as any));
+          setGame(deserializeGame(data.state));
           localMoveCountRef.current = dbMoveCount;
         }
       }
@@ -501,7 +501,7 @@ export const useOnlineGame = (gameId: string) => {
     // The polling fallback (every 1.5s) guarantees eventual consistency.
     if (isOver) {
       const { error } = await supabase.from('games').update({
-        state: newState as any,
+        state: newState,
         next_player: gameCopy.currentPlayer.marker,
         next_micro_board: gameCopy.nextMicroBoardIndex,
         status: 'complete',
@@ -520,7 +520,7 @@ export const useOnlineGame = (gameId: string) => {
         payload: { state: newState, isOver, winner: winnerValue },
       });
       supabase.from('games').update({
-        state: newState as any,
+        state: newState,
         next_player: gameCopy.currentPlayer.marker,
         next_micro_board: gameCopy.nextMicroBoardIndex,
         status: 'active',
@@ -550,7 +550,7 @@ export const useOnlineGame = (gameId: string) => {
     if (!user || !gameId) return false;
     const { error } = await supabase
       .from('rps_picks')
-      .upsert({ game_id: gameId, user_id: user.id, pick }, { onConflict: 'game_id,user_id' }) as { error: { message: string } | null };
+      .upsert({ game_id: gameId, user_id: user.id, pick }, { onConflict: 'game_id,user_id' });
     if (error) {
       console.error('[RPS submitRPSPick] upsert failed:', error.message);
       return false;
