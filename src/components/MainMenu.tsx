@@ -765,26 +765,37 @@ const MainMenu: React.FC = () => {
 
   const checkPendingRewards = useCallback(async () => {
     if (!user?.id) return;
-    const gameIds = await fetchPendingRewardGameIds(user.id);
-    setHasPendingRewards(gameIds.length > 0);
+    try {
+      const gameIds = await fetchPendingRewardGameIds(user.id);
+      setHasPendingRewards(gameIds.length > 0);
+    } catch (err) {
+      // Transient query failure — keep the button's current state rather than
+      // hiding genuinely pending rewards.
+      console.error('checkPendingRewards failed:', err);
+    }
   }, [user?.id]);
 
   const handleRecover = useCallback(async () => {
     if (!user?.id || recoveryLoading) return;
     setRecoveryLoading(true);
-    const gameIds = await fetchPendingRewardGameIds(user.id);
-    let firstResult: PostGameResult | null = null;
-    for (const gameId of gameIds) {
-      const result = await callPostGameHandler(gameId).catch(() => null);
-      if (result && !result.alreadyProcessed && !firstResult) firstResult = result;
+    try {
+      const gameIds = await fetchPendingRewardGameIds(user.id);
+      let firstResult: PostGameResult | null = null;
+      for (const gameId of gameIds) {
+        const result = await callPostGameHandler(gameId).catch(() => null);
+        if (result && !result.alreadyProcessed && !firstResult) firstResult = result;
+      }
+      if (firstResult) {
+        setRecoveryResult(firstResult);
+        progression.refresh();
+      }
+      // Always re-check — clears the button if everything came back alreadyProcessed
+      await checkPendingRewards();
+    } catch (err) {
+      console.error('Reward recovery failed:', err);
+    } finally {
+      setRecoveryLoading(false);
     }
-    setRecoveryLoading(false);
-    if (firstResult) {
-      setRecoveryResult(firstResult);
-      progression.refresh();
-    }
-    // Always re-check — clears the button if everything came back alreadyProcessed
-    await checkPendingRewards();
   }, [user?.id, recoveryLoading, progression, checkPendingRewards]);
 
   useEffect(() => { checkPendingRewards(); }, [checkPendingRewards]);

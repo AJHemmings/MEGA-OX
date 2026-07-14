@@ -5,7 +5,7 @@ import type { PostGameResult } from '../components/progression/PostGameModal';
 // Completed games where this player's rewards are still pending/processing
 // (and haven't exhausted retries) — used to drive the "Request recovery" button.
 export async function fetchPendingRewardGameIds(userId: string): Promise<string[]> {
-  const [{ data: asX }, { data: asO }] = await Promise.all([
+  const [asX, asO] = await Promise.all([
     supabase.from('games').select('id')
       .eq('status', 'complete').eq('player_x_id', userId)
       .in('player_x_rewards_status', ['pending', 'processing'])
@@ -15,7 +15,11 @@ export async function fetchPendingRewardGameIds(userId: string): Promise<string[
       .in('player_o_rewards_status', ['pending', 'processing'])
       .lt('player_o_rewards_retry_count', 3),
   ]);
-  return [...(asX ?? []), ...(asO ?? [])].map(g => g.id);
+  // Throw rather than return [] on failure — callers must be able to tell
+  // "no pending rewards" apart from "the query failed".
+  const queryError = asX.error ?? asO.error;
+  if (queryError) throw new Error(`fetchPendingRewardGameIds failed: ${queryError.message}`);
+  return [...(asX.data ?? []), ...(asO.data ?? [])].map(g => g.id);
 }
 
 export async function callPostGameHandler(gameId: string): Promise<PostGameResult | null> {

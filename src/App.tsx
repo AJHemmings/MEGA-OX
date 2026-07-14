@@ -113,7 +113,9 @@ const AppShell: React.FC = () => {
       .subscribe();
 
     return () => { channel.unsubscribe(); };
-  }, [user]);
+    // Depend on the id, not the user object — auth token refreshes deliver a new
+    // object identity (~hourly) and would needlessly tear down the channel.
+  }, [user?.id]);
 
   return (
     <PresenceProvider>
