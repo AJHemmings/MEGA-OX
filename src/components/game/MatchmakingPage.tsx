@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { serializeGame } from '../../lib/gameSerializer';
 import { Game } from '../../models/Game';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
+import { toleranceForWaitSeconds } from '../../lib/ranked';
 import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
@@ -376,9 +377,18 @@ const MatchmakingPage: React.FC = () => {
               </div>
             </Glass>
 
-            <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: tokens.textDim, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: tokens.textDim, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: mode === 'ranked' ? 6 : 16 }}>
               ELAPSED · {elapsedFmt}
             </div>
+
+            {mode === 'ranked' && (
+              <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: tokens.accent, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 16 }}>
+                searching ±{(() => {
+                  const tol = toleranceForWaitSeconds(elapsed);
+                  return tol === Infinity ? 'any' : tol;
+                })()}
+              </div>
+            )}
 
             <SecondaryButton onClick={handleCancelSearch} fullWidth>Cancel</SecondaryButton>
           </>

@@ -110,7 +110,7 @@ const RecentGameRow: React.FC<{ game: RecentGame }> = ({ game }) => {
   );
 };
 
-const HeroCard: React.FC<{ onPlay: () => void }> = ({ onPlay }) => (
+const HeroCard: React.FC<{ onPlay: () => void; onRanked: () => void }> = ({ onPlay, onRanked }) => (
   <Glass style={{ position: 'relative', overflow: 'hidden', padding: 20 }} padding={0}>
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -137,6 +137,11 @@ const HeroCard: React.FC<{ onPlay: () => void }> = ({ onPlay }) => (
       <PrimaryButton fullWidth onClick={onPlay} style={{ fontSize: 15 }}>
         ▶&nbsp;&nbsp;Play Now
       </PrimaryButton>
+      <div style={{ marginTop: 10 }}>
+        <SecondaryButton fullWidth onClick={onRanked} style={{ fontSize: 15 }}>
+          🏆&nbsp;&nbsp;Ranked
+        </SecondaryButton>
+      </div>
     </div>
   </Glass>
 );
@@ -246,6 +251,7 @@ interface LayoutProps {
   recentGames: RecentGame[];
   initial: string;
   onPlay: () => void;
+  onRanked: () => void;
   onMode: (action: string) => void;
   onSignOut: () => void;
   navigate: ReturnType<typeof useNavigate>;
@@ -264,7 +270,7 @@ const MOBILE_NAV = [
 ];
 
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
+  profile, progression, recentGames, initial, onPlay, onRanked, onMode, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bugModalOpen, setBugModalOpen] = useState(false);
@@ -416,7 +422,7 @@ const MobileLayout: React.FC<LayoutProps> = ({
 
     {/* Hero CTA */}
     <div id="menu-play" style={{ marginBottom: 12 }}>
-      <HeroCard onPlay={onPlay} />
+      <HeroCard onPlay={onPlay} onRanked={onRanked} />
     </div>
 
     {/* Mode tiles 2×2 */}
@@ -495,7 +501,7 @@ const MobileLayout: React.FC<LayoutProps> = ({
 // ── desktop layout ────────────────────────────────────────────
 
 const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
-  profile, progression, recentGames, initial, onPlay, onMode, onSignOut, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
+  profile, progression, recentGames, initial, onPlay, onRanked, onMode, onSignOut, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [bugModalOpen, setBugModalOpen] = useState(false);
   return (
@@ -601,7 +607,7 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
       {/* Left column */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div id="menu-play">
-          <HeroCard onPlay={onPlay} />
+          <HeroCard onPlay={onPlay} onRanked={onRanked} />
         </div>
 
         {/* 3-col mode tiles */}
@@ -834,6 +840,7 @@ const MainMenu: React.FC = () => {
   const layoutProps = {
     profile, progression, recentGames, initial,
     onPlay: () => navigate('/multiplayer'),
+    onRanked: () => navigate('/matchmaking?mode=ranked&view=searching'),
     onMode: handleMode,
     onSignOut: signOut,
     navigate,
