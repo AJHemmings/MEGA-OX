@@ -64,12 +64,11 @@ export function useAdminSeasons() {
   useEffect(() => { fetch(); }, [fetch]);
 
   const setSeasonReward = useCallback(async (seasonId: string, skinId: string | null): Promise<string | null> => {
-    // Generated types mark p_skin_id as non-null `string`, but the RPC accepts NULL
-    // (SQL: `admin_set_season_reward(p_season_id uuid, p_skin_id uuid)`, used to clear the reward).
+    // Omitting p_skin_id falls back to the SQL DEFAULT NULL, which clears the reward.
     const { error: err } = await supabase.rpc('admin_set_season_reward', {
       p_season_id: seasonId,
-      p_skin_id: skinId,
-    } as any);
+      ...(skinId ? { p_skin_id: skinId } : {}),
+    });
     if (err) return err.message;
     await fetch();
     return null;
