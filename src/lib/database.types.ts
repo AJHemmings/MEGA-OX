@@ -1486,6 +1486,10 @@ export type Database = {
     Functions: {
       admin_grant_credits: { Args: { amount: number }; Returns: undefined }
       admin_grant_xp: { Args: { amount: number }; Returns: undefined }
+      admin_set_season_reward: {
+        Args: { p_season_id: string; p_skin_id: string }
+        Returns: undefined
+      }
       apply_ranked_result: { Args: { p_game_id: string }; Returns: undefined }
       cleanup_abandoned_games: { Args: never; Returns: undefined }
       confirm_match: {
