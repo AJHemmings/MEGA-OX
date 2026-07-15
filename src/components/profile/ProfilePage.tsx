@@ -6,6 +6,7 @@ import { LevelBadge } from '../progression/LevelBadge';
 import { XPProgressBar } from '../progression/XPProgressBar';
 import { useProgression } from '../../hooks/useProgression';
 import { useAchievements } from '../../hooks/useAchievements';
+import { useRanked } from '../../hooks/useRanked';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens, tierColour } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
@@ -15,6 +16,7 @@ import PrimaryButton from '../common/PrimaryButton';
 import { Flame } from '../icons';
 import BackButton from '../common/BackButton';
 import TabBar from '../common/TabBar';
+import TierBadge from '../ranked/TierBadge';
 
 interface ProfileData {
   player_id:   string;
@@ -98,6 +100,57 @@ const AchTile: React.FC<{ icon_url: string | null; unlocked: boolean; name: stri
   </div>
 );
 
+// Ranked summary card — data is always for the logged-in user (useRanked reads
+// the auth session, not the profile being viewed), so callers must gate this
+// on isOwnProfile.
+const RankedCard: React.FC<{ ranked: ReturnType<typeof useRanked> }> = ({ ranked }) => {
+  const { season, rating, loading, error } = ranked;
+
+  if (loading) return null;
+
+  const seasonLabel = season ? (season.number != null ? `Season ${season.number}` : season.name) : null;
+
+  return (
+    <Glass>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' as const }}>Ranked</span>
+        {seasonLabel && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: tokens.textDim }}>{seasonLabel}</span>
+        )}
+      </div>
+
+      {error ? (
+        <div style={{ color: tokens.textDim, fontSize: 14 }}>Couldn't load ranked stats</div>
+      ) : !season ? (
+        <div style={{ color: tokens.textDim, fontSize: 14 }}>No season running</div>
+      ) : !rating ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <TierBadge rating={null} />
+          <div style={{ color: tokens.textDim, fontSize: 14 }}>Unranked — play a Ranked match to get placed</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <TierBadge rating={rating.rating} showProgress />
+            <div style={{ textAlign: 'right' as const }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: tokens.text }}>{rating.rating}</div>
+              <div style={{ fontSize: 11, color: tokens.textMuted }}>Peak {rating.peak_rating}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: tokens.textMuted }}>
+            <span style={{ color: tokens.win, fontWeight: 700 }}>{rating.wins}W</span>
+            {' – '}
+            <span style={{ color: tokens.loss, fontWeight: 700 }}>{rating.losses}L</span>
+            {' – '}
+            <span style={{ color: tokens.draw, fontWeight: 700 }}>{rating.draws}D</span>
+            <span style={{ marginLeft: 8, color: tokens.textDim }}>· {rating.games_played} games played</span>
+          </div>
+        </div>
+      )}
+    </Glass>
+  );
+};
+
 // ────────── Mobile layout ──────────
 
 const MobileProfile: React.FC<{
@@ -107,9 +160,10 @@ const MobileProfile: React.FC<{
   isOwnProfile: boolean;
   progression: ReturnType<typeof useProgression>;
   achievements: ReturnType<typeof useAchievements>;
+  ranked: ReturnType<typeof useRanked>;
   username?: string;
   onCustomise: () => void;
-}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, username, onCustomise }) => {
+}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, ranked, username, onCustomise }) => {
   const navigate = useNavigate();
   const total = profile.wins + profile.losses + profile.draws;
   const winRate = total > 0 ? `${((profile.wins / total) * 100).toFixed(0)}%` : '—';
@@ -174,6 +228,9 @@ const MobileProfile: React.FC<{
               />
             </Glass>
           )}
+
+          {/* Ranked card — own profile only */}
+          {isOwnProfile && <RankedCard ranked={ranked} />}
 
           {/* 3-stat grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
@@ -254,8 +311,9 @@ const DesktopProfile: React.FC<{
   isOwnProfile: boolean;
   progression: ReturnType<typeof useProgression>;
   achievements: ReturnType<typeof useAchievements>;
+  ranked: ReturnType<typeof useRanked>;
   onCustomise: () => void;
-}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, onCustomise }) => {
+}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, ranked, onCustomise }) => {
   const navigate = useNavigate();
   const total = profile.wins + profile.losses + profile.draws;
   const winRate = total > 0 ? `${((profile.wins / total) * 100).toFixed(0)}%` : '—';
@@ -339,6 +397,9 @@ const DesktopProfile: React.FC<{
                 />
               </Glass>
             )}
+
+            {/* Ranked card — own profile only */}
+            {isOwnProfile && <RankedCard ranked={ranked} />}
 
             {/* 3-stat grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
@@ -514,6 +575,7 @@ const ProfilePage: React.FC = () => {
   const isOwnProfile = !!(user && profile && user.id === profile.player_id);
   const progression  = useProgression(isOwnProfile ? user?.id : undefined);
   const achievements = useAchievements(user?.id);
+  const ranked       = useRanked();
 
   if (loading) return (
     <PageBackground>
@@ -534,7 +596,7 @@ const ProfilePage: React.FC = () => {
     </PageBackground>
   );
 
-  const sharedProps = { profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, onCustomise: () => navigate('/customise') };
+  const sharedProps = { profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, ranked, onCustomise: () => navigate('/customise') };
 
   return isMobile
     ? <MobileProfile {...sharedProps} username={isOwnProfile ? profile.username : undefined} />
