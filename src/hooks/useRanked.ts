@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { tierForRating, Tier } from '../lib/ranked';
+import { tierForRating, Tier, DEFAULT_RATING } from '../lib/ranked';
 import type { Database } from '../lib/database.types';
 
 export type Season = Database['public']['Tables']['seasons']['Row'];
@@ -10,8 +10,11 @@ export type PlayerRating = Database['public']['Tables']['player_ratings']['Row']
 export interface UseRankedResult {
   season: Season | null;
   rating: PlayerRating | null;
-  tier: Tier;
+  /** null while the user has no rating row yet — render as "Unranked". */
+  tier: Tier | null;
   loading: boolean;
+  /** Set on query failure so consumers can tell "no active season" from "fetch failed". */
+  error: string | null;
   refresh: () => void;
 }
 
@@ -24,17 +27,8 @@ export const useRanked = (): UseRankedResult => {
   const [season, setSeason] = useState<Season | null>(null);
   const [rating, setRating] = useState<PlayerRating | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const mountedRef = useRef(true);
-
-  // Reset mountedRef on every (re)mount; React StrictMode runs effects twice in
-  // dev, so the body must run too — not just the cleanup.
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
@@ -42,42 +36,73 @@ export const useRanked = (): UseRankedResult => {
     if (!user?.id) {
       setSeason(null);
       setRating(null);
+      setError(null);
       setLoading(false);
       return;
     }
 
+    // Effect-local cancellation: covers unmount AND re-runs (sign-out
+    // mid-flight, overlapping refresh()) — a stale fetch chain can never
+    // write state after a newer effect run has started.
+    let cancelled = false;
+
     setLoading(true);
+    setError(null);
 
     (async () => {
-      const { data: seasonData } = await supabase
+      const { data: seasonData, error: seasonErr } = await supabase
         .from('seasons')
         .select('*')
         .eq('status', 'active')
         .maybeSingle();
 
-      if (!mountedRef.current) return;
+      if (cancelled) return;
+
+      if (seasonErr) {
+        console.error('useRanked: failed to fetch active season:', seasonErr);
+        setSeason(null);
+        setRating(null);
+        setError('Could not load ranked season.');
+        setLoading(false);
+        return;
+      }
+
       setSeason(seasonData ?? null);
 
       if (!seasonData) {
+        // Genuinely no active season (not an error).
         setRating(null);
         setLoading(false);
         return;
       }
 
-      const { data: ratingData } = await supabase
+      const { data: ratingData, error: ratingErr } = await supabase
         .from('player_ratings')
         .select('*')
         .eq('season_id', seasonData.id)
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (!mountedRef.current) return;
+      if (cancelled) return;
+
+      if (ratingErr) {
+        console.error('useRanked: failed to fetch player rating:', ratingErr);
+        setRating(null);
+        setError('Could not load your rating.');
+        setLoading(false);
+        return;
+      }
+
       setRating(ratingData ?? null);
       setLoading(false);
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, refreshKey]);
 
-  const tier = tierForRating(rating?.rating ?? 1000);
+  const tier = rating ? tierForRating(rating.rating ?? DEFAULT_RATING) : null;
 
-  return { season, rating, tier, loading, refresh };
+  return { season, rating, tier, loading, error, refresh };
 };

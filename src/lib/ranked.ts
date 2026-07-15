@@ -16,6 +16,7 @@ export const TIERS: { tier: Tier; min: number }[] = [
 export const PLACEMENT_GAMES = 10;
 export const K_PLACEMENT = 32;
 export const K_STANDARD = 16;
+export const DEFAULT_RATING = 1000;
 
 export function tierForRating(rating: number): Tier {
   for (let i = TIERS.length - 1; i >= 0; i--) {
@@ -42,4 +43,11 @@ export const TOLERANCE_SCHEDULE = [
 export function toleranceForWaitSeconds(waitSeconds: number): number {
   if (waitSeconds >= 60) return Infinity;
   return 150 + 100 * Math.floor(waitSeconds / 15);
+}
+
+// Display helper for the searching UI: "±250", or "±any" once the tolerance
+// is uncapped (never print "Infinity" at a player).
+export function formatTolerance(waitSeconds: number): string {
+  const tolerance = toleranceForWaitSeconds(waitSeconds);
+  return tolerance === Infinity ? '±any' : `±${tolerance}`;
 }

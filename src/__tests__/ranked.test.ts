@@ -1,7 +1,7 @@
 import {
   TIERS, tierForRating, progressToNextTier,
-  toleranceForWaitSeconds, TOLERANCE_SCHEDULE,
-  PLACEMENT_GAMES, K_PLACEMENT, K_STANDARD,
+  toleranceForWaitSeconds, formatTolerance, TOLERANCE_SCHEDULE,
+  PLACEMENT_GAMES, K_PLACEMENT, K_STANDARD, DEFAULT_RATING,
 } from '../lib/ranked';
 
 describe('tierForRating', () => {
@@ -42,11 +42,24 @@ describe('toleranceForWaitSeconds', () => {
   });
 });
 
+describe('formatTolerance', () => {
+  it.each([
+    [0, '±150'], [15, '±250'], [30, '±350'], [45, '±450'],
+  ])('%is waited → "%s"', (secs, label) => {
+    expect(formatTolerance(secs)).toBe(label);
+  });
+  it('never prints "Infinity" — shows ±any once uncapped', () => {
+    expect(formatTolerance(60)).toBe('±any');
+    expect(formatTolerance(3600)).toBe('±any');
+  });
+});
+
 describe('constants', () => {
   it('exposes the K schedule the SQL implements', () => {
     expect(PLACEMENT_GAMES).toBe(10);
     expect(K_PLACEMENT).toBe(32);
     expect(K_STANDARD).toBe(16);
+    expect(DEFAULT_RATING).toBe(1000);
   });
   it('tolerance schedule table matches the function', () => {
     for (const { afterSeconds, tolerance } of TOLERANCE_SCHEDULE) {
