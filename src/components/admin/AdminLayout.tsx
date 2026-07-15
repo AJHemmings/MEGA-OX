@@ -12,6 +12,7 @@ const NAV_EDITOR = [
 
 const NAV_SUPER = [
   { label: 'Shop',     path: '/admin/shop'      },
+  { label: 'Seasons',  path: '/admin/seasons'   },
   { label: 'AI Tuner', path: '/admin/ai-tuner'  },
 ];
 
