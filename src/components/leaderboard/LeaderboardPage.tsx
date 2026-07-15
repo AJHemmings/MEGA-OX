@@ -137,7 +137,7 @@ const LeaderboardPage: React.FC = () => {
             setSeasonLoading(false);
             return;
           }
-          const rows: SeasonEntry[] = (data ?? []).map((row: any) => ({
+          const rows: SeasonEntry[] = (data ?? []).map((row) => ({
             user_id: row.user_id,
             username: row.profiles?.username ?? 'Unknown',
             avatar_url: row.profiles?.avatar_url ?? null,
