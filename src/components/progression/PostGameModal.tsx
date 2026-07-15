@@ -196,7 +196,7 @@ export const PostGameModal: React.FC<PostGameModalProps> = ({
             )}
             {rankedDelta && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 }}>
-                <span style={{ fontSize: 16, fontWeight: 900, color: rankedDelta.delta >= 0 ? tokens.win : tokens.loss }}>
+                <span style={{ fontSize: 16, fontWeight: 900, color: rankedDelta.delta > 0 ? tokens.win : rankedDelta.delta < 0 ? tokens.loss : tokens.draw }}>
                   {formatRatingDelta(rankedDelta.delta)}
                 </span>
                 <TierBadge rating={rankedDelta.ratingAfter} showProgress />

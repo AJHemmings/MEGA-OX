@@ -2,6 +2,7 @@ import {
   TIERS, tierForRating, progressToNextTier,
   toleranceForWaitSeconds, formatTolerance, TOLERANCE_SCHEDULE,
   PLACEMENT_GAMES, K_PLACEMENT, K_STANDARD, DEFAULT_RATING,
+  formatRatingDelta,
 } from '../lib/ranked';
 
 describe('tierForRating', () => {
@@ -51,6 +52,19 @@ describe('formatTolerance', () => {
   it('never prints "Infinity" — shows ±any once uncapped', () => {
     expect(formatTolerance(60)).toBe('±any');
     expect(formatTolerance(3600)).toBe('±any');
+  });
+});
+
+describe('formatRatingDelta', () => {
+  it('prefixes gains with "+"', () => {
+    expect(formatRatingDelta(18)).toBe('+18');
+  });
+  it('formats losses with a true minus sign (U+2212), not a hyphen', () => {
+    expect(formatRatingDelta(-12)).toBe('−12');
+    expect(formatRatingDelta(-12)).not.toBe('-12'); // hyphen-minus regression guard
+  });
+  it('formats a zero delta as plain "0"', () => {
+    expect(formatRatingDelta(0)).toBe('0');
   });
 });
 

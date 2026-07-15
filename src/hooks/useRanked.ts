@@ -30,7 +30,13 @@ export const useRanked = (): UseRankedResult => {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
+  // Flip loading synchronously (not just in the effect) so consumers gating on
+  // `!loading` never see one render of stale pre-refresh data between the
+  // refresh() call and the effect re-running.
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setRefreshKey(k => k + 1);
+  }, []);
 
   useEffect(() => {
     if (!user?.id) {

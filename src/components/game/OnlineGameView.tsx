@@ -361,15 +361,16 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   // Local player's rating delta for this game, picked by marker — null unless
   // this was a ranked game and the rewards call returned a real (non-null) delta.
-  const localRatingDelta = matchType === 'ranked' && postGameResult
-    ? (myMarker === 'X' ? postGameResult.ratingDeltaX : postGameResult.ratingDeltaO)
+  const localRatingDelta: number | null = matchType === 'ranked' && postGameResult
+    ? (myMarker === 'X' ? postGameResult.ratingDeltaX : postGameResult.ratingDeltaO) ?? null
     : null;
 
   // Once a real delta shows up, pull the freshly-updated rating/tier so the
   // "N to next tier" progress text reflects the post-game state, not the stale
-  // pre-game snapshot useRanked loaded on mount.
+  // pre-game snapshot useRanked loaded on mount. refresh() flips loading
+  // synchronously, so the gate below hides the row until the refetch lands.
   useEffect(() => {
-    if (localRatingDelta === null || localRatingDelta === undefined) return;
+    if (localRatingDelta === null) return;
     if (rankedRefreshedRef.current) return;
     rankedRefreshedRef.current = true;
     refreshRanked();
@@ -378,7 +379,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   // Render nothing (no spinner, no "?") until the delta is a real number AND
   // the post-refresh rating has landed cleanly — degraded/loading/error states
   // all suppress the row rather than show stale or wrong data.
-  const rankedDelta = (localRatingDelta !== null && localRatingDelta !== undefined
+  const rankedDelta = (localRatingDelta !== null
     && rankedRefreshedRef.current && !rankedLoading && rankedError === null && rankedRating !== null)
     ? { delta: localRatingDelta, ratingAfter: rankedRating.rating }
     : null;
