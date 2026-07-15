@@ -5,6 +5,8 @@
 
 export type Tier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
 
+// Thresholds are mirrored in rollover_season()'s tier-reward CASE
+// (supabase/migrations/20260715000005_phase10_season_rollover.sql) — keep in sync.
 export const TIERS: { tier: Tier; min: number }[] = [
   { tier: 'Bronze',   min: Number.NEGATIVE_INFINITY },
   { tier: 'Silver',   min: 900 },

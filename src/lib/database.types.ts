@@ -1486,9 +1486,18 @@ export type Database = {
     Functions: {
       admin_grant_credits: { Args: { amount: number }; Returns: undefined }
       admin_grant_xp: { Args: { amount: number }; Returns: undefined }
+      apply_ranked_result: { Args: { p_game_id: string }; Returns: undefined }
       cleanup_abandoned_games: { Args: never; Returns: undefined }
       confirm_match: {
         Args: { p_accept: boolean; p_game_id: string }
+        Returns: undefined
+      }
+      elo_new_rating: {
+        Args: { p_k: number; p_opp: number; p_own: number; p_score: number }
+        Returns: number
+      }
+      ensure_player_rating: {
+        Args: { p_season_id: string; p_user_id: string }
         Returns: undefined
       }
       get_friends_leaderboard: {
@@ -1525,6 +1534,7 @@ export type Database = {
         Args: { p_action: string; p_requester_id: string }
         Returns: undefined
       }
+      rollover_season: { Args: never; Returns: undefined }
       send_friend_request: {
         Args: { p_addressee_id: string }
         Returns: undefined
