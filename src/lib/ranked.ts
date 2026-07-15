@@ -51,3 +51,11 @@ export function formatTolerance(waitSeconds: number): string {
   const tolerance = toleranceForWaitSeconds(waitSeconds);
   return tolerance === Infinity ? '±any' : `±${tolerance}`;
 }
+
+// Sign-format a post-game rating delta for display: "+18", "−12", "0".
+// Uses a true minus sign (U+2212), not a hyphen, to match the "+" glyph weight.
+export function formatRatingDelta(delta: number): string {
+  if (delta > 0) return `+${delta}`;
+  if (delta < 0) return `−${Math.abs(delta)}`;
+  return '0';
+}

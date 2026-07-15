@@ -8,6 +8,8 @@ import PrimaryButton from '../common/PrimaryButton';
 import SecondaryButton from '../common/SecondaryButton';
 import { Coin, SparkleIcon } from '../icons';
 import { supabase } from '../../lib/supabase';
+import { formatRatingDelta } from '../../lib/ranked';
+import TierBadge from '../ranked/TierBadge';
 
 export interface PostGameResult {
   xpAwarded: number;
@@ -41,6 +43,10 @@ interface PostGameModalProps {
   matchType?: string;
   onRematch?: () => void;
   opponentId?: string | null;
+  /** Local player's ranked rating change for this game, plus rating after applying it.
+   *  Omit/null when the game wasn't ranked, rewards are still pending, or the
+   *  server didn't return deltas (degraded path) — the row renders nothing. */
+  rankedDelta?: { delta: number; ratingAfter: number } | null;
 }
 
 type FriendStatus = 'unknown' | 'friends' | 'pending' | 'sent';
@@ -93,7 +99,7 @@ export const RewardsFallbackModal: React.FC<RewardsFallbackModalProps> = ({ game
 
 export const PostGameModal: React.FC<PostGameModalProps> = ({
   result, level, xpIntoLevel, xpNeededForLevel, xpToNext,
-  onContinue, gameResult, opponent, matchType, onRematch, opponentId,
+  onContinue, gameResult, opponent, matchType, onRematch, opponentId, rankedDelta,
 }) => {
   // Animate XP bar fill from 0 → actual on mount
   const [animatedXp, setAnimatedXp] = useState(0);
@@ -186,6 +192,14 @@ export const PostGameModal: React.FC<PostGameModalProps> = ({
                 {opponent ? `vs ${opponent}` : ''}
                 {opponent && matchType ? ' · ' : ''}
                 {matchType ?? ''}
+              </div>
+            )}
+            {rankedDelta && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 }}>
+                <span style={{ fontSize: 16, fontWeight: 900, color: rankedDelta.delta >= 0 ? tokens.win : tokens.loss }}>
+                  {formatRatingDelta(rankedDelta.delta)}
+                </span>
+                <TierBadge rating={rankedDelta.ratingAfter} showProgress />
               </div>
             )}
           </div>

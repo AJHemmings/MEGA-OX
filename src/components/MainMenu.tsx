@@ -25,6 +25,8 @@ import { Modal } from './modal';
 import ReportBugModal from './common/ReportBugModal';
 import { callPostGameHandler, fetchPendingRewardGameIds } from '../lib/postGame';
 import { PostGameModal, PostGameResult } from './progression/PostGameModal';
+import { useRanked } from '../hooks/useRanked';
+import TierBadge from './ranked/TierBadge';
 
 // ── helpers ───────────────────────────────────────────────────
 
@@ -110,41 +112,45 @@ const RecentGameRow: React.FC<{ game: RecentGame }> = ({ game }) => {
   );
 };
 
-const HeroCard: React.FC<{ onPlay: () => void; onRanked: () => void }> = ({ onPlay, onRanked }) => (
-  <Glass style={{ position: 'relative', overflow: 'hidden', padding: 20 }} padding={0}>
-    <div style={{
-      position: 'absolute', inset: 0, pointerEvents: 'none',
-      background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.12))',
-      borderRadius: tokens.glassRadius,
-    }} />
-    {/* corner glow */}
-    <div style={{
-      position: 'absolute', top: -30, right: -30,
-      width: 140, height: 140, borderRadius: '50%',
-      background: 'rgba(0,212,170,0.22)',
-      filter: 'blur(40px)', pointerEvents: 'none',
-    }} />
-    <div style={{ position: 'relative', padding: 20 }}>
+const HeroCard: React.FC<{ onPlay: () => void; onRanked: () => void }> = ({ onPlay, onRanked }) => {
+  const { rating } = useRanked();
+  return (
+    <Glass style={{ position: 'relative', overflow: 'hidden', padding: 20 }} padding={0}>
       <div style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
-        color: tokens.accent, textTransform: 'uppercase', marginBottom: 6,
-      }}>
-        Quick Play
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.12))',
+        borderRadius: tokens.glassRadius,
+      }} />
+      {/* corner glow */}
+      <div style={{
+        position: 'absolute', top: -30, right: -30,
+        width: 140, height: 140, borderRadius: '50%',
+        background: 'rgba(0,212,170,0.22)',
+        filter: 'blur(40px)', pointerEvents: 'none',
+      }} />
+      <div style={{ position: 'relative', padding: 20 }}>
+        <div style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+          color: tokens.accent, textTransform: 'uppercase', marginBottom: 6,
+        }}>
+          Quick Play
+        </div>
+        <div style={{ fontSize: 19, fontWeight: 900, color: tokens.text, marginBottom: 16 }}>
+          Multiplayer
+        </div>
+        <PrimaryButton fullWidth onClick={onPlay} style={{ fontSize: 15 }}>
+          ▶&nbsp;&nbsp;Play Now
+        </PrimaryButton>
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <SecondaryButton fullWidth onClick={onRanked} style={{ fontSize: 15 }}>
+            🏆&nbsp;&nbsp;Ranked
+          </SecondaryButton>
+          <TierBadge rating={rating?.rating ?? null} />
+        </div>
       </div>
-      <div style={{ fontSize: 19, fontWeight: 900, color: tokens.text, marginBottom: 16 }}>
-        Multiplayer
-      </div>
-      <PrimaryButton fullWidth onClick={onPlay} style={{ fontSize: 15 }}>
-        ▶&nbsp;&nbsp;Play Now
-      </PrimaryButton>
-      <div style={{ marginTop: 10 }}>
-        <SecondaryButton fullWidth onClick={onRanked} style={{ fontSize: 15 }}>
-          🏆&nbsp;&nbsp;Ranked
-        </SecondaryButton>
-      </div>
-    </div>
-  </Glass>
-);
+    </Glass>
+  );
+};
 
 interface StreakModalProps {
   current: number;
