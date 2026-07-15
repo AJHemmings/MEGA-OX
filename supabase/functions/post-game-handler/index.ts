@@ -134,19 +134,26 @@ Deno.serve(async (req) => {
     // those writes are additive and NOT idempotent on retry, so a rating failure
     // after them would re-award rewards on every retry. Failing here first means
     // every retry starts from a clean slate.
-    let ratingDeltaX: number | null | undefined
-    let ratingDeltaO: number | null | undefined
-    if (game.match_type === 'ranked') {
+    const isRanked = game.match_type === 'ranked'
+    let ratingDeltaX: number | null = null
+    let ratingDeltaO: number | null = null
+    if (isRanked) {
       const { error: rankedError } = await supabase.rpc('apply_ranked_result', { p_game_id: gameId })
       if (rankedError) throw new Error(`apply_ranked_result failed: ${rankedError.message}`)
 
-      const { data: ratingRow } = await supabase
+      // Ratings are already applied at this point — a re-select failure must NOT
+      // throw (that would burn a retry and re-run the non-idempotent reward
+      // pipeline). Log it and fall back to null deltas in the response.
+      const { data: ratingRow, error: ratingSelectError } = await supabase
         .from('games')
         .select('rating_delta_x, rating_delta_o')
         .eq('id', gameId)
         .single()
-      ratingDeltaX = ratingRow?.rating_delta_x
-      ratingDeltaO = ratingRow?.rating_delta_o
+      if (ratingSelectError) {
+        console.error('post-game-handler: ranked delta re-select failed:', ratingSelectError.message)
+      }
+      ratingDeltaX = ratingRow?.rating_delta_x ?? null
+      ratingDeltaO = ratingRow?.rating_delta_o ?? null
     }
 
     // NOTE: game_moves currently only records the final move (1 row per game), so a
@@ -351,7 +358,7 @@ Deno.serve(async (req) => {
         reward_credits: a.reward_credits,
         reward_skin_id: a.reward_skin_id ?? null
       })),
-      ...(game.match_type === 'ranked' ? { ratingDeltaX, ratingDeltaO } : {})
+      ...(isRanked ? { ratingDeltaX, ratingDeltaO } : {})
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
