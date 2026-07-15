@@ -127,6 +127,28 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Ranked games: apply both players' rating updates atomically via SQL RPC.
+    // Idempotent server-side (no-op once rating_delta_x is set), so it's safe
+    // that both players' handler invocations call it.
+    // IMPORTANT: this must run BEFORE the XP/credits/achievements pipeline below —
+    // those writes are additive and NOT idempotent on retry, so a rating failure
+    // after them would re-award rewards on every retry. Failing here first means
+    // every retry starts from a clean slate.
+    let ratingDeltaX: number | null | undefined
+    let ratingDeltaO: number | null | undefined
+    if (game.match_type === 'ranked') {
+      const { error: rankedError } = await supabase.rpc('apply_ranked_result', { p_game_id: gameId })
+      if (rankedError) throw new Error(`apply_ranked_result failed: ${rankedError.message}`)
+
+      const { data: ratingRow } = await supabase
+        .from('games')
+        .select('rating_delta_x, rating_delta_o')
+        .eq('id', gameId)
+        .single()
+      ratingDeltaX = ratingRow?.rating_delta_x
+      ratingDeltaO = ratingRow?.rating_delta_o
+    }
+
     // NOTE: game_moves currently only records the final move (1 row per game), so a
     // count-based MIN_MOVES guard would block rewards for every game. Guard removed.
     // If a minimum-game-length check is needed in future, query the game.state cell
@@ -307,24 +329,6 @@ Deno.serve(async (req) => {
           await supabase.from('profiles').update({ level: newLevel }).eq('id', userId)
         }
       }
-    }
-
-    // Ranked games: apply both players' rating updates atomically via SQL RPC.
-    // Idempotent server-side (no-op once rating_delta_x is set), so it's safe
-    // that both players' handler invocations call it.
-    let ratingDeltaX: number | null | undefined
-    let ratingDeltaO: number | null | undefined
-    if (game.match_type === 'ranked') {
-      const { error: rankedError } = await supabase.rpc('apply_ranked_result', { p_game_id: gameId })
-      if (rankedError) throw new Error(`apply_ranked_result failed: ${rankedError.message}`)
-
-      const { data: ratingRow } = await supabase
-        .from('games')
-        .select('rating_delta_x, rating_delta_o')
-        .eq('id', gameId)
-        .single()
-      ratingDeltaX = ratingRow?.rating_delta_x
-      ratingDeltaO = ratingRow?.rating_delta_o
     }
 
     await supabase.from('games').update({ [statusCol]: 'complete' }).eq('id', gameId)
