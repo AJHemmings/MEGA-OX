@@ -25,6 +25,8 @@ export interface PostGameResult {
     reward_skin_id: string | null;
   }[];
   alreadyProcessed?: boolean;
+  ratingDeltaX?: number | null;
+  ratingDeltaO?: number | null;
 }
 
 interface PostGameModalProps {

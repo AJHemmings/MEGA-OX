@@ -309,6 +309,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Ranked games: apply both players' rating updates atomically via SQL RPC.
+    // Idempotent server-side (no-op once rating_delta_x is set), so it's safe
+    // that both players' handler invocations call it.
+    let ratingDeltaX: number | null | undefined
+    let ratingDeltaO: number | null | undefined
+    if (game.match_type === 'ranked') {
+      const { error: rankedError } = await supabase.rpc('apply_ranked_result', { p_game_id: gameId })
+      if (rankedError) throw new Error(`apply_ranked_result failed: ${rankedError.message}`)
+
+      const { data: ratingRow } = await supabase
+        .from('games')
+        .select('rating_delta_x, rating_delta_o')
+        .eq('id', gameId)
+        .single()
+      ratingDeltaX = ratingRow?.rating_delta_x
+      ratingDeltaO = ratingRow?.rating_delta_o
+    }
+
     await supabase.from('games').update({ [statusCol]: 'complete' }).eq('id', gameId)
 
     return new Response(JSON.stringify({
@@ -328,7 +346,8 @@ Deno.serve(async (req) => {
         reward_xp: a.reward_xp,
         reward_credits: a.reward_credits,
         reward_skin_id: a.reward_skin_id ?? null
-      }))
+      })),
+      ...(game.match_type === 'ranked' ? { ratingDeltaX, ratingDeltaO } : {})
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
