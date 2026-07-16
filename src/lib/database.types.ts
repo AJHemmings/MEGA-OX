@@ -139,6 +139,24 @@ export type Database = {
           },
         ]
       }
+      app_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           admin_notes: string | null
@@ -1484,8 +1502,13 @@ export type Database = {
       }
     }
     Functions: {
+      admin_end_season: { Args: never; Returns: undefined }
       admin_grant_credits: { Args: { amount: number }; Returns: undefined }
       admin_grant_xp: { Args: { amount: number }; Returns: undefined }
+      admin_set_config: {
+        Args: { p_key: string; p_value: Json }
+        Returns: undefined
+      }
       admin_set_season_reward: {
         Args: { p_season_id: string; p_skin_id?: string }
         Returns: undefined
@@ -1538,7 +1561,7 @@ export type Database = {
         Args: { p_action: string; p_requester_id: string }
         Returns: undefined
       }
-      rollover_season: { Args: never; Returns: undefined }
+      rollover_season: { Args: { p_force?: boolean }; Returns: undefined }
       send_friend_request: {
         Args: { p_addressee_id: string }
         Returns: undefined
