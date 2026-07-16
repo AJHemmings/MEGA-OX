@@ -15,6 +15,11 @@ export interface UseRankedResult {
   loading: boolean;
   /** Set on query failure so consumers can tell "no active season" from "fetch failed". */
   error: string | null;
+  /**
+   * false only when an admin turned ranked off (app_config.ranked_enabled).
+   * Defaults true while loading / on error — fail open, the server enforces.
+   */
+  rankedEnabled: boolean;
   refresh: () => void;
 }
 
@@ -28,6 +33,7 @@ export const useRanked = (): UseRankedResult => {
   const [rating, setRating] = useState<PlayerRating | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rankedEnabled, setRankedEnabled] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Flip loading synchronously (not just in the effect) so consumers gating on
@@ -43,6 +49,7 @@ export const useRanked = (): UseRankedResult => {
       setSeason(null);
       setRating(null);
       setError(null);
+      setRankedEnabled(true);
       setLoading(false);
       return;
     }
@@ -56,13 +63,18 @@ export const useRanked = (): UseRankedResult => {
     setError(null);
 
     (async () => {
-      const { data: seasonData, error: seasonErr } = await supabase
-        .from('seasons')
-        .select('*')
-        .eq('status', 'active')
-        .maybeSingle();
+      // Flag fetched in parallel with the season — independent queries, one round-trip.
+      const [seasonRes, flagRes] = await Promise.all([
+        supabase.from('seasons').select('*').eq('status', 'active').maybeSingle(),
+        supabase.from('app_config').select('value').eq('key', 'ranked_enabled').maybeSingle(),
+      ]);
+      const { data: seasonData, error: seasonErr } = seasonRes;
 
       if (cancelled) return;
+
+      // Missing row or fetch error = enabled (kill switch fails open; the
+      // server-side check in join_matchmaking_queue is the enforcement point).
+      setRankedEnabled(flagRes.data ? flagRes.data.value === true : true);
 
       if (seasonErr) {
         console.error('useRanked: failed to fetch active season:', seasonErr);
@@ -110,5 +122,5 @@ export const useRanked = (): UseRankedResult => {
 
   const tier = rating ? tierForRating(rating.rating ?? DEFAULT_RATING) : null;
 
-  return { season, rating, tier, loading, error, refresh };
+  return { season, rating, tier, loading, error, rankedEnabled, refresh };
 };

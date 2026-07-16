@@ -184,7 +184,13 @@ const MatchmakingPage: React.FC = () => {
           p_initial_state: initialState,
         });
         if (!mountedRef.current) return;
-        if (rpcErr) { setError('Could not join matchmaking. Try again.'); return; }
+        if (rpcErr) {
+          // 'ranked_disabled' = admin kill switch raised by join_matchmaking_queue.
+          setError(rpcErr.message.includes('ranked_disabled')
+            ? 'Ranked is temporarily disabled — try a casual match!'
+            : 'Could not join matchmaking. Try again.');
+          return;
+        }
 
         const row = Array.isArray(data) ? data[0] : data;
         if (row?.out_game_id) {

@@ -113,7 +113,7 @@ const RecentGameRow: React.FC<{ game: RecentGame }> = ({ game }) => {
 };
 
 const HeroCard: React.FC<{ onPlay: () => void; onRanked: () => void }> = ({ onPlay, onRanked }) => {
-  const { rating } = useRanked();
+  const { rating, rankedEnabled } = useRanked();
   return (
     <Glass style={{ position: 'relative', overflow: 'hidden', padding: 20 }} padding={0}>
       <div style={{
@@ -142,9 +142,16 @@ const HeroCard: React.FC<{ onPlay: () => void; onRanked: () => void }> = ({ onPl
           ▶&nbsp;&nbsp;Play Now
         </PrimaryButton>
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <SecondaryButton fullWidth onClick={onRanked} style={{ fontSize: 15 }}>
-            🏆&nbsp;&nbsp;Ranked
-          </SecondaryButton>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <SecondaryButton fullWidth onClick={onRanked} disabled={!rankedEnabled} style={{ fontSize: 15 }}>
+              🏆&nbsp;&nbsp;Ranked
+            </SecondaryButton>
+            {!rankedEnabled && (
+              <div style={{ fontSize: 10, color: tokens.textMuted, textAlign: 'center', marginTop: 4 }}>
+                Ranked temporarily disabled
+              </div>
+            )}
+          </div>
           <TierBadge rating={rating?.rating ?? null} />
         </div>
       </div>
