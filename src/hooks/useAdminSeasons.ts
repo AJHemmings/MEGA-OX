@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
+export type SeasonStatus = 'upcoming' | 'active' | 'complete';
+
 export interface AdminSeason {
   id: string;
   number: number | null;
   name: string;
   start_date: string;
   end_date: string;
-  status: string;
+  status: SeasonStatus;
   reward_skin_id: string | null;
   reward_skin_name: string | null;
 }
@@ -24,8 +26,10 @@ export function useAdminSeasons() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
+  // silent = refresh data without unmounting the table to the loading state
+  // (used after a save so the page doesn't flash "Loading…").
+  const loadSeasons = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
 
     const [seasonsRes, skinsRes] = await Promise.all([
       supabase
@@ -44,24 +48,24 @@ export function useAdminSeasons() {
       return;
     }
 
-    const mapped: AdminSeason[] = (seasonsRes.data ?? []).map((s: any) => ({
+    const mapped: AdminSeason[] = (seasonsRes.data ?? []).map(s => ({
       id:                s.id,
       number:            s.number,
       name:              s.name,
       start_date:        s.start_date,
       end_date:          s.end_date,
-      status:            s.status,
+      status:            s.status as SeasonStatus,
       reward_skin_id:    s.reward_skin_id,
       reward_skin_name:  s.skins?.name ?? null,
     }));
 
     setSeasons(mapped);
-    setSkins((skinsRes.data ?? []) as AdminSkinOption[]);
+    setSkins(skinsRes.data ?? []);
     setError(null);
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { loadSeasons(); }, [loadSeasons]);
 
   const setSeasonReward = useCallback(async (seasonId: string, skinId: string | null): Promise<string | null> => {
     // Omitting p_skin_id falls back to the SQL DEFAULT NULL, which clears the reward.
@@ -70,9 +74,9 @@ export function useAdminSeasons() {
       ...(skinId ? { p_skin_id: skinId } : {}),
     });
     if (err) return err.message;
-    await fetch();
+    await loadSeasons(true);
     return null;
-  }, [fetch]);
+  }, [loadSeasons]);
 
-  return { seasons, skins, loading, error, refetch: fetch, setSeasonReward };
+  return { seasons, skins, loading, error, refetch: loadSeasons, setSeasonReward };
 }
