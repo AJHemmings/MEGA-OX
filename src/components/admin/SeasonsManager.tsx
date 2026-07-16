@@ -93,8 +93,124 @@ const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward }) => {
   );
 };
 
+interface RankedControlsProps {
+  rankedEnabled: boolean;
+  activeSeasonNumber: number | null;
+  onToggle: (next: boolean) => Promise<string | null>;
+  onEndSeason: () => Promise<string | null>;
+}
+
+const controlButton = (danger: boolean, disabled: boolean): React.CSSProperties => ({
+  padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+  fontFamily: tokens.font, cursor: disabled ? 'wait' : 'pointer',
+  background: danger ? 'rgba(229,62,62,0.14)' : 'rgba(255,255,255,0.06)',
+  border: `1px solid ${danger ? 'rgba(229,62,62,0.4)' : 'rgba(255,255,255,0.14)'}`,
+  color: danger ? tokens.loss : tokens.text,
+  opacity: disabled ? 0.6 : 1,
+});
+
+const RankedControls: React.FC<RankedControlsProps> = ({
+  rankedEnabled, activeSeasonNumber, onToggle, onEndSeason,
+}) => {
+  const [busy, setBusy] = useState(false);
+  const [ctrlError, setCtrlError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmInput, setConfirmInput] = useState('');
+
+  const confirmMatches =
+    activeSeasonNumber !== null && confirmInput === String(activeSeasonNumber);
+
+  const runToggle = async () => {
+    setBusy(true);
+    setCtrlError(await onToggle(!rankedEnabled));
+    setBusy(false);
+  };
+
+  const runEndSeason = async () => {
+    setBusy(true);
+    const err = await onEndSeason();
+    setBusy(false);
+    setCtrlError(err);
+    if (!err) { setConfirming(false); setConfirmInput(''); }
+  };
+
+  return (
+    <div style={{
+      flexShrink: 0, marginBottom: 16, padding: '12px 14px', borderRadius: 8,
+      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+      display: 'flex', flexDirection: 'column', gap: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: tokens.text }}>Ranked queue</span>
+        <span style={{
+          display: 'inline-flex', padding: '3px 10px', borderRadius: tokens.rPill,
+          background: `${rankedEnabled ? tokens.win : tokens.loss}22`,
+          color: rankedEnabled ? tokens.win : tokens.loss,
+          fontSize: 10, fontWeight: 700, letterSpacing: 0.6,
+        }}>
+          {rankedEnabled ? 'ON' : 'OFF'}
+        </span>
+        <button style={controlButton(rankedEnabled, busy)} disabled={busy} onClick={runToggle}>
+          {rankedEnabled ? 'Turn off' : 'Turn on'}
+        </button>
+        <span style={{ fontSize: 10, color: tokens.textMuted }}>
+          OFF blocks new ranked matches; games in progress still count.
+        </span>
+      </div>
+
+      {activeSeasonNumber !== null && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {!confirming ? (
+            <button style={controlButton(true, busy)} disabled={busy} onClick={() => setConfirming(true)}>
+              End season now
+            </button>
+          ) : (
+            <>
+              <span style={{ fontSize: 11, color: tokens.loss, fontWeight: 600 }}>
+                This ends Season {activeSeasonNumber}, grants rewards, and soft-resets all
+                ratings. Type the season number to confirm.
+              </span>
+              <input
+                value={confirmInput}
+                onChange={e => setConfirmInput(e.target.value)}
+                inputMode="numeric"
+                style={{
+                  width: 60, background: tokens.bgCard, color: tokens.text,
+                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+                  padding: '5px 8px', fontSize: 12, fontFamily: tokens.font, outline: 'none',
+                }}
+              />
+              <button
+                style={controlButton(true, busy || !confirmMatches)}
+                disabled={busy || !confirmMatches}
+                onClick={runEndSeason}
+              >
+                {busy ? 'Ending…' : 'Confirm'}
+              </button>
+              <button
+                style={controlButton(false, busy)}
+                disabled={busy}
+                onClick={() => { setConfirming(false); setConfirmInput(''); setCtrlError(null); }}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {ctrlError && (
+        <div style={{ fontSize: 10, color: tokens.loss }}>{ctrlError}</div>
+      )}
+    </div>
+  );
+};
+
 const SeasonsManager: React.FC = () => {
-  const { seasons, skins, loading, error, setSeasonReward } = useAdminSeasons();
+  const {
+    seasons, skins, rankedEnabled, loading, error,
+    setSeasonReward, setRankedEnabled, endSeason,
+  } = useAdminSeasons();
 
   const activeSeason = seasons.find(s => s.status === 'active');
   const showWarning = !!activeSeason && activeSeason.reward_skin_id === null;
@@ -108,6 +224,15 @@ const SeasonsManager: React.FC = () => {
           {seasons.length} season{seasons.length !== 1 ? 's' : ''}
         </div>
       </div>
+
+      {!loading && (
+        <RankedControls
+          rankedEnabled={rankedEnabled}
+          activeSeasonNumber={activeSeason?.number ?? null}
+          onToggle={setRankedEnabled}
+          onEndSeason={endSeason}
+        />
+      )}
 
       {showWarning && (
         <div style={{

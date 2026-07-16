@@ -23,6 +23,7 @@ export interface AdminSkinOption {
 export function useAdminSeasons() {
   const [seasons, setSeasons] = useState<AdminSeason[]>([]);
   const [skins, setSkins]     = useState<AdminSkinOption[]>([]);
+  const [rankedEnabled, setRankedEnabledState] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
 
@@ -31,7 +32,7 @@ export function useAdminSeasons() {
   const loadSeasons = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
 
-    const [seasonsRes, skinsRes] = await Promise.all([
+    const [seasonsRes, skinsRes, cfgRes] = await Promise.all([
       supabase
         .from('seasons')
         .select('id, number, name, start_date, end_date, status, reward_skin_id, skins(name)')
@@ -40,6 +41,11 @@ export function useAdminSeasons() {
         .from('skins')
         .select('id, name, type')
         .order('type').order('name'),
+      supabase
+        .from('app_config')
+        .select('value')
+        .eq('key', 'ranked_enabled')
+        .maybeSingle(),
     ]);
 
     if (seasonsRes.error || skinsRes.error) {
@@ -47,6 +53,9 @@ export function useAdminSeasons() {
       setLoading(false);
       return;
     }
+
+    // Missing row / flag fetch error = enabled (fail open); never fail the page for it.
+    setRankedEnabledState(cfgRes.data ? cfgRes.data.value === true : true);
 
     const mapped: AdminSeason[] = (seasonsRes.data ?? []).map(s => ({
       id:                s.id,
@@ -78,5 +87,25 @@ export function useAdminSeasons() {
     return null;
   }, [loadSeasons]);
 
-  return { seasons, skins, loading, error, refetch: loadSeasons, setSeasonReward };
+  const setRankedEnabled = useCallback(async (next: boolean): Promise<string | null> => {
+    const { error: err } = await supabase.rpc('admin_set_config', {
+      p_key: 'ranked_enabled',
+      p_value: next,
+    });
+    if (err) return err.message;
+    await loadSeasons(true);
+    return null;
+  }, [loadSeasons]);
+
+  const endSeason = useCallback(async (): Promise<string | null> => {
+    const { error: err } = await supabase.rpc('admin_end_season');
+    if (err) return err.message;
+    await loadSeasons(true);
+    return null;
+  }, [loadSeasons]);
+
+  return {
+    seasons, skins, rankedEnabled, loading, error,
+    refetch: loadSeasons, setSeasonReward, setRankedEnabled, endSeason,
+  };
 }
