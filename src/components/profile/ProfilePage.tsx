@@ -7,6 +7,7 @@ import { XPProgressBar } from '../progression/XPProgressBar';
 import { useProgression } from '../../hooks/useProgression';
 import { useAchievements } from '../../hooks/useAchievements';
 import { useRanked } from '../../hooks/useRanked';
+import { useSeasonHistory } from '../../hooks/useSeasonHistory';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens, tierColour } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
@@ -105,6 +106,9 @@ const AchTile: React.FC<{ icon_url: string | null; unlocked: boolean; name: stri
 // on isOwnProfile.
 const RankedCard: React.FC<{ ranked: ReturnType<typeof useRanked> }> = ({ ranked }) => {
   const { season, rating, loading, error } = ranked;
+  const { user } = useAuth();
+  const history = useSeasonHistory(user?.id);
+  const pastSeasons = history.entries.filter(e => !e.isActive);
 
   if (loading) return null;
 
@@ -144,6 +148,26 @@ const RankedCard: React.FC<{ ranked: ReturnType<typeof useRanked> }> = ({ ranked
             {' – '}
             <span style={{ color: tokens.draw, fontWeight: 700 }}>{rating.draws}D</span>
             <span style={{ marginLeft: 8, color: tokens.textDim }}>· {rating.games_played} games played</span>
+          </div>
+        </div>
+      )}
+
+      {pastSeasons.length > 0 && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' as const, marginBottom: 8 }}>
+            Past seasons
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {pastSeasons.map(e => (
+              <div key={`${e.seasonNumber}-${e.seasonName}`} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: tokens.textDim }}>
+                <span style={{ fontWeight: 700, color: tokens.text, minWidth: 64 }}>
+                  {e.seasonNumber != null ? `Season ${e.seasonNumber}` : e.seasonName}
+                </span>
+                <TierBadge rating={e.rating} />
+                <span>{e.rating} (peak {e.peakRating})</span>
+                <span style={{ marginLeft: 'auto' }}>{e.wins}-{e.losses}-{e.draws}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
