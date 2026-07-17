@@ -94,7 +94,7 @@ const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward }) => {
 };
 
 interface RankedControlsProps {
-  rankedEnabled: boolean;
+  rankedEnabled: boolean | null;
   activeSeasonNumber: number | null;
   onToggle: (next: boolean) => Promise<string | null>;
   onEndSeason: () => Promise<string | null>;
@@ -118,7 +118,7 @@ const RankedControls: React.FC<RankedControlsProps> = ({
   const [confirmInput, setConfirmInput] = useState('');
 
   const confirmMatches =
-    activeSeasonNumber !== null && confirmInput === String(activeSeasonNumber);
+    activeSeasonNumber !== null && confirmInput.trim() === String(activeSeasonNumber);
 
   const runToggle = async () => {
     setBusy(true);
@@ -142,20 +142,28 @@ const RankedControls: React.FC<RankedControlsProps> = ({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: tokens.text }}>Ranked queue</span>
-        <span style={{
-          display: 'inline-flex', padding: '3px 10px', borderRadius: tokens.rPill,
-          background: `${rankedEnabled ? tokens.win : tokens.loss}22`,
-          color: rankedEnabled ? tokens.win : tokens.loss,
-          fontSize: 10, fontWeight: 700, letterSpacing: 0.6,
-        }}>
-          {rankedEnabled ? 'ON' : 'OFF'}
-        </span>
-        <button style={controlButton(rankedEnabled, busy)} disabled={busy} onClick={runToggle}>
-          {rankedEnabled ? 'Turn off' : 'Turn on'}
-        </button>
-        <span style={{ fontSize: 10, color: tokens.textMuted }}>
-          OFF blocks new ranked matches; games in progress still count.
-        </span>
+        {rankedEnabled === null ? (
+          <span style={{ fontSize: 10, color: tokens.loss, fontWeight: 600 }}>
+            Status unavailable — reload to retry
+          </span>
+        ) : (
+          <>
+            <span style={{
+              display: 'inline-flex', padding: '3px 10px', borderRadius: tokens.rPill,
+              background: `${rankedEnabled ? tokens.win : tokens.loss}22`,
+              color: rankedEnabled ? tokens.win : tokens.loss,
+              fontSize: 10, fontWeight: 700, letterSpacing: 0.6,
+            }}>
+              {rankedEnabled ? 'ON' : 'OFF'}
+            </span>
+            <button style={controlButton(rankedEnabled, busy)} disabled={busy} onClick={runToggle}>
+              {rankedEnabled ? 'Turn off' : 'Turn on'}
+            </button>
+            <span style={{ fontSize: 10, color: tokens.textMuted }}>
+              OFF blocks new ranked matches; games in progress still count.
+            </span>
+          </>
+        )}
       </div>
 
       {activeSeasonNumber !== null && (

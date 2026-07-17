@@ -23,7 +23,8 @@ export interface AdminSkinOption {
 export function useAdminSeasons() {
   const [seasons, setSeasons] = useState<AdminSeason[]>([]);
   const [skins, setSkins]     = useState<AdminSkinOption[]>([]);
-  const [rankedEnabled, setRankedEnabledState] = useState(true);
+  // null = flag state unknown (fetch failed) — the admin panel must not guess.
+  const [rankedEnabled, setRankedEnabledState] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
 
@@ -54,8 +55,11 @@ export function useAdminSeasons() {
       return;
     }
 
-    // Missing row / flag fetch error = enabled (fail open); never fail the page for it.
-    setRankedEnabledState(cfgRes.data ? cfgRes.data.value === true : true);
+    // Missing row = enabled (fail open, matches the server default), but a fetch
+    // error means the real state is unknown — surface that, don't report "ON".
+    setRankedEnabledState(
+      cfgRes.error ? null : cfgRes.data ? cfgRes.data.value === true : true
+    );
 
     const mapped: AdminSeason[] = (seasonsRes.data ?? []).map(s => ({
       id:                s.id,

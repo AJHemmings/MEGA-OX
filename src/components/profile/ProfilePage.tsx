@@ -152,6 +152,12 @@ const RankedCard: React.FC<{ ranked: ReturnType<typeof useRanked> }> = ({ ranked
         </div>
       )}
 
+      {history.error && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.07)', color: tokens.textDim, fontSize: 12 }}>
+          Couldn't load season history
+        </div>
+      )}
+
       {pastSeasons.length > 0 && (
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' as const, marginBottom: 8 }}>

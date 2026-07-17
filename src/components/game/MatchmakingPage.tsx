@@ -243,7 +243,9 @@ const MatchmakingPage: React.FC = () => {
     const { data, error: err } = await supabase.from('games').insert({
       player_x_id: user.id,
       state: initialState,
-      match_type: mode,
+      // Code games are always friendly: ranked games exist only via matchmaking,
+      // so a ?mode=ranked deep link can't mint a rated game with a picked opponent.
+      match_type: 'friendly',
       game_code: newCode,
       status: 'waiting',
     }).select('id').single();
@@ -331,7 +333,16 @@ const MatchmakingPage: React.FC = () => {
         )}
 
         {/* ── SEARCHING ── */}
-        {view === 'searching' && (
+        {/* On a join error the queue insert was rolled back — showing the search
+            animation would be a lie, so swap it for a way back out. */}
+        {view === 'searching' && error && (
+          <div style={{ marginTop: 16 }}>
+            <SecondaryButton fullWidth onClick={() => navigate('/multiplayer')}>
+              Back to Multiplayer
+            </SecondaryButton>
+          </div>
+        )}
+        {view === 'searching' && !error && (
           <>
             <div style={headerStyle}>
               <BackButton onClick={handleCancelSearch} />
