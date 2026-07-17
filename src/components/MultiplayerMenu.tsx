@@ -8,6 +8,7 @@ import TabBar from './common/TabBar';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
+import { useRanked } from '../hooks/useRanked';
 
 interface GameCard {
   id: string;
@@ -18,24 +19,27 @@ interface GameCard {
   border: string;
   borderHover: string;
   onClick: () => void;
+  disabled?: boolean;
 }
 
-const FriendlyCard: React.FC<GameCard> = ({ id, emoji, title, sub, bg, border, borderHover, onClick }) => {
+const FriendlyCard: React.FC<GameCard> = ({ id, emoji, title, sub, bg, border, borderHover, onClick, disabled }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <button
       key={id}
       onClick={onClick}
+      disabled={disabled}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-        padding: 16, borderRadius: 14, cursor: 'pointer', textAlign: 'left',
-        background: hovered ? bg.replace(/0\.\d+\)/, '0.18)') : bg,
-        border: `1px solid ${hovered ? borderHover : border}`,
+        padding: 16, borderRadius: 14, cursor: disabled ? 'not-allowed' : 'pointer', textAlign: 'left',
+        background: hovered && !disabled ? bg.replace(/0\.\d+\)/, '0.18)') : bg,
+        border: `1px solid ${hovered && !disabled ? borderHover : border}`,
         transition: 'transform 0.2s ease, border-color 0.2s ease',
-        transform: hovered ? 'translateY(-2px)' : 'none',
+        transform: hovered && !disabled ? 'translateY(-2px)' : 'none',
         fontFamily: tokens.font,
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       <div style={{ width: 44, height: 44, borderRadius: 12, background: bg, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
@@ -55,17 +59,29 @@ const MultiplayerMenu: React.FC = () => {
   const { user: _user } = useAuth();
   const profile = usePlayerProfile();
   const isMobile = useIsMobile();
+  const { rankedEnabled } = useRanked();
 
   const modeCards: GameCard[] = [
     {
       id: 'find',
       emoji: '⚡',
       title: 'Find Game',
-      sub: 'Match up against another player',
+      sub: 'Casual match against another player',
       bg: 'rgba(0,212,170,0.10)',
       border: 'rgba(0,212,170,0.25)',
       borderHover: 'rgba(0,212,170,0.45)',
+      onClick: () => navigate('/matchmaking?mode=friendly&view=searching'),
+    },
+    {
+      id: 'ranked',
+      emoji: '🏆',
+      title: 'Find Ranked Game',
+      sub: rankedEnabled ? 'Compete for your season rating' : 'Ranked temporarily disabled',
+      bg: 'rgba(255,193,7,0.10)',
+      border: 'rgba(255,193,7,0.25)',
+      borderHover: 'rgba(255,193,7,0.45)',
       onClick: () => navigate('/matchmaking?mode=ranked&view=searching'),
+      disabled: !rankedEnabled,
     },
     {
       id: 'host',
