@@ -678,6 +678,70 @@ export type Database = {
           },
         ]
       }
+      news_images: {
+        Row: {
+          id: string
+          image_url: string
+          post_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          image_url: string
+          post_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          image_url?: string
+          post_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_images_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "news_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_links: {
+        Row: {
+          custom_icon_url: string | null
+          icon_key: string | null
+          id: string
+          post_id: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          custom_icon_url?: string | null
+          icon_key?: string | null
+          id?: string
+          post_id: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          custom_icon_url?: string | null
+          icon_key?: string | null
+          id?: string
+          post_id?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_links_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "news_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_posts: {
         Row: {
           category: string

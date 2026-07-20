@@ -33,51 +33,76 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
     // "cannot add presence callbacks after subscribe()" error).
     let cancelled = false;
 
+    // Supabase fires BOTH 'INITIAL_SESSION' and 'SIGNED_IN' back-to-back for an
+    // already-persisted session on page load — a second, distinct race from the
+    // StrictMode one above, since both events belong to this same (non-cancelled)
+    // effect run. `joining` is set synchronously, before the first await, so a
+    // second concurrent join() call sees the lock immediately and bails — there's
+    // no gap for both calls to pass a "should I create a channel" check together.
+    let joining = false;
+    let joinedUserId: string | null = null;
+
     async function join() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
+      if (joining || cancelled) return;
+      joining = true;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
 
-      const channel = supabase.channel('presence:global', {
-        config: { presence: { key: user.id } },
-      });
+        // Already have a channel for this user (live or mid-subscribe) — the
+        // event that called us is redundant, not a real re-auth.
+        if (channelRef.current && joinedUserId === user.id) return;
 
-      channelRef.current = channel;
+        if (channelRef.current) {
+          await supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+        joinedUserId = user.id;
 
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          const state = channel.presenceState<PresencePayload>();
-          const map: Record<string, PresencePayload> = {};
-          Object.entries(state).forEach(([key, presences]) => {
-            if (presences.length > 0) {
-              const p = presences[0];
-              if (p.userId && p.status) map[key] = p;
+        const channel = supabase.channel('presence:global', {
+          config: { presence: { key: user.id } },
+        });
+
+        channelRef.current = channel;
+
+        channel
+          .on('presence', { event: 'sync' }, () => {
+            const state = channel.presenceState<PresencePayload>();
+            const map: Record<string, PresencePayload> = {};
+            Object.entries(state).forEach(([key, presences]) => {
+              if (presences.length > 0) {
+                const p = presences[0];
+                if (p.userId && p.status) map[key] = p;
+              }
+            });
+            if (!cancelled) setPresenceMap(map);
+          })
+          .subscribe(async (status) => {
+            if (cancelled) return;
+            if (status === 'SUBSCRIBED') {
+              await channel.track({ userId: user.id, status: 'online' });
+            }
+            if (status === 'CHANNEL_ERROR') {
+              if (channelRef.current) await supabase.removeChannel(channelRef.current);
+              channelRef.current = null;
+              joinedUserId = null;
+              retryTimerRef.current = setTimeout(join, 3000);
             }
           });
-          if (!cancelled) setPresenceMap(map);
-        })
-        .subscribe(async (status) => {
-          if (cancelled) return;
-          if (status === 'SUBSCRIBED') {
-            await channel.track({ userId: user.id, status: 'online' });
-          }
-          if (status === 'CHANNEL_ERROR') {
-            if (channelRef.current) await supabase.removeChannel(channelRef.current);
-            channelRef.current = null;
-            retryTimerRef.current = setTimeout(join, 3000);
-          }
-        });
+      } finally {
+        joining = false;
+      }
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
       if (cancelled) return;
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        if (channelRef.current) await supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
         join();
       }
       if (event === 'SIGNED_OUT') {
         if (channelRef.current) await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
+        joinedUserId = null;
         setPresenceMap({});
       }
     });
