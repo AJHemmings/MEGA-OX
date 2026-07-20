@@ -28,12 +28,18 @@ interface RowProps {
   season: AdminSeason;
   skins: { id: string; name: string; type: string }[];
   onSetReward: (seasonId: string, skinId: string | null) => Promise<string | null>;
+  onUpdate: (seasonId: string, name: string | null, startDate: string | null, endDate: string | null) => Promise<string | null>;
 }
 
-const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward }) => {
+const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward, onUpdate }) => {
   const [saving, setSaving] = useState(false);
   const [rowError, setRowError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(season.name);
+  const [editStart, setEditStart] = useState(season.start_date);
+  const [editEnd, setEditEnd] = useState(season.end_date);
   const isActive = season.status === 'active';
+  const isUpcoming = season.status === 'upcoming';
 
   const selectStyle: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
@@ -41,6 +47,14 @@ const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward }) => {
     borderRadius: 6, padding: '5px 8px', fontSize: 12, color: tokens.text,
     fontFamily: tokens.font, outline: 'none', colorScheme: 'dark',
     cursor: saving ? 'wait' : 'pointer',
+  };
+
+  const editInputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box',
+    background: tokens.bgCard, color: tokens.text,
+    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+    padding: '4px 6px', fontSize: 11, fontFamily: tokens.font, outline: 'none',
+    colorScheme: 'dark',
   };
 
   const optionStyle: React.CSSProperties = { background: tokens.bgCard, color: tokens.text };
@@ -54,6 +68,27 @@ const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward }) => {
     setRowError(err);
   };
 
+  const startEdit = () => {
+    setEditName(season.name);
+    setEditStart(season.start_date);
+    setEditEnd(season.end_date);
+    setRowError(null);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+    setRowError(null);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    const err = await onUpdate(season.id, editName.trim() || null, editStart || null, editEnd || null);
+    setSaving(false);
+    setRowError(err);
+    if (!err) setEditing(false);
+  };
+
   return (
     <div style={{
       display: 'grid',
@@ -62,12 +97,35 @@ const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward }) => {
       borderBottom: '1px solid rgba(255,255,255,0.04)',
     }}>
       <div style={{ fontSize: 12, color: tokens.text, fontWeight: 700 }}>#{season.number ?? '—'}</div>
-      <div style={{ fontSize: 12, color: tokens.text, fontWeight: 600 }}>{season.name}</div>
-      <div style={{ fontSize: 11, color: tokens.textDim }}>{fmtDate(season.start_date)}</div>
-      <div style={{ fontSize: 11, color: tokens.textDim }}>{fmtDate(season.end_date)}</div>
+
+      {editing ? (
+        <input value={editName} onChange={e => setEditName(e.target.value)} style={editInputStyle} disabled={saving} />
+      ) : (
+        <div style={{ fontSize: 12, color: tokens.text, fontWeight: 600 }}>{season.name}</div>
+      )}
+
+      {editing ? (
+        <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)} style={editInputStyle} disabled={saving} />
+      ) : (
+        <div style={{ fontSize: 11, color: tokens.textDim }}>{fmtDate(season.start_date)}</div>
+      )}
+
+      {editing ? (
+        <input type="date" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={editInputStyle} disabled={saving} />
+      ) : (
+        <div style={{ fontSize: 11, color: tokens.textDim }}>{fmtDate(season.end_date)}</div>
+      )}
+
       <div><span style={statusChip(season.status)}>{season.status}</span></div>
 
-      {isActive ? (
+      {editing ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button style={controlButton(false, saving)} disabled={saving} onClick={saveEdit}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button style={controlButton(false, saving)} disabled={saving} onClick={cancelEdit}>Cancel</button>
+        </div>
+      ) : isActive ? (
         <div>
           <select
             value={season.reward_skin_id ?? ''}
@@ -82,12 +140,15 @@ const SeasonRow: React.FC<RowProps> = ({ season, skins, onSetReward }) => {
               </option>
             ))}
           </select>
-          {rowError && (
-            <div style={{ fontSize: 10, color: tokens.loss, marginTop: 4 }}>{rowError}</div>
-          )}
         </div>
+      ) : isUpcoming ? (
+        <button style={controlButton(false, saving)} disabled={saving} onClick={startEdit}>Edit</button>
       ) : (
         <div style={{ fontSize: 12, color: tokens.textMuted }}>{season.reward_skin_name ?? '—'}</div>
+      )}
+
+      {rowError && (
+        <div style={{ gridColumn: '1 / -1', fontSize: 10, color: tokens.loss, marginTop: 2 }}>{rowError}</div>
       )}
     </div>
   );
@@ -283,7 +344,7 @@ const CreateSeasonControl: React.FC<{
 const SeasonsManager: React.FC = () => {
   const {
     seasons, skins, rankedEnabled, loading, error,
-    setSeasonReward, setRankedEnabled, endSeason, createSeason,
+    setSeasonReward, setRankedEnabled, endSeason, createSeason, updateSeason,
   } = useAdminSeasons();
 
   const activeSeason = seasons.find(s => s.status === 'active');
@@ -359,7 +420,7 @@ const SeasonsManager: React.FC = () => {
             </div>
 
             {seasons.map(s => (
-              <SeasonRow key={s.id} season={s} skins={skins} onSetReward={setSeasonReward} />
+              <SeasonRow key={s.id} season={s} skins={skins} onSetReward={setSeasonReward} onUpdate={updateSeason} />
             ))}
           </div>
         )}
