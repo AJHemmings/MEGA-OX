@@ -31,6 +31,7 @@ import EmojiBubble from './EmojiBubble';
 import { useProgressionContext } from '../../contexts/ProgressionContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useAdminRole } from '../../hooks/useAdminRole';
+import { useRanked } from '../../hooks/useRanked';
 import { usePlayerProfile, PlayerProfile } from '../../hooks/usePlayerProfile';
 import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
@@ -289,6 +290,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   const countdownStartedRef   = useRef(false);
   const rematchNavFiredRef    = useRef(false);
   const postGameCalledRef     = useRef(false);
+  const rankedRefreshedRef    = useRef(false);
+
+  // Post-game rating delta comes from the rewards call's PostGameResult, never
+  // from the synced `game` row (deltas are written after useOnlineGame's poll
+  // stops). See PostGameResult.ratingDeltaX/O in PostGameModal.tsx.
+  const { rating: rankedRating, error: rankedError, loading: rankedLoading, refresh: refreshRanked } = useRanked();
 
   const prevMicroWinnersRef   = useRef<string[]>([]);
   const prevIsMyTurnRef       = useRef<boolean>(false);
@@ -346,10 +353,36 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
     countdownStartedRef.current = false;
     rematchNavFiredRef.current = false;
     postGameCalledRef.current = false;
+    rankedRefreshedRef.current = false;
     setPostGameResult(null);
     setPostGameFailed(false);
     setPostGameLoading(false);
   }, [gameId]);
+
+  // Local player's rating delta for this game, picked by marker — null unless
+  // this was a ranked game and the rewards call returned a real (non-null) delta.
+  const localRatingDelta: number | null = matchType === 'ranked' && postGameResult
+    ? (myMarker === 'X' ? postGameResult.ratingDeltaX : postGameResult.ratingDeltaO) ?? null
+    : null;
+
+  // Once a real delta shows up, pull the freshly-updated rating/tier so the
+  // "N to next tier" progress text reflects the post-game state, not the stale
+  // pre-game snapshot useRanked loaded on mount. refresh() flips loading
+  // synchronously, so the gate below hides the row until the refetch lands.
+  useEffect(() => {
+    if (localRatingDelta === null) return;
+    if (rankedRefreshedRef.current) return;
+    rankedRefreshedRef.current = true;
+    refreshRanked();
+  }, [localRatingDelta, refreshRanked]);
+
+  // Render nothing (no spinner, no "?") until the delta is a real number AND
+  // the post-refresh rating has landed cleanly — degraded/loading/error states
+  // all suppress the row rather than show stale or wrong data.
+  const rankedDelta = (localRatingDelta !== null
+    && rankedRefreshedRef.current && !rankedLoading && rankedError === null && rankedRating !== null)
+    ? { delta: localRatingDelta, ratingAfter: rankedRating.rating }
+    : null;
 
   useEffect(() => {
     if (!rematchGameId) return;
@@ -658,6 +691,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         <PrimaryButton onClick={() => navigate('/menu')} fullWidth>Back to Menu</PrimaryButton>
       ) : postGameLoading ? (
         <div style={{ color: tokens.textMuted, fontSize: 14 }}>Loading rewards…</div>
+      ) : matchType === 'ranked' ? (
+        // Ranked has no informal rematch — ladder integrity requires every
+        // game to come from matchmaking, not a repeat pairing the players
+        // arrange themselves. Only Back to Menu is offered.
+        <PrimaryButton onClick={() => { signalRematchIntent('back_to_menu'); navigate('/menu'); }} fullWidth>
+          Back to Menu
+        </PrimaryButton>
       ) : (
         <>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '10px 0' }}>
@@ -707,6 +747,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
             xpToNext={progression.xpToNext}
             onContinue={() => setPostGameResult(null)}
             opponentId={opponentId}
+            rankedDelta={rankedDelta}
           />
         )}
         {postGameFailed && !postGameResult && (

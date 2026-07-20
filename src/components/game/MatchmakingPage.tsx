@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { serializeGame } from '../../lib/gameSerializer';
 import { Game } from '../../models/Game';
 import { usePlayerProfile } from '../../hooks/usePlayerProfile';
+import { formatTolerance } from '../../lib/ranked';
 import { tokens } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
 import Glass from '../common/Glass';
@@ -183,7 +184,13 @@ const MatchmakingPage: React.FC = () => {
           p_initial_state: initialState,
         });
         if (!mountedRef.current) return;
-        if (rpcErr) { setError('Could not join matchmaking. Try again.'); return; }
+        if (rpcErr) {
+          // 'ranked_disabled' = admin kill switch raised by join_matchmaking_queue.
+          setError(rpcErr.message.includes('ranked_disabled')
+            ? 'Ranked is temporarily disabled — try a casual match!'
+            : 'Could not join matchmaking. Try again.');
+          return;
+        }
 
         const row = Array.isArray(data) ? data[0] : data;
         if (row?.out_game_id) {
@@ -236,7 +243,9 @@ const MatchmakingPage: React.FC = () => {
     const { data, error: err } = await supabase.from('games').insert({
       player_x_id: user.id,
       state: initialState,
-      match_type: mode,
+      // Code games are always friendly: ranked games exist only via matchmaking,
+      // so a ?mode=ranked deep link can't mint a rated game with a picked opponent.
+      match_type: 'friendly',
       game_code: newCode,
       status: 'waiting',
     }).select('id').single();
@@ -324,7 +333,16 @@ const MatchmakingPage: React.FC = () => {
         )}
 
         {/* ── SEARCHING ── */}
-        {view === 'searching' && (
+        {/* On a join error the queue insert was rolled back — showing the search
+            animation would be a lie, so swap it for a way back out. */}
+        {view === 'searching' && error && (
+          <div style={{ marginTop: 16 }}>
+            <SecondaryButton fullWidth onClick={() => navigate('/multiplayer')}>
+              Back to Multiplayer
+            </SecondaryButton>
+          </div>
+        )}
+        {view === 'searching' && !error && (
           <>
             <div style={headerStyle}>
               <BackButton onClick={handleCancelSearch} />
@@ -376,9 +394,15 @@ const MatchmakingPage: React.FC = () => {
               </div>
             </Glass>
 
-            <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: tokens.textDim, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: tokens.textDim, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: mode === 'ranked' ? 6 : 16 }}>
               ELAPSED · {elapsedFmt}
             </div>
+
+            {mode === 'ranked' && (
+              <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: tokens.accent, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 16 }}>
+                searching {formatTolerance(elapsed)}
+              </div>
+            )}
 
             <SecondaryButton onClick={handleCancelSearch} fullWidth>Cancel</SecondaryButton>
           </>

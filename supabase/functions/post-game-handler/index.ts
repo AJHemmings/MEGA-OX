@@ -127,6 +127,35 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Ranked games: apply both players' rating updates atomically via SQL RPC.
+    // Idempotent server-side (no-op once rating_delta_x is set), so it's safe
+    // that both players' handler invocations call it.
+    // IMPORTANT: this must run BEFORE the XP/credits/achievements pipeline below —
+    // those writes are additive and NOT idempotent on retry, so a rating failure
+    // after them would re-award rewards on every retry. Failing here first means
+    // every retry starts from a clean slate.
+    const isRanked = game.match_type === 'ranked'
+    let ratingDeltaX: number | null = null
+    let ratingDeltaO: number | null = null
+    if (isRanked) {
+      const { error: rankedError } = await supabase.rpc('apply_ranked_result', { p_game_id: gameId })
+      if (rankedError) throw new Error(`apply_ranked_result failed: ${rankedError.message}`)
+
+      // Ratings are already applied at this point — a re-select failure must NOT
+      // throw (that would burn a retry and re-run the non-idempotent reward
+      // pipeline). Log it and fall back to null deltas in the response.
+      const { data: ratingRow, error: ratingSelectError } = await supabase
+        .from('games')
+        .select('rating_delta_x, rating_delta_o')
+        .eq('id', gameId)
+        .single()
+      if (ratingSelectError) {
+        console.error('post-game-handler: ranked delta re-select failed:', ratingSelectError.message)
+      }
+      ratingDeltaX = ratingRow?.rating_delta_x ?? null
+      ratingDeltaO = ratingRow?.rating_delta_o ?? null
+    }
+
     // NOTE: game_moves currently only records the final move (1 row per game), so a
     // count-based MIN_MOVES guard would block rewards for every game. Guard removed.
     // If a minimum-game-length check is needed in future, query the game.state cell
@@ -178,18 +207,32 @@ Deno.serve(async (req) => {
 
     const { data: stats } = await supabase
       .from('player_stats')
-      .select('wins, losses, draws')
+      .select('wins, losses, draws, quick_wins, quick_losses, quick_draws')
       .eq('player_id', userId)
       .single()
 
-    // Increment the correct counter for this game outcome
+    // Lifetime totals count every match type — these feed the
+    // total_wins/total_games achievement conditions and must include
+    // ranked/AI games, not just casual ones.
     const newWins   = (stats?.wins   ?? 0) + (isWin              ? 1 : 0)
     const newLosses = (stats?.losses ?? 0) + (!isWin && !isDraw  ? 1 : 0)
     const newDraws  = (stats?.draws  ?? 0) + (isDraw             ? 1 : 0)
 
+    const update: Record<string, number> = { wins: newWins, losses: newLosses, draws: newDraws }
+
+    // Quick Play W/L/D is the friendly-only counter shown on the profile,
+    // kept separate from ranked (player_ratings, season-scoped) so ranked
+    // results don't bleed into a player's casual stats.
+    const isQuickPlay = game.match_type === 'friendly'
+    if (isQuickPlay) {
+      update.quick_wins   = (stats?.quick_wins   ?? 0) + (isWin             ? 1 : 0)
+      update.quick_losses = (stats?.quick_losses ?? 0) + (!isWin && !isDraw ? 1 : 0)
+      update.quick_draws  = (stats?.quick_draws  ?? 0) + (isDraw            ? 1 : 0)
+    }
+
     await supabase
       .from('player_stats')
-      .update({ wins: newWins, losses: newLosses, draws: newDraws })
+      .update(update)
       .eq('player_id', userId)
 
     const totalGames = newWins + newLosses + newDraws
@@ -328,7 +371,8 @@ Deno.serve(async (req) => {
         reward_xp: a.reward_xp,
         reward_credits: a.reward_credits,
         reward_skin_id: a.reward_skin_id ?? null
-      }))
+      })),
+      ...(isRanked ? { ratingDeltaX, ratingDeltaO } : {})
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

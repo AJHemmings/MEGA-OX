@@ -6,6 +6,8 @@ import { LevelBadge } from '../progression/LevelBadge';
 import { XPProgressBar } from '../progression/XPProgressBar';
 import { useProgression } from '../../hooks/useProgression';
 import { useAchievements } from '../../hooks/useAchievements';
+import { useRanked } from '../../hooks/useRanked';
+import { useSeasonHistory } from '../../hooks/useSeasonHistory';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { tokens, tierColour } from '../../styles/tokens';
 import PageBackground from '../common/PageBackground';
@@ -15,6 +17,7 @@ import PrimaryButton from '../common/PrimaryButton';
 import { Flame } from '../icons';
 import BackButton from '../common/BackButton';
 import TabBar from '../common/TabBar';
+import TierBadge from '../ranked/TierBadge';
 
 interface ProfileData {
   player_id:   string;
@@ -25,9 +28,9 @@ interface ProfileData {
   bannerUrl:   string | null;
   level:       number;
   rank_tier:   string;
-  wins:        number;
-  losses:      number;
-  draws:       number;
+  quickWins:   number;
+  quickLosses: number;
+  quickDraws:  number;
   best_streak: number;
 }
 
@@ -98,6 +101,95 @@ const AchTile: React.FC<{ icon_url: string | null; unlocked: boolean; name: stri
   </div>
 );
 
+// Ranked summary card — data is always for the logged-in user (useRanked reads
+// the auth session, not the profile being viewed), so callers must gate this
+// on isOwnProfile.
+const RankedCard: React.FC<{ ranked: ReturnType<typeof useRanked> }> = ({ ranked }) => {
+  const { season, upcomingSeason, rating, daysLeft, daysUntilStart, loading, error } = ranked;
+  const { user } = useAuth();
+  const history = useSeasonHistory(user?.id);
+  const pastSeasons = history.entries.filter(e => !e.isActive);
+
+  if (loading) return null;
+
+  const seasonLabel = season ? (season.number != null ? `Season ${season.number}` : season.name) : null;
+  const upcomingLabel = upcomingSeason
+    ? (upcomingSeason.number != null ? `Season ${upcomingSeason.number}` : upcomingSeason.name)
+    : null;
+
+  return (
+    <Glass>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' as const }}>Ranked</span>
+        {seasonLabel && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: tokens.textDim }}>
+            {seasonLabel}{daysLeft !== null && ` · ${daysLeft <= 0 ? 'ends today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}`}
+          </span>
+        )}
+      </div>
+
+      {error ? (
+        <div style={{ color: tokens.textDim, fontSize: 14 }}>Couldn't load ranked stats</div>
+      ) : !season ? (
+        <div style={{ color: tokens.textDim, fontSize: 14 }}>
+          {upcomingSeason && daysUntilStart !== null
+            ? `${upcomingLabel} starts in ${daysUntilStart <= 0 ? 'today' : `${daysUntilStart} day${daysUntilStart === 1 ? '' : 's'}`}`
+            : 'No season running'}
+        </div>
+      ) : !rating ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <TierBadge rating={null} />
+          <div style={{ color: tokens.textDim, fontSize: 14 }}>Unranked — play a Ranked match to get placed</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <TierBadge rating={rating.rating} showProgress />
+            <div style={{ textAlign: 'right' as const }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: tokens.text }}>{rating.rating}</div>
+              <div style={{ fontSize: 11, color: tokens.textMuted }}>Peak {rating.peak_rating}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: tokens.textMuted }}>
+            <span style={{ color: tokens.win, fontWeight: 700 }}>{rating.wins}W</span>
+            {' – '}
+            <span style={{ color: tokens.loss, fontWeight: 700 }}>{rating.losses}L</span>
+            {' – '}
+            <span style={{ color: tokens.draw, fontWeight: 700 }}>{rating.draws}D</span>
+            <span style={{ marginLeft: 8, color: tokens.textDim }}>· {rating.games_played} games played</span>
+          </div>
+        </div>
+      )}
+
+      {history.error && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.07)', color: tokens.textDim, fontSize: 12 }}>
+          Couldn't load season history
+        </div>
+      )}
+
+      {pastSeasons.length > 0 && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' as const, marginBottom: 8 }}>
+            Past seasons
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {pastSeasons.map(e => (
+              <div key={`${e.seasonNumber}-${e.seasonName}`} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: tokens.textDim }}>
+                <span style={{ fontWeight: 700, color: tokens.text, minWidth: 64 }}>
+                  {e.seasonNumber != null ? `Season ${e.seasonNumber}` : e.seasonName}
+                </span>
+                <TierBadge rating={e.rating} />
+                <span>{e.rating} (peak {e.peakRating})</span>
+                <span style={{ marginLeft: 'auto' }}>{e.wins}-{e.losses}-{e.draws}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Glass>
+  );
+};
+
 // ────────── Mobile layout ──────────
 
 const MobileProfile: React.FC<{
@@ -107,12 +199,13 @@ const MobileProfile: React.FC<{
   isOwnProfile: boolean;
   progression: ReturnType<typeof useProgression>;
   achievements: ReturnType<typeof useAchievements>;
+  ranked: ReturnType<typeof useRanked>;
   username?: string;
   onCustomise: () => void;
-}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, username, onCustomise }) => {
+}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, ranked, username, onCustomise }) => {
   const navigate = useNavigate();
-  const total = profile.wins + profile.losses + profile.draws;
-  const winRate = total > 0 ? `${((profile.wins / total) * 100).toFixed(0)}%` : '—';
+  const total = profile.quickWins + profile.quickLosses + profile.quickDraws;
+  const winRate = total > 0 ? `${((profile.quickWins / total) * 100).toFixed(0)}%` : '—';
   const tierColor = tierColour[profile.rank_tier] ?? tokens.textMuted;
 
   const unlockedCount = achievements.achievements.filter(a => a.unlocked).length;
@@ -175,12 +268,18 @@ const MobileProfile: React.FC<{
             </Glass>
           )}
 
-          {/* 3-stat grid */}
+          {/* Ranked card — own profile only */}
+          {isOwnProfile && <RankedCard ranked={ranked} />}
+
+          {/* Quick Play 3-stat grid */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' as const, marginTop: 4 }}>
+            Quick Play
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
             {[
-              { label: 'WINS',   value: profile.wins,   color: tokens.win },
-              { label: 'LOSSES', value: profile.losses, color: tokens.loss },
-              { label: 'DRAWS',  value: profile.draws,  color: tokens.draw },
+              { label: 'WINS',   value: profile.quickWins,   color: tokens.win },
+              { label: 'LOSSES', value: profile.quickLosses, color: tokens.loss },
+              { label: 'DRAWS',  value: profile.quickDraws,  color: tokens.draw },
             ].map(({ label, value, color }) => (
               <Glass key={label} padding={16} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 26, fontWeight: 900, color }}>{value}</div>
@@ -254,11 +353,12 @@ const DesktopProfile: React.FC<{
   isOwnProfile: boolean;
   progression: ReturnType<typeof useProgression>;
   achievements: ReturnType<typeof useAchievements>;
+  ranked: ReturnType<typeof useRanked>;
   onCustomise: () => void;
-}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, onCustomise }) => {
+}> = ({ profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, ranked, onCustomise }) => {
   const navigate = useNavigate();
-  const total = profile.wins + profile.losses + profile.draws;
-  const winRate = total > 0 ? `${((profile.wins / total) * 100).toFixed(0)}%` : '—';
+  const total = profile.quickWins + profile.quickLosses + profile.quickDraws;
+  const winRate = total > 0 ? `${((profile.quickWins / total) * 100).toFixed(0)}%` : '—';
   const tierColor = tierColour[profile.rank_tier] ?? tokens.textMuted;
 
   const unlockedCount = achievements.achievements.filter(a => a.unlocked).length;
@@ -313,7 +413,7 @@ const DesktopProfile: React.FC<{
                     </span>
                   )}
                   <span style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: tokens.textMuted, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: tokens.rPill }}>
-                    {total} games
+                    {total} quick play games
                   </span>
                 </div>
               </div>
@@ -340,12 +440,18 @@ const DesktopProfile: React.FC<{
               </Glass>
             )}
 
-            {/* 3-stat grid */}
+            {/* Ranked card — own profile only */}
+            {isOwnProfile && <RankedCard ranked={ranked} />}
+
+            {/* Quick Play 3-stat grid */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' as const }}>
+              Quick Play
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
               {[
-                { label: 'WINS',   value: profile.wins,   color: tokens.win },
-                { label: 'LOSSES', value: profile.losses, color: tokens.loss },
-                { label: 'DRAWS',  value: profile.draws,  color: tokens.draw },
+                { label: 'WINS',   value: profile.quickWins,   color: tokens.win },
+                { label: 'LOSSES', value: profile.quickLosses, color: tokens.loss },
+                { label: 'DRAWS',  value: profile.quickDraws,  color: tokens.draw },
               ].map(({ label, value, color }) => (
                 <Glass key={label} padding={16} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 26, fontWeight: 900, color }}>{value}</div>
@@ -438,7 +544,7 @@ const ProfilePage: React.FC = () => {
         .select(`
           id, username, avatar_url,
           active_avatar_id, active_badge_id, active_banner_id,
-          player_stats(rank_tier, wins, losses, draws)
+          player_stats(rank_tier, quick_wins, quick_losses, quick_draws)
         `)
         .eq('username', username)
         .single();
@@ -471,9 +577,9 @@ const ProfilePage: React.FC = () => {
         bannerUrl:   bannerItem?.asset_url ?? null,
         level:       (prog as any)?.level ?? 1,
         rank_tier:   stats?.rank_tier ?? 'Challenger',
-        wins:        stats?.wins ?? 0,
-        losses:      stats?.losses ?? 0,
-        draws:       stats?.draws ?? 0,
+        quickWins:   stats?.quick_wins ?? 0,
+        quickLosses: stats?.quick_losses ?? 0,
+        quickDraws:  stats?.quick_draws ?? 0,
         best_streak: stats?.best_streak ?? 0,
       });
 
@@ -514,6 +620,7 @@ const ProfilePage: React.FC = () => {
   const isOwnProfile = !!(user && profile && user.id === profile.player_id);
   const progression  = useProgression(isOwnProfile ? user?.id : undefined);
   const achievements = useAchievements(user?.id);
+  const ranked       = useRanked();
 
   if (loading) return (
     <PageBackground>
@@ -534,7 +641,7 @@ const ProfilePage: React.FC = () => {
     </PageBackground>
   );
 
-  const sharedProps = { profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, onCustomise: () => navigate('/customise') };
+  const sharedProps = { profile, recentGames, leaderboardPos, isOwnProfile, progression, achievements, ranked, onCustomise: () => navigate('/customise') };
 
   return isMobile
     ? <MobileProfile {...sharedProps} username={isOwnProfile ? profile.username : undefined} />

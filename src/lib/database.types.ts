@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -138,6 +138,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      app_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
       }
       bug_reports: {
         Row: {
@@ -450,6 +468,8 @@ export type Database = {
           player_x_id: string | null
           player_x_rewards_retry_count: number
           player_x_rewards_status: string
+          rating_delta_o: number | null
+          rating_delta_x: number | null
           rematch_game_id: string | null
           rematch_o_intent: string | null
           rematch_x_intent: string | null
@@ -480,6 +500,8 @@ export type Database = {
           player_x_id?: string | null
           player_x_rewards_retry_count?: number
           player_x_rewards_status?: string
+          rating_delta_o?: number | null
+          rating_delta_x?: number | null
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
@@ -510,6 +532,8 @@ export type Database = {
           player_x_id?: string | null
           player_x_rewards_retry_count?: number
           player_x_rewards_status?: string
+          rating_delta_o?: number | null
+          rating_delta_x?: number | null
           rematch_game_id?: string | null
           rematch_o_intent?: string | null
           rematch_x_intent?: string | null
@@ -789,12 +813,70 @@ export type Database = {
         }
         Relationships: []
       }
+      player_ratings: {
+        Row: {
+          draws: number
+          games_played: number
+          losses: number
+          peak_rating: number
+          rating: number
+          season_id: string
+          user_id: string
+          wins: number
+        }
+        Insert: {
+          draws?: number
+          games_played?: number
+          losses?: number
+          peak_rating?: number
+          rating?: number
+          season_id: string
+          user_id: string
+          wins?: number
+        }
+        Update: {
+          draws?: number
+          games_played?: number
+          losses?: number
+          peak_rating?: number
+          rating?: number
+          season_id?: string
+          user_id?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_ratings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "player_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_stats: {
         Row: {
           draws: number
           losses: number
           mmr: number
           player_id: string
+          quick_draws: number
+          quick_losses: number
+          quick_wins: number
           rank_tier: string
           wins: number
         }
@@ -803,6 +885,9 @@ export type Database = {
           losses?: number
           mmr?: number
           player_id: string
+          quick_draws?: number
+          quick_losses?: number
+          quick_wins?: number
           rank_tier?: string
           wins?: number
         }
@@ -811,6 +896,9 @@ export type Database = {
           losses?: number
           mmr?: number
           player_id?: string
+          quick_draws?: number
+          quick_losses?: number
+          quick_wins?: number
           rank_tier?: string
           wins?: number
         }
@@ -1032,121 +1120,13 @@ export type Database = {
           },
         ]
       }
-      season_prizes: {
-        Row: {
-          claimed: boolean
-          claimed_at: string | null
-          claimed_by: string | null
-          coin_amount: number | null
-          id: string
-          item_id: string | null
-          position: number
-          reward_type: string
-          season_id: string | null
-        }
-        Insert: {
-          claimed?: boolean
-          claimed_at?: string | null
-          claimed_by?: string | null
-          coin_amount?: number | null
-          id?: string
-          item_id?: string | null
-          position: number
-          reward_type: string
-          season_id?: string | null
-        }
-        Update: {
-          claimed?: boolean
-          claimed_at?: string | null
-          claimed_by?: string | null
-          coin_amount?: number | null
-          id?: string
-          item_id?: string | null
-          position?: number
-          reward_type?: string
-          season_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "season_prizes_claimed_by_fkey"
-            columns: ["claimed_by"]
-            isOneToOne: false
-            referencedRelation: "leaderboard"
-            referencedColumns: ["player_id"]
-          },
-          {
-            foreignKeyName: "season_prizes_claimed_by_fkey"
-            columns: ["claimed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "season_prizes_season_id_fkey"
-            columns: ["season_id"]
-            isOneToOne: false
-            referencedRelation: "seasons"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      season_standings: {
-        Row: {
-          draws: number
-          losses: number
-          player_id: string
-          points: number
-          rank_position: number | null
-          season_id: string
-          wins: number
-        }
-        Insert: {
-          draws?: number
-          losses?: number
-          player_id: string
-          points?: number
-          rank_position?: number | null
-          season_id: string
-          wins?: number
-        }
-        Update: {
-          draws?: number
-          losses?: number
-          player_id?: string
-          points?: number
-          rank_position?: number | null
-          season_id?: string
-          wins?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "season_standings_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "leaderboard"
-            referencedColumns: ["player_id"]
-          },
-          {
-            foreignKeyName: "season_standings_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "season_standings_season_id_fkey"
-            columns: ["season_id"]
-            isOneToOne: false
-            referencedRelation: "seasons"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       seasons: {
         Row: {
           end_date: string
           id: string
           name: string
+          number: number | null
+          reward_skin_id: string | null
           rules_config: Json | null
           start_date: string
           status: string
@@ -1155,6 +1135,8 @@ export type Database = {
           end_date: string
           id?: string
           name: string
+          number?: number | null
+          reward_skin_id?: string | null
           rules_config?: Json | null
           start_date: string
           status?: string
@@ -1163,11 +1145,21 @@ export type Database = {
           end_date?: string
           id?: string
           name?: string
+          number?: number | null
+          reward_skin_id?: string | null
           rules_config?: Json | null
           start_date?: string
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "seasons_reward_skin_id_fkey"
+            columns: ["reward_skin_id"]
+            isOneToOne: false
+            referencedRelation: "skins"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       skins: {
         Row: {
@@ -1519,11 +1511,34 @@ export type Database = {
       }
     }
     Functions: {
+      activate_scheduled_season: { Args: never; Returns: undefined }
+      admin_create_season: {
+        Args: { p_end_date?: string; p_name?: string; p_start_date?: string }
+        Returns: undefined
+      }
+      admin_end_season: { Args: never; Returns: undefined }
       admin_grant_credits: { Args: { amount: number }; Returns: undefined }
       admin_grant_xp: { Args: { amount: number }; Returns: undefined }
+      admin_set_config: {
+        Args: { p_key: string; p_value: Json }
+        Returns: undefined
+      }
+      admin_set_season_reward: {
+        Args: { p_season_id: string; p_skin_id?: string }
+        Returns: undefined
+      }
+      apply_ranked_result: { Args: { p_game_id: string }; Returns: undefined }
       cleanup_abandoned_games: { Args: never; Returns: undefined }
       confirm_match: {
         Args: { p_accept: boolean; p_game_id: string }
+        Returns: undefined
+      }
+      elo_new_rating: {
+        Args: { p_k: number; p_opp: number; p_own: number; p_score: number }
+        Returns: number
+      }
+      ensure_player_rating: {
+        Args: { p_season_id: string; p_user_id: string }
         Returns: undefined
       }
       get_friends_leaderboard: {
@@ -1560,6 +1575,7 @@ export type Database = {
         Args: { p_action: string; p_requester_id: string }
         Returns: undefined
       }
+      rollover_season: { Args: { p_force?: boolean }; Returns: undefined }
       send_friend_request: {
         Args: { p_addressee_id: string }
         Returns: undefined
@@ -1705,4 +1721,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

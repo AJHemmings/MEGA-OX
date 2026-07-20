@@ -29,6 +29,7 @@ import SkinsManager from './components/admin/SkinsManager';
 import EmojiManager from './components/admin/EmojiManager';
 import AchievementsManager from './components/admin/AchievementsManager';
 import ShopManager from './components/admin/ShopManager';
+import SeasonsManager from './components/admin/SeasonsManager';
 import AiTuner from './components/admin/AiTuner';
 import BugReportsManager from './components/admin/BugReportsManager';
 import { PresenceProvider } from './contexts/PresenceContext';
@@ -186,6 +187,9 @@ const AppShell: React.FC = () => {
           } />
           <Route path="/admin/shop" element={
             <AdminRoute requiredRole="super_admin"><AdminLayout><ShopManager /></AdminLayout></AdminRoute>
+          } />
+          <Route path="/admin/seasons" element={
+            <AdminRoute requiredRole="super_admin"><AdminLayout><SeasonsManager /></AdminLayout></AdminRoute>
           } />
           <Route path="/admin/ai-tuner" element={
             <AdminRoute requiredRole="super_admin"><AdminLayout><AiTuner /></AdminLayout></AdminRoute>
