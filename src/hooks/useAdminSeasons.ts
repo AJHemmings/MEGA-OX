@@ -108,8 +108,24 @@ export function useAdminSeasons() {
     return null;
   }, [loadSeasons]);
 
+  // Bootstraps a season when none is active, or schedules the next one in
+  // advance (start date in the future) while one is still active — the
+  // server rejects an immediate (non-future) start if a season is already
+  // active. rollover_season picks up a scheduled season automatically when
+  // the current one ends, rather than always auto-generating a new one.
+  const createSeason = useCallback(async (name: string | null, startDate: string | null, endDate: string | null): Promise<string | null> => {
+    const { error: err } = await supabase.rpc('admin_create_season', {
+      ...(name ? { p_name: name } : {}),
+      ...(startDate ? { p_start_date: startDate } : {}),
+      ...(endDate ? { p_end_date: endDate } : {}),
+    });
+    if (err) return err.message;
+    await loadSeasons(true);
+    return null;
+  }, [loadSeasons]);
+
   return {
     seasons, skins, rankedEnabled, loading, error,
-    refetch: loadSeasons, setSeasonReward, setRankedEnabled, endSeason,
+    refetch: loadSeasons, setSeasonReward, setRankedEnabled, endSeason, createSeason,
   };
 }

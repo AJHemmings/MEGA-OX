@@ -207,18 +207,32 @@ Deno.serve(async (req) => {
 
     const { data: stats } = await supabase
       .from('player_stats')
-      .select('wins, losses, draws')
+      .select('wins, losses, draws, quick_wins, quick_losses, quick_draws')
       .eq('player_id', userId)
       .single()
 
-    // Increment the correct counter for this game outcome
+    // Lifetime totals count every match type — these feed the
+    // total_wins/total_games achievement conditions and must include
+    // ranked/AI games, not just casual ones.
     const newWins   = (stats?.wins   ?? 0) + (isWin              ? 1 : 0)
     const newLosses = (stats?.losses ?? 0) + (!isWin && !isDraw  ? 1 : 0)
     const newDraws  = (stats?.draws  ?? 0) + (isDraw             ? 1 : 0)
 
+    const update: Record<string, number> = { wins: newWins, losses: newLosses, draws: newDraws }
+
+    // Quick Play W/L/D is the friendly-only counter shown on the profile,
+    // kept separate from ranked (player_ratings, season-scoped) so ranked
+    // results don't bleed into a player's casual stats.
+    const isQuickPlay = game.match_type === 'friendly'
+    if (isQuickPlay) {
+      update.quick_wins   = (stats?.quick_wins   ?? 0) + (isWin             ? 1 : 0)
+      update.quick_losses = (stats?.quick_losses ?? 0) + (!isWin && !isDraw ? 1 : 0)
+      update.quick_draws  = (stats?.quick_draws  ?? 0) + (isDraw            ? 1 : 0)
+    }
+
     await supabase
       .from('player_stats')
-      .update({ wins: newWins, losses: newLosses, draws: newDraws })
+      .update(update)
       .eq('player_id', userId)
 
     const totalGames = newWins + newLosses + newDraws

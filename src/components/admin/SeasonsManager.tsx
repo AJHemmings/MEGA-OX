@@ -214,13 +214,80 @@ const RankedControls: React.FC<RankedControlsProps> = ({
   );
 };
 
+const CreateSeasonControl: React.FC<{
+  hasActiveSeason: boolean;
+  onCreate: (name: string | null, startDate: string | null, endDate: string | null) => Promise<string | null>;
+}> = ({ hasActiveSeason, onCreate }) => {
+  const [name, setName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const inputStyle: React.CSSProperties = {
+    background: tokens.bgCard, color: tokens.text,
+    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+    padding: '5px 8px', fontSize: 12, fontFamily: tokens.font, outline: 'none',
+    colorScheme: 'dark',
+  };
+
+  const run = async () => {
+    setBusy(true);
+    const err = await onCreate(name.trim() || null, startDate || null, endDate || null);
+    setBusy(false);
+    setError(err);
+    if (!err) { setName(''); setStartDate(''); setEndDate(''); }
+  };
+
+  return (
+    <div style={{
+      flexShrink: 0, marginBottom: 16, padding: '12px 14px', borderRadius: 8,
+      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: tokens.text }}>
+        {hasActiveSeason
+          ? 'Schedule the next season — pick a future start date'
+          : 'No active season — create one to start ranked play'}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="Name (auto-numbered if blank)"
+          style={{ ...inputStyle, width: 220 }}
+        />
+        <input
+          type="date"
+          value={startDate}
+          onChange={e => setStartDate(e.target.value)}
+          title={hasActiveSeason ? 'Start date (required — must be in the future)' : 'Start date (defaults to today if blank)'}
+          style={{ ...inputStyle, width: 150 }}
+        />
+        <input
+          type="date"
+          value={endDate}
+          onChange={e => setEndDate(e.target.value)}
+          title="End date (defaults to one month after start if blank)"
+          style={{ ...inputStyle, width: 150 }}
+        />
+        <button style={controlButton(false, busy)} disabled={busy} onClick={run}>
+          {busy ? 'Creating…' : hasActiveSeason ? 'Schedule season' : 'Create season'}
+        </button>
+      </div>
+      {error && <div style={{ fontSize: 10, color: tokens.loss }}>{error}</div>}
+    </div>
+  );
+};
+
 const SeasonsManager: React.FC = () => {
   const {
     seasons, skins, rankedEnabled, loading, error,
-    setSeasonReward, setRankedEnabled, endSeason,
+    setSeasonReward, setRankedEnabled, endSeason, createSeason,
   } = useAdminSeasons();
 
   const activeSeason = seasons.find(s => s.status === 'active');
+  const upcomingSeason = seasons.find(s => s.status === 'upcoming');
   const showWarning = !!activeSeason && activeSeason.reward_skin_id === null;
 
   return (
@@ -232,6 +299,10 @@ const SeasonsManager: React.FC = () => {
           {seasons.length} season{seasons.length !== 1 ? 's' : ''}
         </div>
       </div>
+
+      {!loading && !upcomingSeason && (
+        <CreateSeasonControl hasActiveSeason={!!activeSeason} onCreate={createSeason} />
+      )}
 
       {!loading && (
         <RankedControls

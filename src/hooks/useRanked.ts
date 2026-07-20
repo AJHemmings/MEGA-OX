@@ -9,9 +9,15 @@ export type PlayerRating = Database['public']['Tables']['player_ratings']['Row']
 
 export interface UseRankedResult {
   season: Season | null;
+  /** The next scheduled season, if an admin has pre-scheduled one (status = 'upcoming'). */
+  upcomingSeason: Season | null;
   rating: PlayerRating | null;
   /** null while the user has no rating row yet — render as "Unranked". */
   tier: Tier | null;
+  /** Days remaining until `season.end_date`, when a season is active. */
+  daysLeft: number | null;
+  /** Days until `upcomingSeason.start_date`, when a season is scheduled but not live yet. */
+  daysUntilStart: number | null;
   loading: boolean;
   /** Set on query failure so consumers can tell "no active season" from "fetch failed". */
   error: string | null;
@@ -23,6 +29,15 @@ export interface UseRankedResult {
   refresh: () => void;
 }
 
+// Whole-day difference, ignoring time-of-day (both inputs are already
+// date-only strings from Postgres `date` columns).
+const daysUntil = (isoDate: string): number => {
+  const target = new Date(isoDate + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+};
+
 // Fetches the active season and the current user's rating row for it (may not
 // exist yet — `join_matchmaking_queue` creates it lazily on first ranked queue).
 // `refresh()` re-runs the fetch; a later task calls it after a ranked game ends
@@ -30,6 +45,7 @@ export interface UseRankedResult {
 export const useRanked = (): UseRankedResult => {
   const { user } = useAuth();
   const [season, setSeason] = useState<Season | null>(null);
+  const [upcomingSeason, setUpcomingSeason] = useState<Season | null>(null);
   const [rating, setRating] = useState<PlayerRating | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +63,7 @@ export const useRanked = (): UseRankedResult => {
   useEffect(() => {
     if (!user?.id) {
       setSeason(null);
+      setUpcomingSeason(null);
       setRating(null);
       setError(null);
       setRankedEnabled(true);
@@ -63,12 +80,14 @@ export const useRanked = (): UseRankedResult => {
     setError(null);
 
     (async () => {
-      // Flag fetched in parallel with the season — independent queries, one round-trip.
+      // Flag fetched in parallel with the seasons — independent queries, one round-trip.
+      // Fetches both active AND upcoming (at most one of each, per admin_create_season's
+      // "one scheduled at a time" rule) so the UI can show "days left" or "days until".
       const [seasonRes, flagRes] = await Promise.all([
-        supabase.from('seasons').select('*').eq('status', 'active').maybeSingle(),
+        supabase.from('seasons').select('*').in('status', ['active', 'upcoming']),
         supabase.from('app_config').select('value').eq('key', 'ranked_enabled').maybeSingle(),
       ]);
-      const { data: seasonData, error: seasonErr } = seasonRes;
+      const { data: seasonsData, error: seasonErr } = seasonRes;
 
       if (cancelled) return;
 
@@ -79,13 +98,16 @@ export const useRanked = (): UseRankedResult => {
       if (seasonErr) {
         console.error('useRanked: failed to fetch active season:', seasonErr);
         setSeason(null);
+        setUpcomingSeason(null);
         setRating(null);
         setError('Could not load ranked season.');
         setLoading(false);
         return;
       }
 
-      setSeason(seasonData ?? null);
+      const seasonData = (seasonsData ?? []).find(s => s.status === 'active') ?? null;
+      setSeason(seasonData);
+      setUpcomingSeason((seasonsData ?? []).find(s => s.status === 'upcoming') ?? null);
 
       if (!seasonData) {
         // Genuinely no active season (not an error).
@@ -121,6 +143,8 @@ export const useRanked = (): UseRankedResult => {
   }, [user?.id, refreshKey]);
 
   const tier = rating ? tierForRating(rating.rating ?? DEFAULT_RATING) : null;
+  const daysLeft = season ? daysUntil(season.end_date) : null;
+  const daysUntilStart = upcomingSeason ? daysUntil(upcomingSeason.start_date) : null;
 
-  return { season, rating, tier, loading, error, rankedEnabled, refresh };
+  return { season, upcomingSeason, rating, tier, daysLeft, daysUntilStart, loading, error, rankedEnabled, refresh };
 };

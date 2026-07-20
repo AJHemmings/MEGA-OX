@@ -23,14 +23,19 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   const [presenceMap, setPresenceMap] = useState<Record<string, PresencePayload>>({});
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    isMountedRef.current = true;
+    // `cancelled` is scoped to THIS effect invocation, not a shared ref — a stale
+    // join() from a StrictMode-discarded mount must stay cancelled even after a
+    // later mount resets its own flag. A shared isMountedRef would get flipped
+    // back to true by the second mount, letting the stale call subscribe a
+    // second 'presence:global' channel and collide with the live one (the
+    // "cannot add presence callbacks after subscribe()" error).
+    let cancelled = false;
 
     async function join() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !isMountedRef.current) return;
+      if (!user || cancelled) return;
 
       const channel = supabase.channel('presence:global', {
         config: { presence: { key: user.id } },
@@ -48,9 +53,10 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
               if (p.userId && p.status) map[key] = p;
             }
           });
-          if (isMountedRef.current) setPresenceMap(map);
+          if (!cancelled) setPresenceMap(map);
         })
         .subscribe(async (status) => {
+          if (cancelled) return;
           if (status === 'SUBSCRIBED') {
             await channel.track({ userId: user.id, status: 'online' });
           }
@@ -63,7 +69,8 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
+      if (cancelled) return;
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         if (channelRef.current) await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
         join();
@@ -71,14 +78,15 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_OUT') {
         if (channelRef.current) await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
-        if (isMountedRef.current) setPresenceMap({});
+        setPresenceMap({});
       }
     });
 
     return () => {
-      isMountedRef.current = false;
+      cancelled = true;
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
       listener.subscription.unsubscribe();
     };
   }, []);

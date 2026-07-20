@@ -112,48 +112,89 @@ const RecentGameRow: React.FC<{ game: RecentGame }> = ({ game }) => {
   );
 };
 
-const HeroCard: React.FC<{ onPlay: () => void; onRanked: () => void }> = ({ onPlay, onRanked }) => {
-  const { rating, rankedEnabled } = useRanked();
+const QuickPlayCard: React.FC<{ onPlay: () => void }> = ({ onPlay }) => (
+  <Glass style={{ position: 'relative', overflow: 'hidden', padding: 20 }} padding={0}>
+    <div style={{
+      position: 'absolute', inset: 0, pointerEvents: 'none',
+      background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.12))',
+      borderRadius: tokens.glassRadius,
+    }} />
+    {/* corner glow */}
+    <div style={{
+      position: 'absolute', top: -30, right: -30,
+      width: 140, height: 140, borderRadius: '50%',
+      background: 'rgba(0,212,170,0.22)',
+      filter: 'blur(40px)', pointerEvents: 'none',
+    }} />
+    <div style={{ position: 'relative', padding: 20 }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+        color: tokens.accent, textTransform: 'uppercase', marginBottom: 6,
+      }}>
+        Quick Play
+      </div>
+      <div style={{ fontSize: 19, fontWeight: 900, color: tokens.text, marginBottom: 16 }}>
+        Multiplayer
+      </div>
+      <PrimaryButton fullWidth onClick={onPlay} style={{ fontSize: 15 }}>
+        ▶&nbsp;&nbsp;Play Now
+      </PrimaryButton>
+    </div>
+  </Glass>
+);
+
+const RankedPlayCard: React.FC<{ onRanked: () => void }> = ({ onRanked }) => {
+  const { rating, rankedEnabled, season, upcomingSeason, daysLeft, daysUntilStart } = useRanked();
+  const countdownText = season && daysLeft !== null
+    ? (daysLeft <= 0 ? 'Season ends today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`)
+    : upcomingSeason && daysUntilStart !== null
+    ? (daysUntilStart <= 0 ? 'Season starts today' : `Starts in ${daysUntilStart} day${daysUntilStart === 1 ? '' : 's'}`)
+    : null;
+
   return (
     <Glass style={{ position: 'relative', overflow: 'hidden', padding: 20 }} padding={0}>
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(135deg, rgba(0,212,170,0.18), rgba(124,77,255,0.12))',
+        background: 'linear-gradient(135deg, rgba(249,168,37,0.16), rgba(124,77,255,0.18))',
         borderRadius: tokens.glassRadius,
       }} />
       {/* corner glow */}
       <div style={{
         position: 'absolute', top: -30, right: -30,
         width: 140, height: 140, borderRadius: '50%',
-        background: 'rgba(0,212,170,0.22)',
+        background: 'rgba(124,77,255,0.24)',
         filter: 'blur(40px)', pointerEvents: 'none',
       }} />
       <div style={{ position: 'relative', padding: 20 }}>
-        <div style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
-          color: tokens.accent, textTransform: 'uppercase', marginBottom: 6,
-        }}>
-          Quick Play
-        </div>
-        <div style={{ fontSize: 19, fontWeight: 900, color: tokens.text, marginBottom: 16 }}>
-          Multiplayer
-        </div>
-        <PrimaryButton fullWidth onClick={onPlay} style={{ fontSize: 15 }}>
-          ▶&nbsp;&nbsp;Play Now
-        </PrimaryButton>
-        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <SecondaryButton fullWidth onClick={onRanked} disabled={!rankedEnabled} style={{ fontSize: 15 }}>
-              🏆&nbsp;&nbsp;Ranked
-            </SecondaryButton>
-            {!rankedEnabled && (
-              <div style={{ fontSize: 10, color: tokens.textMuted, textAlign: 'center', marginTop: 4 }}>
-                Ranked temporarily disabled
-              </div>
-            )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+            color: tokens.credits, textTransform: 'uppercase',
+          }}>
+            Ranked
           </div>
           <TierBadge rating={rating?.rating ?? null} />
         </div>
+        <div style={{ fontSize: 19, fontWeight: 900, color: tokens.text, marginBottom: 16 }}>
+          Ranked Ladder
+        </div>
+        <PrimaryButton fullWidth onClick={onRanked} disabled={!rankedEnabled} style={{ fontSize: 15 }}>
+          🏆&nbsp;&nbsp;Ranked
+        </PrimaryButton>
+        {/* Independent lines: the season countdown is true regardless of the
+            kill switch, and the kill switch is true regardless of the season —
+            showing only one used to hide the countdown whenever ranked was
+            paused, which is wrong (players should still see it coming). */}
+        {countdownText && (
+          <div style={{ fontSize: 12, color: tokens.textMuted, textAlign: 'center', marginTop: 8 }}>
+            {countdownText}
+          </div>
+        )}
+        {!rankedEnabled && (
+          <div style={{ fontSize: 12, color: tokens.textMuted, textAlign: 'center', marginTop: countdownText ? 2 : 8 }}>
+            Ranked temporarily disabled
+          </div>
+        )}
       </div>
     </Glass>
   );
@@ -263,6 +304,7 @@ interface LayoutProps {
   progression: ProgressionState & { refresh: () => void };
   recentGames: RecentGame[];
   initial: string;
+  rating: number | null;
   onPlay: () => void;
   onRanked: () => void;
   onMode: (action: string) => void;
@@ -283,7 +325,7 @@ const MOBILE_NAV = [
 ];
 
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, onPlay, onRanked, onMode, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
+  profile, progression, recentGames, initial, rating, onPlay, onRanked, onMode, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bugModalOpen, setBugModalOpen] = useState(false);
@@ -414,11 +456,8 @@ const MobileLayout: React.FC<LayoutProps> = ({
           }}>
             {profile?.username ?? '—'}
           </div>
-          <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: 0.4,
-            color: tokens.accent, textTransform: 'uppercase', marginBottom: 8,
-          }}>
-            {profile?.rank_tier ?? 'Challenger'}
+          <div style={{ marginBottom: 8 }}>
+            <TierBadge rating={rating} />
           </div>
           {!progression.loading && (
             <XPProgressBar
@@ -433,9 +472,10 @@ const MobileLayout: React.FC<LayoutProps> = ({
       </div>
     </Glass>
 
-    {/* Hero CTA */}
-    <div id="menu-play" style={{ marginBottom: 12 }}>
-      <HeroCard onPlay={onPlay} onRanked={onRanked} />
+    {/* Hero CTAs */}
+    <div id="menu-play" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+      <QuickPlayCard onPlay={onPlay} />
+      <RankedPlayCard onRanked={onRanked} />
     </div>
 
     {/* Mode tiles 2×2 */}
@@ -514,7 +554,7 @@ const MobileLayout: React.FC<LayoutProps> = ({
 // ── desktop layout ────────────────────────────────────────────
 
 const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
-  profile, progression, recentGames, initial, onPlay, onRanked, onMode, onSignOut, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
+  profile, progression, recentGames, initial, rating, onPlay, onRanked, onMode, onSignOut, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [bugModalOpen, setBugModalOpen] = useState(false);
   return (
@@ -601,9 +641,7 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
             <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text }}>
               {profile?.username ?? '—'}
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: tokens.accent }}>
-              {profile?.rank_tier ?? 'Challenger'}
-            </div>
+            <TierBadge rating={rating} />
           </div>
           <LevelBadge level={profile?.level ?? 1} size="sm" />
         </button>
@@ -619,8 +657,9 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
     }}>
       {/* Left column */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div id="menu-play">
-          <HeroCard onPlay={onPlay} onRanked={onRanked} />
+        <div id="menu-play" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <QuickPlayCard onPlay={onPlay} />
+          <RankedPlayCard onRanked={onRanked} />
         </div>
 
         {/* 3-col mode tiles */}
@@ -668,12 +707,10 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: tokens.text }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: tokens.text, marginBottom: 4 }}>
                 {profile?.username ?? '—'}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: tokens.accent, letterSpacing: 0.4 }}>
-                {profile?.rank_tier ?? 'Challenger'}
-              </div>
+              <TierBadge rating={rating} />
             </div>
           </div>
           {!progression.loading && (
@@ -774,6 +811,7 @@ const MainMenu: React.FC = () => {
   const { role: adminRole } = useAdminRole();
   const { shouldAutoStart, markComplete } = useTutorial('home');
   const isMobile = useIsMobile();
+  const { rating } = useRanked();
 
   const [showDifficulty, setShowDifficulty] = useState(false);
   const [streakDismissed, setStreakDismissed] = useState(false);
@@ -852,6 +890,7 @@ const MainMenu: React.FC = () => {
 
   const layoutProps = {
     profile, progression, recentGames, initial,
+    rating: rating?.rating ?? null,
     onPlay: () => navigate('/multiplayer'),
     onRanked: () => navigate('/matchmaking?mode=ranked&view=searching'),
     onMode: handleMode,

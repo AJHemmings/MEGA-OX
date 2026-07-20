@@ -874,6 +874,9 @@ export type Database = {
           losses: number
           mmr: number
           player_id: string
+          quick_draws: number
+          quick_losses: number
+          quick_wins: number
           rank_tier: string
           wins: number
         }
@@ -882,6 +885,9 @@ export type Database = {
           losses?: number
           mmr?: number
           player_id: string
+          quick_draws?: number
+          quick_losses?: number
+          quick_wins?: number
           rank_tier?: string
           wins?: number
         }
@@ -890,6 +896,9 @@ export type Database = {
           losses?: number
           mmr?: number
           player_id?: string
+          quick_draws?: number
+          quick_losses?: number
+          quick_wins?: number
           rank_tier?: string
           wins?: number
         }
@@ -1502,6 +1511,11 @@ export type Database = {
       }
     }
     Functions: {
+      activate_scheduled_season: { Args: never; Returns: undefined }
+      admin_create_season: {
+        Args: { p_end_date?: string; p_name?: string; p_start_date?: string }
+        Returns: undefined
+      }
       admin_end_season: { Args: never; Returns: undefined }
       admin_grant_credits: { Args: { amount: number }; Returns: undefined }
       admin_grant_xp: { Args: { amount: number }; Returns: undefined }

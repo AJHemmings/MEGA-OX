@@ -691,6 +691,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
         <PrimaryButton onClick={() => navigate('/menu')} fullWidth>Back to Menu</PrimaryButton>
       ) : postGameLoading ? (
         <div style={{ color: tokens.textMuted, fontSize: 14 }}>Loading rewards…</div>
+      ) : matchType === 'ranked' ? (
+        // Ranked has no informal rematch — ladder integrity requires every
+        // game to come from matchmaking, not a repeat pairing the players
+        // arrange themselves. Only Back to Menu is offered.
+        <PrimaryButton onClick={() => { signalRematchIntent('back_to_menu'); navigate('/menu'); }} fullWidth>
+          Back to Menu
+        </PrimaryButton>
       ) : (
         <>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '10px 0' }}>
