@@ -124,8 +124,24 @@ export function useAdminSeasons() {
     return null;
   }, [loadSeasons]);
 
+  // Only valid for 'upcoming' seasons — editing an active season's dates
+  // would fight the daily activate_scheduled_season/rollover_season jobs.
+  const updateSeason = useCallback(async (
+    seasonId: string, name: string | null, startDate: string | null, endDate: string | null
+  ): Promise<string | null> => {
+    const { error: err } = await supabase.rpc('admin_update_season', {
+      p_season_id: seasonId,
+      ...(name ? { p_name: name } : {}),
+      ...(startDate ? { p_start_date: startDate } : {}),
+      ...(endDate ? { p_end_date: endDate } : {}),
+    });
+    if (err) return err.message;
+    await loadSeasons(true);
+    return null;
+  }, [loadSeasons]);
+
   return {
     seasons, skins, rankedEnabled, loading, error,
-    refetch: loadSeasons, setSeasonReward, setRankedEnabled, endSeason, createSeason,
+    refetch: loadSeasons, setSeasonReward, setRankedEnabled, endSeason, createSeason, updateSeason,
   };
 }

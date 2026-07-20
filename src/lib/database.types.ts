@@ -1527,6 +1527,15 @@ export type Database = {
         Args: { p_season_id: string; p_skin_id?: string }
         Returns: undefined
       }
+      admin_update_season: {
+        Args: {
+          p_end_date?: string
+          p_name?: string
+          p_season_id: string
+          p_start_date?: string
+        }
+        Returns: undefined
+      }
       apply_ranked_result: { Args: { p_game_id: string }; Returns: undefined }
       cleanup_abandoned_games: { Args: never; Returns: undefined }
       confirm_match: {
