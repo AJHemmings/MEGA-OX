@@ -7,6 +7,7 @@ const NAV_EDITOR = [
   { label: 'Skins',        path: '/admin/skins'        },
   { label: 'Achievements', path: '/admin/achievements'  },
   { label: 'Emojis',       path: '/admin/emojis'        },
+  { label: 'News',         path: '/admin/news'         },
   { label: 'Bug Reports',  path: '/admin/bugs'         },
 ];
 

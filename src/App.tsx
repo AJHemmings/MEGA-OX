@@ -30,6 +30,7 @@ import EmojiManager from './components/admin/EmojiManager';
 import AchievementsManager from './components/admin/AchievementsManager';
 import ShopManager from './components/admin/ShopManager';
 import SeasonsManager from './components/admin/SeasonsManager';
+import NewsManager from './components/admin/NewsManager';
 import AiTuner from './components/admin/AiTuner';
 import BugReportsManager from './components/admin/BugReportsManager';
 import { PresenceProvider } from './contexts/PresenceContext';
@@ -184,6 +185,9 @@ const AppShell: React.FC = () => {
           } />
           <Route path="/admin/emojis" element={
             <AdminRoute><AdminLayout><EmojiManager /></AdminLayout></AdminRoute>
+          } />
+          <Route path="/admin/news" element={
+            <AdminRoute><AdminLayout><NewsManager /></AdminLayout></AdminRoute>
           } />
           <Route path="/admin/shop" element={
             <AdminRoute requiredRole="super_admin"><AdminLayout><ShopManager /></AdminLayout></AdminRoute>

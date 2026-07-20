@@ -5,9 +5,15 @@ import { tokens } from '../../../styles/tokens';
 interface Props {
   value: string;
   onChange: (url: string) => void;
+  accept?: string;
+  hint?: string;
 }
 
-export const AssetUpload: React.FC<Props> = ({ value, onChange }) => {
+export const AssetUpload: React.FC<Props> = ({
+  value, onChange,
+  accept = '.svg,.png,.json',
+  hint = 'Drop SVG / PNG / JSON here, or click to browse',
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -81,13 +87,13 @@ export const AssetUpload: React.FC<Props> = ({ value, onChange }) => {
           onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
         >
           <div style={{ fontSize: 13, color: uploading ? tokens.accent : tokens.textMuted, fontWeight: 600 }}>
-            {uploading ? 'Uploading…' : 'Drop SVG / PNG / JSON here, or click to browse'}
+            {uploading ? 'Uploading…' : hint}
           </div>
           <div style={{ fontSize: 11, color: tokens.textDim, marginTop: 4 }}>Max 2MB</div>
         </div>
       )}
 
-      <input ref={inputRef} type="file" accept=".svg,.png,.json" style={{ display: 'none' }}
+      <input ref={inputRef} type="file" accept={accept} style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
 
       {uploadError && (
