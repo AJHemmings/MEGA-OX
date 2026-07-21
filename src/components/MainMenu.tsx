@@ -27,6 +27,7 @@ import { callPostGameHandler, fetchPendingRewardGameIds } from '../lib/postGame'
 import { PostGameModal, PostGameResult } from './progression/PostGameModal';
 import { useRanked } from '../hooks/useRanked';
 import TierBadge from './ranked/TierBadge';
+import { supabase } from '../lib/supabase';
 
 // ── helpers ───────────────────────────────────────────────────
 
@@ -65,6 +66,25 @@ const Avatar: React.FC<{ initial: string; size: number }> = ({ initial, size }) 
     boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
   }}>
     {initial}
+  </div>
+);
+
+// Equipped profile banner, condensed to whatever height its container is —
+// clipped behind the avatar/name/tier row only, never behind XP (see callers).
+// No-op (no image, no scrim) when the player has no banner equipped, so the
+// card looks exactly as it did before for anyone without one.
+const PlayerCardBanner: React.FC<{ url: string | null }> = ({ url }) => (
+  <div style={{
+    position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
+    borderRadius: `${tokens.glassRadius}px ${tokens.glassRadius}px 0 0`,
+  }}>
+    {url && <img src={url} alt="" aria-hidden style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+    {url && (
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(115deg, rgba(6,13,31,0.80) 15%, rgba(6,13,31,0.40) 65%, rgba(6,13,31,0.20) 100%)',
+      }} />
+    )}
   </div>
 );
 
@@ -144,7 +164,7 @@ const QuickPlayCard: React.FC<{ onPlay: () => void }> = ({ onPlay }) => (
 );
 
 const RankedPlayCard: React.FC<{ onRanked: () => void }> = ({ onRanked }) => {
-  const { rating, rankedEnabled, season, upcomingSeason, daysLeft, daysUntilStart } = useRanked();
+  const { rankedEnabled, season, upcomingSeason, daysLeft, daysUntilStart } = useRanked();
   const countdownText = season && daysLeft !== null
     ? (daysLeft <= 0 ? 'Season ends today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`)
     : upcomingSeason && daysUntilStart !== null
@@ -166,14 +186,11 @@ const RankedPlayCard: React.FC<{ onRanked: () => void }> = ({ onRanked }) => {
         filter: 'blur(40px)', pointerEvents: 'none',
       }} />
       <div style={{ position: 'relative', padding: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
-            color: tokens.credits, textTransform: 'uppercase',
-          }}>
-            Ranked
-          </div>
-          <TierBadge rating={rating?.rating ?? null} />
+        <div style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+          color: tokens.credits, textTransform: 'uppercase', marginBottom: 6,
+        }}>
+          Ranked
         </div>
         <div style={{ fontSize: 19, fontWeight: 900, color: tokens.text, marginBottom: 16 }}>
           Ranked Ladder
@@ -305,6 +322,7 @@ interface LayoutProps {
   recentGames: RecentGame[];
   initial: string;
   rating: number | null;
+  bannerUrl: string | null;
   onPlay: () => void;
   onRanked: () => void;
   onMode: (action: string) => void;
@@ -325,7 +343,7 @@ const MOBILE_NAV = [
 ];
 
 const MobileLayout: React.FC<LayoutProps> = ({
-  profile, progression, recentGames, initial, rating, onPlay, onRanked, onMode, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
+  profile, progression, recentGames, initial, rating, bannerUrl, onPlay, onRanked, onMode, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bugModalOpen, setBugModalOpen] = useState(false);
@@ -441,35 +459,38 @@ const MobileLayout: React.FC<LayoutProps> = ({
     </div>
 
     {/* Player card */}
-    <Glass style={{ marginBottom: 12 }} padding={16}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <Avatar initial={initial} size={56} />
-          <div style={{ position: 'absolute', bottom: -4, right: -4 }}>
-            <LevelBadge level={profile?.level ?? 1} size="sm" />
+    <Glass style={{ marginBottom: 12, overflow: 'hidden' }} padding={0}>
+      <div style={{ position: 'relative', padding: 16 }}>
+        <PlayerCardBanner url={bannerUrl} />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <Avatar initial={initial} size={56} />
+            <div style={{ position: 'absolute', bottom: -4, right: -4 }}>
+              <LevelBadge level={profile?.level ?? 1} size="sm" />
+            </div>
           </div>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div id="menu-profile" style={{
-            fontSize: 17, fontWeight: 800, color: tokens.text,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {profile?.username ?? '—'}
-          </div>
-          <div style={{ marginBottom: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div id="menu-profile" style={{
+              fontSize: 17, fontWeight: 800, color: tokens.text,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {profile?.username ?? '—'}
+            </div>
             <TierBadge rating={rating} />
           </div>
-          {!progression.loading && (
-            <XPProgressBar
-              level={progression.level}
-              xpIntoLevel={progression.xpIntoLevel}
-              xpNeededForLevel={progression.xpNeededForLevel}
-              xpToNext={progression.xpToNext}
-              height={6}
-            />
-          )}
         </div>
       </div>
+      {!progression.loading && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <XPProgressBar
+            level={progression.level}
+            xpIntoLevel={progression.xpIntoLevel}
+            xpNeededForLevel={progression.xpNeededForLevel}
+            xpToNext={progression.xpToNext}
+            height={6}
+          />
+        </div>
+      )}
     </Glass>
 
     {/* Hero CTAs */}
@@ -554,7 +575,7 @@ const MobileLayout: React.FC<LayoutProps> = ({
 // ── desktop layout ────────────────────────────────────────────
 
 const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
-  profile, progression, recentGames, initial, rating, onPlay, onRanked, onMode, onSignOut, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
+  profile, progression, recentGames, initial, rating, bannerUrl, onPlay, onRanked, onMode, onSignOut, navigate, adminRole, user, hasPendingRewards, recoveryLoading, onRecover,
 }) => {
   const [bugModalOpen, setBugModalOpen] = useState(false);
   return (
@@ -609,7 +630,7 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
       </div>
 
       {/* Right cluster */}
-      <div id="menu-profile" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         {hasPendingRewards && (
           <button
             onClick={onRecover}
@@ -629,22 +650,6 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
           </button>
         )}
         <CreditChip amount={progression.credits} />
-        <button
-          onClick={() => profile && navigate(`/profile/${profile.username}`)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-          }}
-        >
-          <Avatar initial={initial} size={36} />
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: tokens.text }}>
-              {profile?.username ?? '—'}
-            </div>
-            <TierBadge rating={rating} />
-          </div>
-          <LevelBadge level={profile?.level ?? 1} size="sm" />
-        </button>
         <SecondaryButton size="sm" onClick={onSignOut}>Sign out</SecondaryButton>
       </div>
     </div>
@@ -698,49 +703,63 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
       {/* Right column */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Player card */}
-        <Glass padding={20}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <Avatar initial={initial} size={52} />
-              <div style={{ position: 'absolute', bottom: -4, right: -4 }}>
-                <LevelBadge level={profile?.level ?? 1} size="sm" />
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: tokens.text, marginBottom: 4 }}>
-                {profile?.username ?? '—'}
-              </div>
-              <TierBadge rating={rating} />
-            </div>
-          </div>
-          {!progression.loading && (
-            <XPProgressBar
-              level={progression.level}
-              xpIntoLevel={progression.xpIntoLevel}
-              xpNeededForLevel={progression.xpNeededForLevel}
-              xpToNext={progression.xpToNext}
-            />
-          )}
-          {/* W / L / D stat trio */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 16 }}>
-            {([
-              { label: 'Wins',   value: profile?.wins ?? 0,   color: tokens.win },
-              { label: 'Losses', value: profile?.losses ?? 0, color: tokens.loss },
-              { label: 'Draws',  value: profile?.draws ?? 0,  color: tokens.draw },
-            ] as const).map(s => (
-              <div key={s.label} style={{
-                background: tokens.innerBg, border: tokens.innerBorder,
-                borderRadius: 10, padding: '10px 0', textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
-                <div style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-                  color: tokens.textMuted, textTransform: 'uppercase', marginTop: 2,
-                }}>
-                  {s.label}
+        <Glass id="menu-profile" padding={0} style={{ overflow: 'hidden' }}>
+          <button
+            onClick={() => profile && navigate(`/profile/${profile.username}`)}
+            style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0, margin: 0,
+              font: 'inherit', color: 'inherit',
+            }}
+          >
+            <div style={{ position: 'relative', padding: 20 }}>
+              <PlayerCardBanner url={bannerUrl} />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <Avatar initial={initial} size={52} />
+                  <div style={{ position: 'absolute', bottom: -4, right: -4 }}>
+                    <LevelBadge level={profile?.level ?? 1} size="sm" />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: tokens.text, marginBottom: 4 }}>
+                    {profile?.username ?? '—'}
+                  </div>
+                  <TierBadge rating={rating} />
                 </div>
               </div>
-            ))}
+            </div>
+          </button>
+          <div style={{ padding: '0 20px 20px' }}>
+            {!progression.loading && (
+              <XPProgressBar
+                level={progression.level}
+                xpIntoLevel={progression.xpIntoLevel}
+                xpNeededForLevel={progression.xpNeededForLevel}
+                xpToNext={progression.xpToNext}
+              />
+            )}
+            {/* W / L / D stat trio */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 16 }}>
+              {([
+                { label: 'Wins',   value: profile?.wins ?? 0,   color: tokens.win },
+                { label: 'Losses', value: profile?.losses ?? 0, color: tokens.loss },
+                { label: 'Draws',  value: profile?.draws ?? 0,  color: tokens.draw },
+              ] as const).map(s => (
+                <div key={s.label} style={{
+                  background: tokens.innerBg, border: tokens.innerBorder,
+                  borderRadius: 10, padding: '10px 0', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                    color: tokens.textMuted, textTransform: 'uppercase', marginTop: 2,
+                  }}>
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </Glass>
 
@@ -820,6 +839,27 @@ const MainMenu: React.FC = () => {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryResult, setRecoveryResult] = useState<PostGameResult | null>(null);
 
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user?.id) { setBannerUrl(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('active_banner_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (cancelled || !p?.active_banner_id) return;
+      const { data: item } = await supabase
+        .from('cosmetic_items')
+        .select('asset_url')
+        .eq('id', p.active_banner_id)
+        .maybeSingle();
+      if (!cancelled) setBannerUrl(item?.asset_url ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   const checkPendingRewards = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -891,6 +931,7 @@ const MainMenu: React.FC = () => {
   const layoutProps = {
     profile, progression, recentGames, initial,
     rating: rating?.rating ?? null,
+    bannerUrl,
     onPlay: () => navigate('/multiplayer'),
     onRanked: () => navigate('/matchmaking?mode=ranked&view=searching'),
     onMode: handleMode,
