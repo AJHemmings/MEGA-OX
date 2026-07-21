@@ -101,8 +101,11 @@ export function useAdminSeasons() {
     return null;
   }, [loadSeasons]);
 
-  const endSeason = useCallback(async (): Promise<string | null> => {
-    const { error: err } = await supabase.rpc('admin_end_season');
+  // p_expected_number guards against a stale tab: if the active season changed
+  // since this page loaded (cron rollover, another admin), the server rejects
+  // the call instead of silently ending whatever season happens to be active.
+  const endSeason = useCallback(async (expectedNumber: number): Promise<string | null> => {
+    const { error: err } = await supabase.rpc('admin_end_season', { p_expected_number: expectedNumber });
     if (err) return err.message;
     await loadSeasons(true);
     return null;
