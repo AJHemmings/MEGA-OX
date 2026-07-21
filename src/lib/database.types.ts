@@ -1580,7 +1580,10 @@ export type Database = {
         Args: { p_end_date?: string; p_name?: string; p_start_date?: string }
         Returns: undefined
       }
-      admin_end_season: { Args: never; Returns: undefined }
+      admin_end_season: {
+        Args: { p_expected_number: number }
+        Returns: undefined
+      }
       admin_grant_credits: { Args: { amount: number }; Returns: undefined }
       admin_grant_xp: { Args: { amount: number }; Returns: undefined }
       admin_set_config: {

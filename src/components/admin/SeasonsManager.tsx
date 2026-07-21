@@ -158,7 +158,7 @@ interface RankedControlsProps {
   rankedEnabled: boolean | null;
   activeSeasonNumber: number | null;
   onToggle: (next: boolean) => Promise<string | null>;
-  onEndSeason: () => Promise<string | null>;
+  onEndSeason: (expectedNumber: number) => Promise<string | null>;
 }
 
 const controlButton = (danger: boolean, disabled: boolean): React.CSSProperties => ({
@@ -188,8 +188,9 @@ const RankedControls: React.FC<RankedControlsProps> = ({
   };
 
   const runEndSeason = async () => {
+    if (activeSeasonNumber === null) return;
     setBusy(true);
-    const err = await onEndSeason();
+    const err = await onEndSeason(activeSeasonNumber);
     setBusy(false);
     setCtrlError(err);
     if (!err) { setConfirming(false); setConfirmInput(''); }
