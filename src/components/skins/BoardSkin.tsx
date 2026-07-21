@@ -23,7 +23,7 @@ const BoardSkin: React.FC<BoardSkinProps> = ({ currentEvent, children }) => {
     return <div style={{ position: 'relative', display: 'inline-block' }}>{children}</div>;
   }
 
-  if (skin.assetUrl.endsWith('.svg')) {
+  if (skin.assetUrl.endsWith('.svg') || skin.assetUrl.startsWith('data:image/')) {
     return (
       <div style={{ position: 'relative', display: 'inline-block' }}>
         <img

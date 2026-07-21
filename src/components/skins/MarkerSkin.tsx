@@ -41,7 +41,7 @@ const MarkerSkin: React.FC<MarkerSkinProps> = ({ player, value, currentEvent }) 
     );
   }
 
-  if (skin.assetUrl.endsWith('.svg')) {
+  if (skin.assetUrl.endsWith('.svg') || skin.assetUrl.startsWith('data:image/')) {
     return (
       <img
         src={skin.assetUrl}

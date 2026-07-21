@@ -16,12 +16,21 @@ import { Coin } from '../icons';
 import BackButton from '../common/BackButton';
 import { Loadout } from '../../hooks/useLoadout';
 
-type CTab = 'avatar' | 'banner' | 'badge' | 'emoji';
+type CTab = 'avatar' | 'banner' | 'badge' | 'board' | 'marker' | 'emoji';
+type MarkerRole = 'x' | 'o';
 
-const SLOT_MAP: Record<Exclude<CTab, 'emoji'>, 'active_avatar_id' | 'active_badge_id' | 'active_banner_id'> = {
+// 'marker' isn't in here — it has two slots (X/O), picked via MarkerRole,
+// handled separately from this single-slot map.
+const SLOT_MAP: Record<Exclude<CTab, 'emoji' | 'marker'>, 'active_avatar_id' | 'active_badge_id' | 'active_banner_id' | 'active_board_id'> = {
   avatar: 'active_avatar_id',
   badge:  'active_badge_id',
   banner: 'active_banner_id',
+  board:  'active_board_id',
+};
+
+const TAB_LABELS: Record<CTab, string> = {
+  avatar: 'Avatar', banner: 'Banner', badge: 'Badge',
+  board: 'Board', marker: 'Marker', emoji: 'Emoji',
 };
 
 const ItemPreview: React.FC<{ item: OwnedItem }> = ({ item }) => {
@@ -34,6 +43,19 @@ const ItemPreview: React.FC<{ item: OwnedItem }> = ({ item }) => {
         {item.asset_url && (
           <img src={item.asset_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
+      </div>
+    );
+  }
+  if (item.type === 'marker') {
+    // Shows both glyphs the set grants — which one (if either) is actually
+    // equipped for X/O is shown by the EQUIPPED badge on the X/O toggle, not here.
+    return (
+      <div style={{ display: 'flex', gap: 4 }}>
+        {[item.asset_url, item.asset_url_secondary].map((url, i) => (
+          <div key={i} style={{ width: 32, height: 32, borderRadius: 6, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
+            {url && <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+          </div>
+        ))}
       </div>
     );
   }
@@ -53,13 +75,17 @@ const CustomisePage: React.FC = () => {
   const profile   = usePlayerProfile();
   const isMobile  = useIsMobile();
   const [tab, setTab] = useState<CTab>('avatar');
+  const [markerRole, setMarkerRole] = useState<MarkerRole>('x');
 
   const { items }              = useInventory(user?.id);
   const { loadout, loading: loadoutLoading, save } = useLoadout(user?.id);
   const { credits }            = useProgressionContext();
 
   // Draft: local copy of loadout. Only synced from DB on first load, not on every change.
-  const [draft, setDraft]     = useState<Loadout>({ active_avatar_id: null, active_badge_id: null, active_banner_id: null });
+  const [draft, setDraft]     = useState<Loadout>({
+    active_avatar_id: null, active_badge_id: null, active_banner_id: null,
+    active_board_id: null, active_marker_id: null, active_marker_o_id: null,
+  });
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
   const initializedRef         = useRef(false);
@@ -71,20 +97,22 @@ const CustomisePage: React.FC = () => {
     }
   }, [loadoutLoading, loadout]);
 
-  const isDirty =
-    draft.active_avatar_id !== loadout.active_avatar_id ||
-    draft.active_badge_id  !== loadout.active_badge_id  ||
-    draft.active_banner_id !== loadout.active_banner_id;
+  const isDirty = (Object.keys(draft) as (keyof Loadout)[]).some(k => draft[k] !== loadout[k]);
 
   const tabItems = items.filter(i => i.type === tab);
 
+  const markerSlot: 'active_marker_id' | 'active_marker_o_id' =
+    markerRole === 'x' ? 'active_marker_id' : 'active_marker_o_id';
+
   const isEquipped = (item: OwnedItem): boolean => {
     if (tab === 'emoji') return false;
+    if (tab === 'marker') return draft[markerSlot] === item.item_id;
     return draft[SLOT_MAP[tab]] === item.item_id;
   };
 
   const handleSelect = (item: OwnedItem) => {
     if (tab === 'emoji') return;
+    if (tab === 'marker') { setDraft(d => ({ ...d, [markerSlot]: item.item_id })); return; }
     setDraft(d => ({ ...d, [SLOT_MAP[tab]]: item.item_id }));
   };
 
@@ -164,21 +192,38 @@ const CustomisePage: React.FC = () => {
         display: 'flex', background: 'rgba(255,255,255,0.04)',
         borderRadius: tokens.glassRadius, padding: 4, marginBottom: 16,
       }}>
-        {(['avatar', 'banner', 'badge', 'emoji'] as CTab[]).map(t => {
-          const label = t === 'avatar' ? 'Avatar' : t === 'banner' ? 'Banner' : t === 'badge' ? 'Badge' : 'Emoji';
-          return (
-            <button key={t} onClick={() => setTab(t)} style={{
-              flex: 1, padding: '8px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: tab === t ? 'rgba(0,212,170,0.18)' : 'transparent',
-              color: tab === t ? tokens.accent : tokens.textMuted,
-              fontWeight: tab === t ? 800 : 600, fontSize: 12, fontFamily: tokens.font,
+        {(['avatar', 'banner', 'badge', 'board', 'marker', 'emoji'] as CTab[]).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            flex: 1, padding: '8px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: tab === t ? 'rgba(0,212,170,0.18)' : 'transparent',
+            color: tab === t ? tokens.accent : tokens.textMuted,
+            fontWeight: tab === t ? 800 : 600, fontSize: 11, fontFamily: tokens.font,
+            transition: 'background 0.15s, color 0.15s',
+          }}>
+            {TAB_LABELS[t]}
+          </button>
+        ))}
+      </div>
+
+      {/* Marker X/O role toggle — picking an item below equips it into whichever role is active here */}
+      {tab === 'marker' && (
+        <div style={{
+          display: 'flex', background: 'rgba(255,255,255,0.04)',
+          borderRadius: tokens.rPill, padding: 3, marginBottom: 16, width: 120,
+        }}>
+          {(['x', 'o'] as MarkerRole[]).map(role => (
+            <button key={role} onClick={() => setMarkerRole(role)} style={{
+              flex: 1, padding: '5px 0', borderRadius: tokens.rPill, border: 'none', cursor: 'pointer',
+              background: markerRole === role ? 'rgba(0,212,170,0.18)' : 'transparent',
+              color: markerRole === role ? tokens.accent : tokens.textMuted,
+              fontWeight: markerRole === role ? 800 : 600, fontSize: 12, fontFamily: tokens.font,
               transition: 'background 0.15s, color 0.15s',
             }}>
-              {label}
+              {role.toUpperCase()}
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Save button */}
       <div style={{ marginBottom: 16 }}>

@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -216,6 +216,7 @@ export type Database = {
           animated: boolean
           archived: boolean
           asset_url: string | null
+          asset_url_secondary: string | null
           featured: boolean
           id: string
           name: string
@@ -229,6 +230,7 @@ export type Database = {
           animated?: boolean
           archived?: boolean
           asset_url?: string | null
+          asset_url_secondary?: string | null
           featured?: boolean
           id?: string
           name: string
@@ -242,6 +244,7 @@ export type Database = {
           animated?: boolean
           archived?: boolean
           asset_url?: string | null
+          asset_url_secondary?: string | null
           featured?: boolean
           id?: string
           name?: string
@@ -990,6 +993,7 @@ export type Database = {
           active_banner_id: string | null
           active_board_id: string | null
           active_marker_id: string | null
+          active_marker_o_id: string | null
           active_theme_id: string | null
           avatar_url: string | null
           created_at: string | null
@@ -1004,6 +1008,7 @@ export type Database = {
           active_banner_id?: string | null
           active_board_id?: string | null
           active_marker_id?: string | null
+          active_marker_o_id?: string | null
           active_theme_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
@@ -1018,6 +1023,7 @@ export type Database = {
           active_banner_id?: string | null
           active_board_id?: string | null
           active_marker_id?: string | null
+          active_marker_o_id?: string | null
           active_theme_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
@@ -1037,6 +1043,13 @@ export type Database = {
           {
             foreignKeyName: "fk_active_marker"
             columns: ["active_marker_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_active_marker_o"
+            columns: ["active_marker_o_id"]
             isOneToOne: false
             referencedRelation: "cosmetic_items"
             referencedColumns: ["id"]
@@ -1665,6 +1678,8 @@ export type Database = {
         }
         Returns: string
       }
+      tier_for_rating: { Args: { p_rating: number }; Returns: string }
+      tier_reward_credits: { Args: { p_tier: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
