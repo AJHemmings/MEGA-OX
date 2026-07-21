@@ -185,8 +185,8 @@ const MatchmakingPage: React.FC = () => {
         });
         if (!mountedRef.current) return;
         if (rpcErr) {
-          // 'ranked_disabled' = admin kill switch raised by join_matchmaking_queue.
-          setError(rpcErr.message.includes('ranked_disabled')
+          // ERRCODE 'RANK1' = admin kill switch raised by join_matchmaking_queue.
+          setError(rpcErr.code === 'RANK1'
             ? 'Ranked is temporarily disabled — try a casual match!'
             : 'Could not join matchmaking. Try again.');
           return;
