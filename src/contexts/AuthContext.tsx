@@ -53,14 +53,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Create profile on first sign-in after email confirmation.
       // username is stored in user_metadata during signUp; only email-signup
-      // users have it. If no profile row exists yet, create it now.
+      // users have it. Upsert (ignoring duplicates) instead of check-then-insert
+      // so this is safe if SIGNED_IN and INITIAL_SESSION both fire on load.
       if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && session?.user?.user_metadata?.username) {
         const u = session.user;
-        supabase.from('profiles').select('id').eq('id', u.id).maybeSingle()
-          .then(({ data: existing }) => {
-            if (!existing) {
-              supabase.from('profiles').insert({ id: u.id, username: u.user_metadata.username });
-            }
+        supabase
+          .from('profiles')
+          .upsert({ id: u.id, username: u.user_metadata.username }, { onConflict: 'id', ignoreDuplicates: true })
+          .then(({ error }) => {
+            if (error) console.error('Profile creation failed:', error);
           });
       }
     });
