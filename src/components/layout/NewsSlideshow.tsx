@@ -52,10 +52,10 @@ const ArticleModal: React.FC<{ post: NewsPost; onClose: () => void }> = ({ post,
   const links = post.news_links.slice().sort((a, b) => a.sort_order - b.sort_order);
 
   return (
-    <Modal isOpen onClose={onClose} title={post.title}>
+    <Modal isOpen onClose={onClose} title={post.title} maxWidth="720px">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'left' as const }}>
         {post.image_url && (
-          <img src={post.image_url} alt="" style={{ width: '100%', borderRadius: 10, objectFit: 'cover', maxHeight: 220 }} />
+          <img src={post.image_url} alt="" style={{ display: 'block', width: '100%', margin: '0 auto', borderRadius: 10, objectFit: 'contain', maxHeight: 360, background: 'rgba(255,255,255,0.04)' }} />
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

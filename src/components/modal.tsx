@@ -1,10 +1,12 @@
 import React from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: string;
 }
 
 const modalStyle: React.CSSProperties = {
@@ -20,7 +22,6 @@ const modalStyle: React.CSSProperties = {
     "0 25px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)",
   zIndex: 1001,
   width: "90%",
-  maxWidth: "500px",
   maxHeight: "80vh",
   overflowY: "auto",
 };
@@ -41,13 +42,14 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   title,
   children,
+  maxWidth = "500px",
 }) => {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <>
       <div style={overlayStyle} onClick={onClose}></div>
-      <div style={modalStyle}>
+      <div style={{ ...modalStyle, maxWidth }}>
         <h2
           style={{
             margin: "0 0 20px 0",
@@ -87,6 +89,7 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 };
