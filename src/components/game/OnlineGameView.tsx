@@ -7,6 +7,9 @@ import MacroBoard from '../MacroBoard';
 import { useOnlineGame } from '../../hooks/useOnlineGame';
 import { SkinProvider } from '../../contexts/SkinContext';
 import { DEFAULT_GAME_SKINS } from '../../skins/defaults';
+import { GameSkins } from '../../skins/types';
+import { resolveGameSkins } from '../../skins/resolver';
+import { fetchPlayerSkinSelection } from '../../skins/loadGameSkins';
 import TurnPill from './TurnPill';
 import ScoreChip from './ScoreChip';
 import BoardCanvas from './BoardCanvas';
@@ -324,6 +327,21 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   const myProfile = usePlayerProfile();
   const opponentProfile = usePlayerProfile(opponentId);
+
+  // p1 is always X, p2 is always O — map "me"/"opponent" onto that once
+  // both ids and my assigned marker are known.
+  const [gameSkins, setGameSkins] = useState<GameSkins>(DEFAULT_GAME_SKINS);
+  useEffect(() => {
+    if (!user?.id || !opponentId || !myMarker) return;
+    let cancelled = false;
+    const xUserId = myMarker === 'X' ? user.id : opponentId;
+    const oUserId = myMarker === 'X' ? opponentId : user.id;
+    Promise.all([fetchPlayerSkinSelection(xUserId), fetchPlayerSkinSelection(oUserId)])
+      .then(([p1Selection, p2Selection]) => {
+        if (!cancelled) setGameSkins(resolveGameSkins(p1Selection, p2Selection));
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, opponentId, myMarker]);
 
   // ── Preserved logic ──
 
@@ -733,7 +751,7 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
   };
 
   return (
-    <SkinProvider skins={DEFAULT_GAME_SKINS}>
+    <SkinProvider skins={gameSkins}>
       <PageBackground>
         {isMobile ? <OnlineGameMobile {...layoutProps} /> : <OnlineGameDesktop {...layoutProps} />}
 

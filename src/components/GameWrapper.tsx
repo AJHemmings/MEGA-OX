@@ -7,6 +7,10 @@ import { useGameLogic } from "../hooks/useGameLogic";
 import { Modal } from "./modal";
 import { SkinProvider } from '../contexts/SkinContext';
 import { DEFAULT_GAME_SKINS } from '../skins/defaults';
+import { GameSkins } from '../skins/types';
+import { resolveGameSkins } from '../skins/resolver';
+import { fetchPlayerSkinSelection } from '../skins/loadGameSkins';
+import { useAuth } from '../contexts/AuthContext';
 import { playMarkerPlaced, playMicroBoardWon, playGameWon } from '../lib/sounds';
 import { tokens } from '../styles/tokens';
 import PageBackground from './common/PageBackground';
@@ -96,6 +100,20 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
   const prevMicroWinnersRef = useRef<string[]>([]);
   const gameWonFiredRef = useRef(false);
   const isMobile = useIsMobile();
+
+  // Local 2P and vs-AI both play on one device/account — the signed-in
+  // user's own equipped board/marker skins apply to both X and O. Guests
+  // (local/vs-AI don't require login) and AI opponents just get defaults.
+  const { user } = useAuth();
+  const [gameSkins, setGameSkins] = useState<GameSkins>(DEFAULT_GAME_SKINS);
+  useEffect(() => {
+    if (!user?.id) { setGameSkins(DEFAULT_GAME_SKINS); return; }
+    let cancelled = false;
+    fetchPlayerSkinSelection(user.id).then(selection => {
+      if (!cancelled) setGameSkins(resolveGameSkins(selection, selection));
+    });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const microBoardsData = game.macroBoard.microBoards.map((mb) => ({
     cells: mb.cells.map((c) => c.marker),
@@ -270,7 +288,7 @@ const GameWrapper: React.FC<GameWrapperProps> = ({
 
   // Desktop: wider container, same single-column layout (board is narrow by design)
   return (
-    <SkinProvider skins={DEFAULT_GAME_SKINS}>
+    <SkinProvider skins={gameSkins}>
       <PageBackground>
         <div style={{ minHeight: '100vh', paddingBottom: 40, paddingTop: isMobile ? 0 : 20 }}>
           {chrome}

@@ -7,12 +7,14 @@ interface Props {
   onChange: (url: string) => void;
   accept?: string;
   hint?: string;
+  label?: string;
 }
 
 export const AssetUpload: React.FC<Props> = ({
   value, onChange,
   accept = '.svg,.png,.json',
   hint = 'Drop SVG / PNG / JSON here, or click to browse',
+  label = 'Asset',
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -36,7 +38,7 @@ export const AssetUpload: React.FC<Props> = ({
 
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Asset</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: tokens.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</div>
 
       {value ? (
         <div style={{

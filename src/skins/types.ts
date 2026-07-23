@@ -32,10 +32,12 @@ export interface GameSkins {
   p2WonBoardSkin: Skin;
 }
 
-export interface EquippedSkins {
-  board_skin_id: string | null;
-  marker_x_skin_id: string | null;
-  marker_o_skin_id: string | null;
-  won_board_x_skin_id: string | null;
-  won_board_o_skin_id: string | null;
+// One player's resolved cosmetic_items rows, already mapped to Skin objects.
+// null means "nothing equipped for this slot" (or it's out of scope — see
+// won-board skins, which have no cosmetic_items catalog yet and always
+// resolve to the default in resolveGameSkins).
+export interface PlayerSkinSelection {
+  boardSkin: Skin | null;
+  markerXSkin: Skin | null;
+  markerOSkin: Skin | null;
 }

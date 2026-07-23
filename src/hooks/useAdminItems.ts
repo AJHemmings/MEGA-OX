@@ -6,6 +6,7 @@ export interface AdminItem {
   name: string;
   type: string;
   asset_url: string | null;
+  asset_url_secondary: string | null;
   price: number | null;
   rarity: string;
   source: string;
@@ -19,6 +20,7 @@ export interface ItemFormData {
   name: string;
   type: string;
   asset_url: string;
+  asset_url_secondary?: string;
   price: number;
   rarity: string;
   animated: boolean;
@@ -55,13 +57,14 @@ export function useAdminItems(typeFilter?: string | string[]) {
 
   const addItem = useCallback(async (form: ItemFormData): Promise<string | null> => {
     const { error: err } = await supabase.from('cosmetic_items').insert({
-      name:      form.name,
-      type:      form.type,
-      asset_url: form.asset_url || null,
-      price:     form.price,
-      rarity:    form.rarity,
-      animated:  form.animated,
-      source:    form.source ?? 'shop',
+      name:                 form.name,
+      type:                 form.type,
+      asset_url:            form.asset_url || null,
+      asset_url_secondary:  form.asset_url_secondary || null,
+      price:                form.price,
+      rarity:               form.rarity,
+      animated:             form.animated,
+      source:               form.source ?? 'shop',
     });
     if (err) return err.message;
     await fetch();

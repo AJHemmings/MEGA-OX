@@ -16,7 +16,7 @@ interface Props {
 const RARITY_OPTIONS = ['common', 'rare', 'epic', 'legendary'];
 
 const empty = (): ItemFormData => ({
-  name: '', type: '', asset_url: '', price: 0, rarity: 'common', animated: false,
+  name: '', type: '', asset_url: '', asset_url_secondary: '', price: 0, rarity: 'common', animated: false,
 });
 
 export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onClose }) => {
@@ -28,12 +28,13 @@ export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onCl
   useEffect(() => {
     if (item) {
       setForm({
-        name:      item.name,
-        type:      item.type,
-        asset_url: item.asset_url ?? '',
-        price:     item.price ?? 0,
-        rarity:    item.rarity,
-        animated:  item.animated,
+        name:                item.name,
+        type:                item.type,
+        asset_url:           item.asset_url ?? '',
+        asset_url_secondary: item.asset_url_secondary ?? '',
+        price:               item.price ?? 0,
+        rarity:              item.rarity,
+        animated:            item.animated,
       });
       setPriceStr(String(item.price ?? 0));
     } else {
@@ -144,7 +145,16 @@ export const ItemFormModal: React.FC<Props> = ({ item, typeOptions, onSave, onCl
           <AssetUpload
             value={form.asset_url}
             onChange={url => setForm(f => ({ ...f, asset_url: url }))}
+            label={form.type === 'marker' ? 'X Glyph' : 'Asset'}
           />
+
+          {form.type === 'marker' && (
+            <AssetUpload
+              value={form.asset_url_secondary ?? ''}
+              onChange={url => setForm(f => ({ ...f, asset_url_secondary: url }))}
+              label="O Glyph"
+            />
+          )}
 
           {error && (
             <div style={{

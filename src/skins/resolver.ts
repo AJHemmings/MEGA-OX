@@ -1,5 +1,5 @@
 // src/skins/resolver.ts
-import { EquippedSkins, GameSkins } from './types';
+import { PlayerSkinSelection, GameSkins } from './types';
 import {
   DEFAULT_BOARD_SKIN,
   DEFAULT_MARKER_X_SKIN,
@@ -7,20 +7,21 @@ import {
   DEFAULT_WON_BOARD_X_SKIN,
   DEFAULT_WON_BOARD_O_SKIN,
 } from './defaults';
-import { getSkin } from './registry';
 
 /**
- * Resolves which skins appear in a game given both players' equipped skins.
- * p1Skins = Player 1 (X, goes first, won RPS)
- * p2Skins = Player 2 (O, goes second, owns the board background)
+ * Resolves which skins appear in a game given both players' already-fetched
+ * cosmetic selections (see fetchPlayerSkinSelection in loadGameSkins.ts).
+ * p1 = Player 1 (X, goes first, won RPS)
+ * p2 = Player 2 (O, goes second, owns the board background)
+ * Won-board skins have no purchasable catalog yet — always default.
  */
 export const resolveGameSkins = (
-  p1Skins: EquippedSkins,
-  p2Skins: EquippedSkins
+  p1: PlayerSkinSelection,
+  p2: PlayerSkinSelection
 ): GameSkins => ({
-  boardSkin:      getSkin(p2Skins.board_skin_id,       DEFAULT_BOARD_SKIN),
-  p1MarkerSkin:   getSkin(p1Skins.marker_x_skin_id,    DEFAULT_MARKER_X_SKIN),
-  p2MarkerSkin:   getSkin(p2Skins.marker_o_skin_id,    DEFAULT_MARKER_O_SKIN),
-  p1WonBoardSkin: getSkin(p1Skins.won_board_x_skin_id, DEFAULT_WON_BOARD_X_SKIN),
-  p2WonBoardSkin: getSkin(p2Skins.won_board_o_skin_id, DEFAULT_WON_BOARD_O_SKIN),
+  boardSkin:      p2.boardSkin   ?? DEFAULT_BOARD_SKIN,
+  p1MarkerSkin:   p1.markerXSkin ?? DEFAULT_MARKER_X_SKIN,
+  p2MarkerSkin:   p2.markerOSkin ?? DEFAULT_MARKER_O_SKIN,
+  p1WonBoardSkin: DEFAULT_WON_BOARD_X_SKIN,
+  p2WonBoardSkin: DEFAULT_WON_BOARD_O_SKIN,
 });

@@ -2,17 +2,25 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 export interface Loadout {
-  active_avatar_id: string | null;
-  active_badge_id:  string | null;
-  active_banner_id: string | null;
+  active_avatar_id:   string | null;
+  active_badge_id:    string | null;
+  active_banner_id:   string | null;
+  active_board_id:    string | null;
+  active_marker_id:   string | null; // X marker
+  active_marker_o_id: string | null; // O marker
 }
 
+const EMPTY_LOADOUT: Loadout = {
+  active_avatar_id:   null,
+  active_badge_id:    null,
+  active_banner_id:   null,
+  active_board_id:    null,
+  active_marker_id:   null,
+  active_marker_o_id: null,
+};
+
 export function useLoadout(playerId: string | undefined) {
-  const [loadout, setLoadout] = useState<Loadout>({
-    active_avatar_id: null,
-    active_badge_id:  null,
-    active_banner_id: null,
-  });
+  const [loadout, setLoadout] = useState<Loadout>(EMPTY_LOADOUT);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,7 +30,7 @@ export function useLoadout(playerId: string | undefined) {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('active_avatar_id, active_badge_id, active_banner_id')
+          .select('active_avatar_id, active_badge_id, active_banner_id, active_board_id, active_marker_id, active_marker_o_id')
           .eq('id', playerId)
           .single();
         if (data) setLoadout(data);
@@ -35,7 +43,7 @@ export function useLoadout(playerId: string | undefined) {
   }, [playerId]);
 
   const equip = useCallback(async (
-    slot: 'active_avatar_id' | 'active_badge_id' | 'active_banner_id',
+    slot: keyof Loadout,
     itemId: string
   ) => {
     if (!playerId) return;
@@ -51,7 +59,7 @@ export function useLoadout(playerId: string | undefined) {
     }
   }, [playerId]);
 
-  // Save all three slots in one DB write. Returns true on success.
+  // Save all slots in one DB write. Returns true on success.
   const prevRef = useRef<Loadout | null>(null);
   const save = useCallback(async (newLoadout: Loadout): Promise<boolean> => {
     if (!playerId) return false;
@@ -59,9 +67,12 @@ export function useLoadout(playerId: string | undefined) {
     const { error } = await supabase
       .from('profiles')
       .update({
-        active_avatar_id: newLoadout.active_avatar_id,
-        active_badge_id:  newLoadout.active_badge_id,
-        active_banner_id: newLoadout.active_banner_id,
+        active_avatar_id:   newLoadout.active_avatar_id,
+        active_badge_id:    newLoadout.active_badge_id,
+        active_banner_id:   newLoadout.active_banner_id,
+        active_board_id:    newLoadout.active_board_id,
+        active_marker_id:   newLoadout.active_marker_id,
+        active_marker_o_id: newLoadout.active_marker_o_id,
       })
       .eq('id', playerId);
     if (error) {

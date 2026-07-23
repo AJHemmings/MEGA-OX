@@ -6,6 +6,7 @@ export interface OwnedItem {
   name: string;
   type: string;
   asset_url: string | null;
+  asset_url_secondary: string | null;
   rarity: string;
   acquired_at: string | null;
 }
@@ -21,7 +22,7 @@ export function useInventory(playerId: string | undefined, type?: string) {
       try {
         const { data } = await supabase
           .from('player_inventory')
-          .select('item_id, acquired_at, cosmetic_items(name, type, asset_url, rarity)')
+          .select('item_id, acquired_at, cosmetic_items(name, type, asset_url, asset_url_secondary, rarity)')
           .eq('player_id', playerId);
 
         // Filter by type client-side — PostgREST does not support .eq() on embedded resource columns
@@ -29,12 +30,13 @@ export function useInventory(playerId: string | undefined, type?: string) {
           .filter((row: any) => row.cosmetic_items !== null)
           .filter((row: any) => !type || row.cosmetic_items.type === type)
           .map((row: any) => ({
-            item_id:     row.item_id,
-            name:        row.cosmetic_items.name,
-            type:        row.cosmetic_items.type,
-            asset_url:   row.cosmetic_items.asset_url,
-            rarity:      row.cosmetic_items.rarity,
-            acquired_at: row.acquired_at,
+            item_id:              row.item_id,
+            name:                 row.cosmetic_items.name,
+            type:                 row.cosmetic_items.type,
+            asset_url:            row.cosmetic_items.asset_url,
+            asset_url_secondary:  row.cosmetic_items.asset_url_secondary,
+            rarity:               row.cosmetic_items.rarity,
+            acquired_at:          row.acquired_at,
           }));
 
         setItems(mapped);
