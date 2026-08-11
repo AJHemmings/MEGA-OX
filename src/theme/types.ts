@@ -1,6 +1,9 @@
 // src/theme/types.ts
 
-/** Colour tokens a theme varies. Keys mirror tokens.ts entries 1:1. */
+/** Every non-numeric entry of tokens.ts, including composites (gradients,
+ *  borders, shadows, font stack). The four numeric tokens (glassRadius,
+ *  rBtn, rInput, rPill) are deliberately excluded — they are not themeable
+ *  and would need unit suffixes as CSS variables. */
 export interface ThemePalette {
   accent: string; accentDark: string;
   bgBase: string; bgCard: string; bgSurface: string;

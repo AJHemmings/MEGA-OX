@@ -25,7 +25,7 @@ export const CLASSIC_THEME: Theme = {
 
   // From PageBackground.tsx — three fixed radial-gradient overlays.
   background: {
-    base: '#060d1f',
+    base: 'var(--bg-base)',
     layers: [
       { shape: 'ellipse 80% 60%', at: '0% 0%',     color: 'rgba(26,42,108,0.55)',  stop: '60%' },
       { shape: 'ellipse 70% 50%', at: '100% 100%', color: 'rgba(0,212,170,0.18)',  stop: '65%' },
