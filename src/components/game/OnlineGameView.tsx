@@ -53,18 +53,21 @@ const CountdownRing: React.FC<{ seconds: number; total: number }> = ({ seconds, 
   return (
     <svg width="88" height="88" viewBox="0 0 88 88">
       <circle cx="44" cy="44" r={RING_RADIUS} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-      <circle cx="44" cy="44" r={RING_RADIUS} fill="none" stroke={tokens.accent} strokeWidth="4"
+      {/* Browsers do not resolve var() inside SVG presentation attributes —
+          stroke / fill / font-family must live in `style` instead. */}
+      <circle cx="44" cy="44" r={RING_RADIUS} fill="none" strokeWidth="4"
         strokeLinecap="round" strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={strokeDashoffset}
-        transform="rotate(-90 44 44)" style={{ transition: 'stroke-dashoffset 0.9s linear' }} />
-      <text x="44" y="50" textAnchor="middle" fill={tokens.text} fontSize="22" fontWeight="bold" fontFamily={tokens.font}>
+        transform="rotate(-90 44 44)" style={{ stroke: tokens.accent, transition: 'stroke-dashoffset 0.9s linear' }} />
+      <text x="44" y="50" textAnchor="middle" fontSize="22" fontWeight="bold"
+        style={{ fill: tokens.text, fontFamily: tokens.font }}>
         {seconds}
       </text>
     </svg>
   );
 };
 
-const PlayerAvatar: React.FC<{ profile: PlayerProfile | null; fallback: string; size: number; color: string }> = ({ profile, fallback, size, color }) => (
-  <div style={{ width: size, height: size, borderRadius: '50%', border: `2px solid ${color}44`, overflow: 'hidden', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' as const, flexShrink: 0 }}>
+const PlayerAvatar: React.FC<{ profile: PlayerProfile | null; fallback: string; size: number; color: string; colorRgb: string }> = ({ profile, fallback, size, color, colorRgb }) => (
+  <div style={{ width: size, height: size, borderRadius: '50%', border: `2px solid rgba(${colorRgb}, 0.27)`, overflow: 'hidden', background: `rgba(${colorRgb}, 0.13)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' as const, flexShrink: 0 }}>
     {profile?.avatar_url
       ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       : <span style={{ fontSize: size * 0.42, fontWeight: 900, color, fontFamily: tokens.font }}>
@@ -83,17 +86,19 @@ const DesktopPanel: React.FC<{
   sendEmoji: (emoji: string) => void;
   emoji: string | null;
 }> = ({ profile, marker, isSelf, isActive, status, sendEmoji, emoji }) => {
-  const color = marker === 'X' ? tokens.accent : tokens.loss;
+  const color    = marker === 'X' ? tokens.accent : tokens.loss;
+  // Paired channel sibling of `color` — change one, change the other.
+  const colorRgb = marker === 'X' ? 'var(--accent-rgb)' : 'var(--loss-rgb)';
   return (
     <Glass style={{
       border: isActive ? `1px solid ${color}` : tokens.glassBorder,
-      boxShadow: isActive ? `0 0 20px ${color}4d` : 'none',
+      boxShadow: isActive ? `0 0 20px rgba(${colorRgb}, 0.3)` : 'none',
       transition: 'box-shadow 0.3s ease',
       position: 'sticky' as const, top: 20,
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
         <div style={{ position: 'relative', width: 68, height: 68 }}>
-          <div style={{ width: 68, height: 68, borderRadius: '50%', border: `2px solid ${color}44`, overflow: 'hidden', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' as const }}>
+          <div style={{ width: 68, height: 68, borderRadius: '50%', border: `2px solid rgba(${colorRgb}, 0.27)`, overflow: 'hidden', background: `rgba(${colorRgb}, 0.13)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' as const }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : <span style={{ fontSize: 26, fontWeight: 900, color, fontFamily: tokens.font }}>{(profile?.username ?? marker)[0]?.toUpperCase()}</span>
@@ -607,6 +612,9 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
 
   const myColor  = myMarker === 'X' ? tokens.accent : tokens.loss;
   const oppColor = myMarker === 'X' ? tokens.loss : tokens.accent;
+  // Paired channel siblings of the two above — change one, change the other.
+  const myColorRgb  = myMarker === 'X' ? 'var(--accent-rgb)' : 'var(--loss-rgb)';
+  const oppColorRgb = myMarker === 'X' ? 'var(--loss-rgb)' : 'var(--accent-rgb)';
   const myName   = myProfile?.username ?? (myMarker === 'X' ? 'Player X' : 'Player O');
   const oppName  = opponentProfile?.username ?? (myMarker === 'X' ? 'Player O' : 'Player X');
 
@@ -637,12 +645,12 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       {/* My column */}
       <div style={{
         flex: 1, minWidth: 0, position: 'relative', padding: '16px 12px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
-        background: isMyTurn ? `linear-gradient(135deg, ${myColor}33, ${myColor}0d)` : 'rgba(255,255,255,0.03)',
+        background: isMyTurn ? `linear-gradient(135deg, rgba(${myColorRgb}, 0.2), rgba(${myColorRgb}, 0.05))` : 'rgba(255,255,255,0.03)',
         border: `1px solid ${isMyTurn ? myColor : 'rgba(255,255,255,0.08)'}`,
-        boxShadow: isMyTurn ? `0 0 20px ${myColor}4d` : 'none',
+        boxShadow: isMyTurn ? `0 0 20px rgba(${myColorRgb}, 0.3)` : 'none',
         transition: 'all 0.3s ease',
       }}>
-        <PlayerAvatar profile={myProfile} fallback={myMarker ?? 'X'} size={48} color={myColor} />
+        <PlayerAvatar profile={myProfile} fallback={myMarker ?? 'X'} size={48} color={myColor} colorRgb={myColorRgb} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
             <LevelBadge level={myProfile?.level ?? 1} size="sm" />
@@ -667,13 +675,13 @@ const OnlineGameView: React.FC<OnlineGameViewProps> = ({ gameId }) => {
       {/* Opponent column */}
       <div style={{
         flex: 1, minWidth: 0, position: 'relative', padding: '16px 12px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
-        background: !isMyTurn ? `linear-gradient(135deg, ${oppColor}33, ${oppColor}0d)` : 'rgba(255,255,255,0.03)',
+        background: !isMyTurn ? `linear-gradient(135deg, rgba(${oppColorRgb}, 0.2), rgba(${oppColorRgb}, 0.05))` : 'rgba(255,255,255,0.03)',
         border: `1px solid ${!isMyTurn ? oppColor : 'rgba(255,255,255,0.08)'}`,
-        boxShadow: !isMyTurn ? `0 0 20px ${oppColor}4d` : 'none',
+        boxShadow: !isMyTurn ? `0 0 20px rgba(${oppColorRgb}, 0.3)` : 'none',
         transition: 'all 0.3s ease',
         flexDirection: 'row-reverse' as const,
       }}>
-        <PlayerAvatar profile={opponentProfile} fallback={myMarker === 'X' ? 'O' : 'X'} size={48} color={oppColor} />
+        <PlayerAvatar profile={opponentProfile} fallback={myMarker === 'X' ? 'O' : 'X'} size={48} color={oppColor} colorRgb={oppColorRgb} />
         <div style={{ flex: 1, minWidth: 0, textAlign: 'right' as const }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', minWidth: 0 }}>
             <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 800, color: tokens.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{oppName}</div>

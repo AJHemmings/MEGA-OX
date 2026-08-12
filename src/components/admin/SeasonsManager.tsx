@@ -13,9 +13,16 @@ const statusColour = (status: string): string => {
   return tokens.credits;
 };
 
+/** Paired channel siblings of statusColour — keep the two in sync. */
+const statusColourRgb = (status: string): string => {
+  if (status === 'active')   return 'var(--win-rgb)';
+  if (status === 'complete') return 'var(--text-muted-rgb)';
+  return 'var(--credits-rgb)';
+};
+
 const statusChip = (status: string): React.CSSProperties => ({
   display: 'inline-flex', padding: '3px 10px', borderRadius: tokens.rPill,
-  background: `${statusColour(status)}22`, color: statusColour(status),
+  background: `rgba(${statusColourRgb(status)}, 0.13)`, color: statusColour(status),
   fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6,
 });
 
@@ -212,7 +219,7 @@ const RankedControls: React.FC<RankedControlsProps> = ({
           <>
             <span style={{
               display: 'inline-flex', padding: '3px 10px', borderRadius: tokens.rPill,
-              background: `${rankedEnabled ? tokens.win : tokens.loss}22`,
+              background: `rgba(${rankedEnabled ? 'var(--win-rgb)' : 'var(--loss-rgb)'}, 0.13)`,
               color: rankedEnabled ? tokens.win : tokens.loss,
               fontSize: 10, fontWeight: 700, letterSpacing: 0.6,
             }}>
@@ -378,7 +385,7 @@ const SeasonsManager: React.FC = () => {
       {showWarning && (
         <div style={{
           flexShrink: 0, marginBottom: 16, padding: '10px 14px', borderRadius: 8,
-          background: `${tokens.warn}1a`, border: `1px solid ${tokens.warn}55`,
+          background: `rgba(var(--warn-rgb), 0.1)`, border: `1px solid rgba(var(--warn-rgb), 0.33)`,
           color: tokens.warn, fontSize: 12, fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: 8,
         }}>

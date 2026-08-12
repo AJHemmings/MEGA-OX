@@ -15,6 +15,13 @@ const categoryColour: Record<NewsCategory, string> = {
   update: tokens.accent, patch: '#4299e1', season: tokens.credits, tournament: '#ff6b35',
 };
 
+/** Paired channel siblings of categoryColour — keep the two in sync.
+ *  The literal entries are the hand-converted channels of the hexes above. */
+const categoryColourRgb: Record<NewsCategory, string> = {
+  update: 'var(--accent-rgb)', patch: '66,153,225',
+  season: 'var(--credits-rgb)', tournament: '255,107,53',
+};
+
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
   background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
@@ -41,7 +48,7 @@ const removeBtn: React.CSSProperties = {
 
 const addBtn: React.CSSProperties = {
   fontSize: 12, fontWeight: 700, color: tokens.accent, cursor: 'pointer',
-  background: 'rgba(0,212,170,0.1)', border: `1px solid ${tokens.accent}55`,
+  background: 'rgba(0,212,170,0.1)', border: `1px solid rgba(var(--accent-rgb), 0.33)`,
   padding: '6px 12px', borderRadius: 6, fontFamily: tokens.font,
 };
 
@@ -334,7 +341,7 @@ const NewsManager: React.FC = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
-                      color: categoryColour[p.category], background: `${categoryColour[p.category]}22`,
+                      color: categoryColour[p.category], background: `rgba(${categoryColourRgb[p.category]}, 0.13)`,
                       padding: '2px 8px', borderRadius: 20,
                     }}>
                       {p.category}

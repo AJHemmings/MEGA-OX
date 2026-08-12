@@ -15,9 +15,9 @@ const tabBtn = (active: boolean): React.CSSProperties => ({
   transition: 'background 0.15s',
 });
 
-const toggleBtn = (on: boolean, colour: string): React.CSSProperties => ({
+const toggleBtn = (on: boolean, colour: string, colourRgb: string): React.CSSProperties => ({
   padding: '3px 10px', borderRadius: tokens.rPill, border: `1px solid ${on ? colour : 'rgba(255,255,255,0.12)'}`,
-  background: on ? `${colour}22` : 'rgba(255,255,255,0.04)',
+  background: on ? `rgba(${colourRgb}, 0.13)` : 'rgba(255,255,255,0.04)',
   color: on ? colour : tokens.textMuted,
   fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: tokens.font,
   transition: 'all 0.15s',
@@ -95,13 +95,13 @@ const ItemsPanel: React.FC = () => {
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   onClick={() => updateItem(item.id, { visible: !item.visible })}
-                  style={{ ...toggleBtn(item.visible, tokens.accent), flex: 1 }}
+                  style={{ ...toggleBtn(item.visible, tokens.accent, 'var(--accent-rgb)'), flex: 1 }}
                 >
                   {item.visible ? 'Visible' : 'Hidden'}
                 </button>
                 <button
                   onClick={() => updateItem(item.id, { featured: !item.featured })}
-                  style={{ ...toggleBtn(item.featured, tokens.credits), flex: 1 }}
+                  style={{ ...toggleBtn(item.featured, tokens.credits, 'var(--credits-rgb)'), flex: 1 }}
                 >
                   {item.featured ? 'Featured' : 'Normal'}
                 </button>

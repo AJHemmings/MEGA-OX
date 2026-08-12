@@ -223,7 +223,7 @@ export const AdminDebugFAB: React.FC = () => {
           height: 44,
           padding: isMobile ? 0 : '0 16px',
           borderRadius: isMobile ? '50%' : 22,
-          border: `1px solid ${tokens.accent}55`,
+          border: `1px solid rgba(var(--accent-rgb), 0.33)`,
           background: tokens.bgCard,
           backdropFilter: tokens.glassBlur,
           WebkitBackdropFilter: tokens.glassBlur,
