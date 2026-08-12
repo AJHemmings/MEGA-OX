@@ -42,20 +42,21 @@ const PlayerCard: React.FC<{
   isActive: boolean;
   roundWins: number;
 }> = ({ name, marker, isActive, roundWins }) => {
-  const color = marker === 'X' ? tokens.accent : tokens.loss;
+  const color    = marker === 'X' ? tokens.accent : tokens.loss;
+  const colorRgb = marker === 'X' ? 'var(--accent-rgb)' : 'var(--loss-rgb)';
   return (
     <div style={{
       flex: 1, padding: '8px 10px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
       background: isActive
-        ? `linear-gradient(135deg, ${color}33, ${color}0d)`
+        ? `linear-gradient(135deg, rgba(${colorRgb}, 0.2), rgba(${colorRgb}, 0.05))`
         : 'rgba(255,255,255,0.03)',
       border: `1px solid ${isActive ? color : 'rgba(255,255,255,0.08)'}`,
-      boxShadow: isActive ? `0 0 20px ${color}4d` : 'none',
+      boxShadow: isActive ? `0 0 20px rgba(${colorRgb}, 0.3)` : 'none',
       transition: 'all 0.3s ease',
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-        background: `${color}22`, border: `1.5px solid ${color}66`,
+        background: `rgba(${colorRgb}, 0.13)`, border: `1.5px solid rgba(${colorRgb}, 0.4)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 13, fontWeight: 900, color,
       }}>

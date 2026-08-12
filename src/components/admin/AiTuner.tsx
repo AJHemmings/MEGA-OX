@@ -146,7 +146,7 @@ const AiTuner: React.FC = () => {
                 ? `1.5px solid ${tokens.accent}`
                 : `1.5px solid rgba(255,255,255,0.12)`,
               background: tab === t
-                ? `${tokens.accent}22`
+                ? `rgba(var(--accent-rgb), 0.13)`
                 : 'rgba(255,255,255,0.04)',
               color: tab === t ? tokens.accent : tokens.textMuted,
               fontFamily: 'inherit',

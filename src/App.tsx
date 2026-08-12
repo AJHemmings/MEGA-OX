@@ -35,6 +35,7 @@ import AiTuner from './components/admin/AiTuner';
 import BugReportsManager from './components/admin/BugReportsManager';
 import { PresenceProvider } from './contexts/PresenceContext';
 import { ProgressionProvider } from './contexts/ProgressionContext';
+import { ThemeProvider } from './theme/ThemeProvider';
 import { FriendsDrawer } from './components/friends/FriendsDrawer';
 import { supabase } from './lib/supabase';
 
@@ -215,7 +216,9 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <ProgressionProvider>
-        <AppShell />
+        <ThemeProvider>
+          <AppShell />
+        </ThemeProvider>
       </ProgressionProvider>
     </AuthProvider>
   );

@@ -1,40 +1,49 @@
+// Values now resolve from CSS custom properties written by ThemeProvider.
+// See src/theme/defaults.ts for the actual values and spec §7 for the rule:
+// every string entry is a variable; the four numerics stay literals.
+//
+// Because these are `var()` strings and not colours, they only work where the
+// browser resolves CSS. They CANNOT be concatenated with a hex alpha
+// (`${tokens.accent}55`), string-manipulated, or used in SVG presentation
+// attributes or a Canvas 2D context. Compose an alpha with the paired channel
+// variable instead: `rgba(var(--accent-rgb), 0.33)`.
 export const tokens = {
   // Brand
-  accent: '#00d4aa',
-  accentDark: '#00b894',
+  accent: 'var(--accent)',
+  accentDark: 'var(--accent-dark)',
 
   // Backgrounds
-  bgBase: '#060d1f',
-  bgCard: '#0d1530',
-  bgSurface: '#1a2340',
+  bgBase: 'var(--bg-base)',
+  bgCard: 'var(--bg-card)',
+  bgSurface: 'var(--bg-surface)',
 
   // Text
-  text: '#ffffff',
-  textMuted: '#a0aec0',
-  textDim: '#4a5568',
+  text: 'var(--text)',
+  textMuted: 'var(--text-muted)',
+  textDim: 'var(--text-dim)',
 
   // Semantic
-  win: '#00d4aa',
-  loss: '#ff6b6b',
-  draw: '#a0aec0',
-  xp: '#7c4dff',
-  xpDark: '#4a1fa0',
-  credits: '#f9a825',
-  warn: '#f7931e',
+  win: 'var(--win)',
+  loss: 'var(--loss)',
+  draw: 'var(--draw)',
+  xp: 'var(--xp)',
+  xpDark: 'var(--xp-dark)',
+  credits: 'var(--credits)',
+  warn: 'var(--warn)',
 
   // Player chrome (not markers/board — those are skins)
-  p1: '#00d4aa',
-  p2: '#ff6b6b',
+  p1: 'var(--p1)',
+  p2: 'var(--p2)',
 
   // Glass card
-  glassBg: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
-  glassBorder: '1px solid rgba(255,255,255,0.10)',
+  glassBg: 'var(--glass-bg)',
+  glassBorder: 'var(--glass-border)',
   glassRadius: 16,
-  glassBlur: 'blur(12px)',
+  glassBlur: 'var(--glass-blur)',
 
   // Inner surfaces (inside a glass card)
-  innerBg: 'rgba(255,255,255,0.04)',
-  innerBorder: '1px solid rgba(255,255,255,0.06)',
+  innerBg: 'var(--inner-bg)',
+  innerBorder: 'var(--inner-border)',
 
   // Radii
   rBtn: 14,
@@ -42,14 +51,15 @@ export const tokens = {
   rPill: 100,
 
   // Shadows
-  ctaShadow:      '0 8px 24px rgba(0,212,170,0.30)',
-  ctaShadowHover: '0 12px 32px rgba(0,212,170,0.45)',
-  cardShadow:     '0 8px 25px rgba(0,0,0,0.30)',
+  ctaShadow: 'var(--cta-shadow)',
+  ctaShadowHover: 'var(--cta-shadow-hover)',
+  cardShadow: 'var(--card-shadow)',
 
   // Font
-  font: "'Nunito', system-ui, sans-serif",
+  font: 'var(--font)',
 } as const;
 
+// Rank identity, not look-and-feel — deliberately NOT themed. See spec §7.
 export const tierColour: Record<string, string> = {
   'Grand Master': '#f9a825', 'Master': '#c0c0c0', 'Expert': '#cd7f32',
   'Strategist': '#00d4aa', 'Tactician': '#4299e1', 'Challenger': '#a0aec0', 'Novice': '#4a5568',

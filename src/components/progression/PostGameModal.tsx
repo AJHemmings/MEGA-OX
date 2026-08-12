@@ -51,10 +51,12 @@ interface PostGameModalProps {
 
 type FriendStatus = 'unknown' | 'friends' | 'pending' | 'sent';
 
+// `colorRgb` is the paired channel sibling of `color`, for call sites that
+// compose an alpha. If you change one, change the other.
 const RESULT_CONFIG = {
-  win:  { eyebrow: 'VICTORY', headline: 'You Win!',  color: tokens.win,  bg: 'linear-gradient(135deg, rgba(0,212,170,0.25), rgba(124,77,255,0.20))' },
-  loss: { eyebrow: 'DEFEAT',  headline: 'You Lose',  color: tokens.loss, bg: 'linear-gradient(135deg, rgba(255,107,107,0.25), rgba(124,77,255,0.20))' },
-  draw: { eyebrow: 'DRAW',    headline: 'Draw',      color: tokens.draw, bg: 'linear-gradient(135deg, rgba(160,174,192,0.20), rgba(124,77,255,0.15))' },
+  win:  { eyebrow: 'VICTORY', headline: 'You Win!',  color: tokens.win,  colorRgb: 'var(--win-rgb)',  bg: 'linear-gradient(135deg, rgba(0,212,170,0.25), rgba(124,77,255,0.20))' },
+  loss: { eyebrow: 'DEFEAT',  headline: 'You Lose',  color: tokens.loss, colorRgb: 'var(--loss-rgb)', bg: 'linear-gradient(135deg, rgba(255,107,107,0.25), rgba(124,77,255,0.20))' },
+  draw: { eyebrow: 'DRAW',    headline: 'Draw',      color: tokens.draw, colorRgb: 'var(--draw-rgb)', bg: 'linear-gradient(135deg, rgba(160,174,192,0.20), rgba(124,77,255,0.15))' },
 } as const;
 
 interface RewardsFallbackModalProps {
@@ -71,7 +73,7 @@ export const RewardsFallbackModal: React.FC<RewardsFallbackModalProps> = ({ game
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,13,31,0.85)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, fontFamily: tokens.font }}>
       <Glass padding={0} style={{ ...cardWidth, overflow: 'hidden' }}>
         <div style={{ position: 'relative', padding: '28px 22px', background: cfg?.bg ?? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', textAlign: 'center', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, ${cfg?.color ?? tokens.textMuted}44 0%, transparent 70%)`, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, rgba(${cfg?.colorRgb ?? 'var(--text-muted-rgb)'}, 0.27) 0%, transparent 70%)`, pointerEvents: 'none' }} />
           <div style={{ position: 'relative' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: cfg?.color ?? tokens.textMuted, letterSpacing: 1.5, marginBottom: 8 }}>
               {cfg?.eyebrow ?? 'GAME COMPLETE'}
@@ -179,7 +181,7 @@ export const PostGameModal: React.FC<PostGameModalProps> = ({
         {/* ── Banner header ── */}
         <div style={{ position: 'relative', padding: '28px 22px', background: cfg?.bg ?? 'linear-gradient(135deg, rgba(0,212,170,0.25), rgba(124,77,255,0.20))', textAlign: 'center', overflow: 'hidden' }}>
           {/* Radial glow */}
-          <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, ${cfg?.color ?? tokens.accent}44 0%, transparent 70%)`, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, rgba(${cfg?.colorRgb ?? 'var(--accent-rgb)'}, 0.27) 0%, transparent 70%)`, pointerEvents: 'none' }} />
           <div style={{ position: 'relative' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: cfg?.color ?? tokens.accent, letterSpacing: 1.5, marginBottom: 8 }}>
               {cfg?.eyebrow ?? 'GAME COMPLETE'}

@@ -109,7 +109,7 @@ const RecentGameRow: React.FC<{ game: RecentGame }> = ({ game }) => {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '10px 0',
-      borderBottom: `1px solid ${tokens.innerBorder.replace('1px solid ', '')}`,
+      borderBottom: tokens.innerBorder,
     }}>
       <div style={{
         width: 28, height: 28, borderRadius: 6, flexShrink: 0,
@@ -584,7 +584,7 @@ const DesktopLayout: React.FC<LayoutProps & { onSignOut: () => void }> = ({
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '20px 60px',
-      borderBottom: `1px solid ${tokens.innerBorder.replace('1px solid ', '')}`,
+      borderBottom: tokens.innerBorder,
     }}>
       <span style={{
         fontSize: 22, fontWeight: 900, letterSpacing: 2, flexShrink: 0,

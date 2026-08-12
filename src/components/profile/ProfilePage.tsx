@@ -404,7 +404,10 @@ const DesktopProfile: React.FC<{
                   )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
-                  <span style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${tierColor}44`, color: tierColor, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: tokens.rPill, letterSpacing: 0.4 }}>
+                  {/* `tierColour` entries are permanent literal hexes so they can carry a hex
+                      alpha, but the `?? tokens.textMuted` fallback is a token and cannot —
+                      branch so the themed path composes with rgba() instead. */}
+                  <span style={{ background: 'rgba(255,255,255,0.08)', border: tierColour[profile.rank_tier] ? `1px solid ${tierColour[profile.rank_tier]}44` : '1px solid rgba(var(--text-muted-rgb), 0.27)', color: tierColor, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: tokens.rPill, letterSpacing: 0.4 }}>
                     {profile.rank_tier}
                   </span>
                   {leaderboardPos !== null && (
