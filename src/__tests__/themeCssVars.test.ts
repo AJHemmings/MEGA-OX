@@ -133,3 +133,27 @@ describe('CLASSIC_THEME data fidelity', () => {
     });
   });
 });
+
+// The tests above restate the data, so they cannot catch a theme referencing a
+// variable that no longer exists. Variable NAMES are derived at runtime from the
+// palette's keys (cssVars.ts toVarName), but the var() strings in `background`
+// and `pills` are hand-written — nothing ties the two together.
+//
+// Rename palette key `credits` to `currency` and: themeToCssVars starts emitting
+// --currency, tokens.credits fails to compile so that half gets fixed, but
+// pills.gold.color is the plain string 'var(--credits)' and raises no error. The
+// variable is now undefined, so gold pill text silently falls back to inherit.
+// This closes that loop.
+describe('theme var() references resolve to published variables', () => {
+  it('every var() the theme references is a variable the theme publishes', () => {
+    const declared = new Set(Object.keys(themeToCssVars(CLASSIC_THEME)));
+    const referenced = [
+      ...JSON.stringify(CLASSIC_THEME).matchAll(/var\((--[a-z0-9-]+)\)/g),
+    ].map(m => m[1]);
+
+    // Guards the guard: if a refactor stops using var() strings entirely, this
+    // test must fail loudly rather than silently pass over an empty list.
+    expect(referenced.length).toBeGreaterThan(0);
+    referenced.forEach(name => expect(declared).toContain(name));
+  });
+});
