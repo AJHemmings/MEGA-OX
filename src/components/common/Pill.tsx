@@ -1,15 +1,11 @@
 import React from 'react';
 import { tokens } from '../../styles/tokens';
+import { CLASSIC_THEME } from '../../theme/defaults';
+import { ThemePillStyles } from '../../theme/types';
 
-export type PillVariant = 'teal' | 'purple' | 'gold' | 'red' | 'muted';
+export type PillVariant = keyof ThemePillStyles;
 
-const variantStyles: Record<PillVariant, { background: string; border: string; color: string }> = {
-  teal:   { background: 'rgba(0,212,170,0.15)',   border: '1px solid rgba(0,212,170,0.35)',   color: tokens.accent },
-  purple: { background: 'rgba(124,77,255,0.18)',  border: '1px solid rgba(124,77,255,0.40)',  color: '#b39dff' },
-  gold:   { background: 'rgba(249,168,37,0.15)',  border: '1px solid rgba(249,168,37,0.40)',  color: tokens.credits },
-  red:    { background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.35)', color: tokens.loss },
-  muted:  { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: tokens.textMuted },
-};
+const variantStyles = CLASSIC_THEME.pills;
 
 interface PillProps {
   children: React.ReactNode;
