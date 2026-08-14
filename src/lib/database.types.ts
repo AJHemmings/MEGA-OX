@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -217,6 +217,7 @@ export type Database = {
           archived: boolean
           asset_url: string | null
           asset_url_secondary: string | null
+          config: Json | null
           featured: boolean
           id: string
           name: string
@@ -231,6 +232,7 @@ export type Database = {
           archived?: boolean
           asset_url?: string | null
           asset_url_secondary?: string | null
+          config?: Json | null
           featured?: boolean
           id?: string
           name: string
@@ -245,6 +247,7 @@ export type Database = {
           archived?: boolean
           asset_url?: string | null
           asset_url_secondary?: string | null
+          config?: Json | null
           featured?: boolean
           id?: string
           name?: string
@@ -989,11 +992,15 @@ export type Database = {
       profiles: {
         Row: {
           active_avatar_id: string | null
+          active_background_id: string | null
           active_badge_id: string | null
           active_banner_id: string | null
           active_board_id: string | null
+          active_cursor_id: string | null
           active_marker_id: string | null
           active_marker_o_id: string | null
+          active_pill_style_id: string | null
+          active_sound_pack_id: string | null
           active_theme_id: string | null
           avatar_url: string | null
           created_at: string | null
@@ -1004,11 +1011,15 @@ export type Database = {
         }
         Insert: {
           active_avatar_id?: string | null
+          active_background_id?: string | null
           active_badge_id?: string | null
           active_banner_id?: string | null
           active_board_id?: string | null
+          active_cursor_id?: string | null
           active_marker_id?: string | null
           active_marker_o_id?: string | null
+          active_pill_style_id?: string | null
+          active_sound_pack_id?: string | null
           active_theme_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
@@ -1019,11 +1030,15 @@ export type Database = {
         }
         Update: {
           active_avatar_id?: string | null
+          active_background_id?: string | null
           active_badge_id?: string | null
           active_banner_id?: string | null
           active_board_id?: string | null
+          active_cursor_id?: string | null
           active_marker_id?: string | null
           active_marker_o_id?: string | null
+          active_pill_style_id?: string | null
+          active_sound_pack_id?: string | null
           active_theme_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
@@ -1034,8 +1049,22 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_active_background"
+            columns: ["active_background_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_active_board"
             columns: ["active_board_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_active_cursor"
+            columns: ["active_cursor_id"]
             isOneToOne: false
             referencedRelation: "cosmetic_items"
             referencedColumns: ["id"]
@@ -1050,6 +1079,20 @@ export type Database = {
           {
             foreignKeyName: "fk_active_marker_o"
             columns: ["active_marker_o_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_active_pill_style"
+            columns: ["active_pill_style_id"]
+            isOneToOne: false
+            referencedRelation: "cosmetic_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_active_sound_pack"
+            columns: ["active_sound_pack_id"]
             isOneToOne: false
             referencedRelation: "cosmetic_items"
             referencedColumns: ["id"]
@@ -1617,6 +1660,7 @@ export type Database = {
         Returns: undefined
       }
       apply_ranked_result: { Args: { p_game_id: string }; Returns: undefined }
+      apply_theme: { Args: { p_theme_id: string }; Returns: Json }
       cleanup_abandoned_games: { Args: never; Returns: undefined }
       confirm_match: {
         Args: { p_accept: boolean; p_game_id: string }
