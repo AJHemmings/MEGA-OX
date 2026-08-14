@@ -20,6 +20,25 @@ function latestMatching(pattern: RegExp): string {
   return fs.readFileSync(path.join(MIGRATIONS, files[files.length - 1]), 'utf8');
 }
 
+/** The regex that pulls a seeded row's JSONB payload back out of raw SQL. */
+function configLiteralFor(uuid: string): RegExp {
+  return new RegExp(`${uuid}[\\s\\S]*?'(\\{[\\s\\S]*?\\})'::jsonb`);
+}
+
+/**
+ * Resolve the migration that *defines* a row's config, not merely the latest
+ * one that mentions its UUID. Later migrations legitimately reference these
+ * same UUIDs as values (a theme's config.members names its component items),
+ * and those files carry no JSONB literal — so "latest file mentioning the
+ * UUID" silently resolves to the wrong file. Selecting on the same pattern we
+ * later extract with keeps the search and the extraction consistent.
+ */
+function latestDefiningConfig(uuid: string): string {
+  const files = migrationsContaining(configLiteralFor(uuid));
+  if (files.length === 0) throw new Error(`No migration seeds a jsonb config for ${uuid}`);
+  return fs.readFileSync(path.join(MIGRATIONS, files[files.length - 1]), 'utf8');
+}
+
 describe('theme Phase B1 schema', () => {
   test('cosmetic_items_type_check allows the four new theme component types', () => {
     const sql = latestMatching(/cosmetic_items_type_check/);
@@ -47,7 +66,10 @@ describe('theme Phase B1 schema', () => {
   });
 
   test('the four new profiles slot columns exist with FKs to cosmetic_items', () => {
-    const sql = latestMatching(/active_background_id/);
+    // Resolve on the FK constraint name, which only the schema migration
+    // declares. Matching on the bare column name would drift to apply_theme,
+    // which assigns these columns but does not define them.
+    const sql = latestMatching(/fk_active_background/);
     for (const col of ['active_background_id', 'active_cursor_id',
                        'active_sound_pack_id', 'active_pill_style_id']) {
       expect(sql).toMatch(new RegExp(`${col}\\s+uuid`, 'i'));
@@ -57,11 +79,9 @@ describe('theme Phase B1 schema', () => {
 });
 
 describe('Classic theme seed matches CLASSIC_THEME', () => {
-  const seed = latestMatching(/00000000-0000-000b-0001-000000000001/);
-
   function seededConfig(uuid: string): any {
     // Each seeded row is: ('<uuid>', 'Name', 'type', ..., '<json>'::jsonb)
-    const m = seed.match(new RegExp(`${uuid}[\\s\\S]*?'(\\{[\\s\\S]*?\\})'::jsonb`));
+    const m = latestDefiningConfig(uuid).match(configLiteralFor(uuid));
     if (!m) throw new Error(`No jsonb config found for ${uuid}`);
     // Un-double SQL-escaped single quotes before parsing: the palette's font
     // is written ''Nunito'' in the migration (required to escape it inside the
