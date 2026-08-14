@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { CLASSIC_THEME } from '../theme/defaults';
 
 // The Phase B1 schema migration widens two closed CHECK lists. Nothing else
 // would catch a later migration narrowing them again, or a new cosmetic type
@@ -52,5 +53,40 @@ describe('theme Phase B1 schema', () => {
       expect(sql).toMatch(new RegExp(`${col}\\s+uuid`, 'i'));
       expect(sql).toMatch(new RegExp(`FOREIGN KEY \\(${col}\\)[\\s\\S]{0,80}cosmetic_items`, 'i'));
     }
+  });
+});
+
+describe('Classic theme seed matches CLASSIC_THEME', () => {
+  const seed = latestMatching(/00000000-0000-000b-0001-000000000001/);
+
+  function seededConfig(uuid: string): any {
+    // Each seeded row is: ('<uuid>', 'Name', 'type', ..., '<json>'::jsonb)
+    const m = seed.match(new RegExp(`${uuid}[\\s\\S]*?'(\\{[\\s\\S]*?\\})'::jsonb`));
+    if (!m) throw new Error(`No jsonb config found for ${uuid}`);
+    // Un-double SQL-escaped single quotes before parsing: the palette's font
+    // is written ''Nunito'' in the migration (required to escape it inside the
+    // surrounding '...' SQL literal) but is 'Nunito' once Postgres parses it.
+    return JSON.parse(m[1].replace(/''/g, "'"));
+  }
+
+  test('background item carries the exact CLASSIC_THEME palette', () => {
+    const cfg = seededConfig('00000000-0000-000b-0001-000000000001');
+    expect(cfg.palette).toEqual(CLASSIC_THEME.palette);
+  });
+
+  test('background item carries the exact CLASSIC_THEME background', () => {
+    const cfg = seededConfig('00000000-0000-000b-0001-000000000001');
+    expect(cfg.base).toEqual(CLASSIC_THEME.background.base);
+    expect(cfg.layers).toEqual(CLASSIC_THEME.background.layers);
+  });
+
+  test('pill_style item carries the exact CLASSIC_THEME pill variants', () => {
+    const cfg = seededConfig('00000000-0000-000b-0004-000000000001');
+    expect(cfg).toEqual(CLASSIC_THEME.pills);
+  });
+
+  test('sound_pack item carries the exact CLASSIC_THEME sounds', () => {
+    const cfg = seededConfig('00000000-0000-000b-0003-000000000001');
+    expect(cfg).toEqual(CLASSIC_THEME.sounds);
   });
 });
